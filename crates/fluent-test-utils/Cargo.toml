@@ -1,0 +1,8 @@
+[package]
+name = "fluent-test-utils"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+fluent-core = { workspace = true }

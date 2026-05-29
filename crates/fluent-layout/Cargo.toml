@@ -1,0 +1,18 @@
+[package]
+name = "fluent-layout"
+version = "2.2.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Pane splitting, dock panels, tab strips, and modal stack for FluentGUI"
+repository = "https://github.com/AusAgentSmith-org/fluent-gpui"
+keywords = ["gui", "fluent", "gpui", "layout", "docking"]
+categories = ["gui"]
+
+[dependencies]
+gpui             = { workspace = true }
+fluent-core      = { workspace = true }
+fluent-ribbon    = { workspace = true }
+
+[dev-dependencies]
+fluent-test-utils = { workspace = true }
+gpui = { workspace = true, features = ["test-support"] }

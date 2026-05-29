@@ -1,0 +1,16 @@
+steps:
+  fmt:
+    image: rust:1.94-bookworm
+    commands:
+      - rustup component add rustfmt
+      - cargo fmt --all --check
+  clippy:
+    image: rust:1.94-bookworm
+    commands:
+      - rustup component add clippy
+      - cargo clippy --workspace --all-targets -- -D warnings
+  test:
+    image: rust:1.94-bookworm
+    commands:
+      - apt-get update -qq && apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev
+      - cargo test --workspace

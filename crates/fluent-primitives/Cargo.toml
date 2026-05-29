@@ -1,0 +1,18 @@
+[package]
+name = "fluent-primitives"
+version = "2.4.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Base widgets for FluentGUI: Button, Input, Label, Icon, Badge, and more"
+repository = "https://github.com/AusAgentSmith-org/fluent-gpui"
+keywords = ["gui", "fluent", "gpui", "widgets"]
+categories = ["gui"]
+
+[dependencies]
+gpui          = { workspace = true }
+fluent-core   = { workspace = true }
+unicode-segmentation = "1.12"
+
+[dev-dependencies]
+fluent-test-utils = { workspace = true }
+gpui = { workspace = true, features = ["test-support"] }

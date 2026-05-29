@@ -1,0 +1,8 @@
+/target/
+/crates/gpui/.cargo-ok
+/crates/gpui/.cargo_vcs_info.json
+/crates/gpui/Cargo.lock
+/ExternalExamples/
+.codesight/
+.claude/
+CLAUDE.md

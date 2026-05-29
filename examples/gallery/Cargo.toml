@@ -1,0 +1,12 @@
+[package]
+name = "gallery"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+gpui          = { workspace = true }
+fluent-core   = { workspace = true }
+fluent-ribbon = { workspace = true }
+fluent-layout = { workspace = true }
+fluent-app    = { workspace = true }

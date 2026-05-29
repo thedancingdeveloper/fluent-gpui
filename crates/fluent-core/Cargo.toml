@@ -1,0 +1,12 @@
+[package]
+name = "fluent-core"
+version = "2.4.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Design tokens, theme system, and lightweight motion helpers for FluentGUI"
+repository = "https://github.com/AusAgentSmith-org/fluent-gpui"
+keywords = ["gui", "fluent", "gpui", "theme", "design-tokens"]
+categories = ["gui"]
+
+[dependencies]
+gpui = { workspace = true }

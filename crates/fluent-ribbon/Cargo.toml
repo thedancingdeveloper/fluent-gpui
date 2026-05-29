@@ -1,0 +1,14 @@
+[package]
+name = "fluent-ribbon"
+version = "2.0.2"
+edition = "2021"
+license = "Apache-2.0"
+description = "Ribbon bar component for FluentGUI: tabs, groups, contextual tabs, overflow"
+repository = "https://github.com/AusAgentSmith-org/fluent-gpui"
+keywords = ["gui", "fluent", "gpui", "ribbon"]
+categories = ["gui"]
+
+[dependencies]
+gpui               = { workspace = true }
+fluent-core        = { workspace = true }
+fluent-primitives  = { workspace = true }

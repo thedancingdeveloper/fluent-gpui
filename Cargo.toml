@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/fluent-core",
+    "crates/fluent-primitives",
+    "crates/fluent-ribbon",
+    "crates/fluent-layout",
+    "crates/fluent-app",
+    "crates/fluent-test-utils",
+    "crates/gpui",
+    "examples/gallery",
+    "examples/demo_app",
+    "examples/hello_world",
+    "examples/widgets",
+    "examples/form",
+    "examples/screenshots",
+]
+
+[workspace.dependencies]
+gpui = { path = "crates/gpui", version = "0.2" }
+
+fluent-core        = { path = "crates/fluent-core",        version = "2.4.0" }
+fluent-primitives  = { path = "crates/fluent-primitives",  version = "2.4.0" }
+fluent-ribbon      = { path = "crates/fluent-ribbon",      version = "2.0.2" }
+fluent-layout      = { path = "crates/fluent-layout",      version = "2.2.0" }
+fluent-app         = { path = "crates/fluent-app",         version = "2.3.0" }
+fluent-test-utils  = { path = "crates/fluent-test-utils",  version = "0.1.0" }
