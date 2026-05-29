@@ -165,6 +165,209 @@ Each layer only depends on layers below it. You can use `fluent-primitives` with
 
 ---
 
+## Component Gallery
+
+Screenshots captured from `examples/screenshots`. Images switch automatically
+between light and dark to match your GitHub theme.
+
+### Buttons
+
+<table>
+<tr>
+<td align="center" width="33%">
+
+**Button**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/button.png"><img alt="Button" src="screenshots/light/button.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Icon Button**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/icon-button.png"><img alt="Icon Button" src="screenshots/light/icon-button.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Toggle Button**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/toggle-button.png"><img alt="Toggle Button" src="screenshots/light/toggle-button.png" width="280"></picture>
+
+</td>
+</tr>
+</table>
+
+### Text Inputs
+
+<table>
+<tr>
+<td align="center" width="33%">
+
+**Text Input**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/text-input.png"><img alt="Text Input" src="screenshots/light/text-input.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Textarea**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/textarea.png"><img alt="Textarea" src="screenshots/light/textarea.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Searchbox**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/searchbox.png"><img alt="Searchbox" src="screenshots/light/searchbox.png" width="280"></picture>
+
+</td>
+</tr>
+</table>
+
+### Selection Controls
+
+<table>
+<tr>
+<td align="center" width="33%">
+
+**Checkbox**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/checkbox.png"><img alt="Checkbox" src="screenshots/light/checkbox.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Switch**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/switch.png"><img alt="Switch" src="screenshots/light/switch.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Radio Group**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/radio-group.png"><img alt="Radio Group" src="screenshots/light/radio-group.png" width="280"></picture>
+
+</td>
+</tr>
+<tr>
+<td align="center" width="33%">
+
+**Dropdown**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/dropdown.png"><img alt="Dropdown" src="screenshots/light/dropdown.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Combobox**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/combobox.png"><img alt="Combobox" src="screenshots/light/combobox.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Field**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/field.png"><img alt="Field" src="screenshots/light/field.png" width="280"></picture>
+
+</td>
+</tr>
+</table>
+
+### Display & Status
+
+<table>
+<tr>
+<td align="center" width="33%">
+
+**Label**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/label.png"><img alt="Label" src="screenshots/light/label.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Badge**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/badge.png"><img alt="Badge" src="screenshots/light/badge.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Chip**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/chip.png"><img alt="Chip" src="screenshots/light/chip.png" width="280"></picture>
+
+</td>
+</tr>
+<tr>
+<td align="center" width="33%">
+
+**Avatar**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/avatar.png"><img alt="Avatar" src="screenshots/light/avatar.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**App Dot**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/app-dot.png"><img alt="App Dot" src="screenshots/light/app-dot.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Connection Badge**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/connection-badge.png"><img alt="Connection Badge" src="screenshots/light/connection-badge.png" width="280"></picture>
+
+</td>
+</tr>
+</table>
+
+### Layout & Composition
+
+<table>
+<tr>
+<td align="center" width="33%">
+
+**Card**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/card.png"><img alt="Card" src="screenshots/light/card.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Section Header**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/section-header.png"><img alt="Section Header" src="screenshots/light/section-header.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Divider**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/divider.png"><img alt="Divider" src="screenshots/light/divider.png" width="280"></picture>
+
+</td>
+</tr>
+</table>
+
+### Feedback & Loading
+
+<table>
+<tr>
+<td align="center" width="33%">
+
+**Spinner**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/spinner.png"><img alt="Spinner" src="screenshots/light/spinner.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Progress Bar**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/progress-bar.png"><img alt="Progress Bar" src="screenshots/light/progress-bar.png" width="280"></picture>
+
+</td>
+<td align="center" width="33%">
+
+**Skeleton**<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/skeleton.png"><img alt="Skeleton" src="screenshots/light/skeleton.png" width="280"></picture>
+
+</td>
+</tr>
+</table>
+
+Regenerate the gallery with:
+
+```sh
+scripts/screenshots.sh
+```
+
+---
+
 ## Vendored GPUI Fork
 
 This repository vendors GPUI at `crates/gpui` rather than relying directly on a registry copy during local development. The fork is Apache-2.0 and is currently versioned as `0.2.5`.
@@ -257,7 +460,6 @@ cargo test -p gpui --target x86_64-pc-windows-gnu video_ --no-run
 - [CHANGELOG.md](CHANGELOG.md) - per-crate release notes and workspace release groupings.
 - [docs/VISUAL_TARGETS.md](docs/VISUAL_TARGETS.md) - visual reference notes and current fulfillment status.
 - [outstanding.md](outstanding.md) - remaining GPUI renderer/video-frame validation work.
-- [CLAUDE.md](CLAUDE.md) - repo-local operating notes for AI agents and maintainers.
 
 ---
 

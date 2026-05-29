@@ -112,18 +112,3 @@ Outstanding maintenance tasks:
 3. Track local GPUI patches in commit messages and docs so downstream apps know why the fork exists.
 4. Decide whether each local patch should be upstreamed, kept local, or removed after a future GPUI release.
 5. Re-run workspace and targeted GPUI checks before publishing FluentGUI crates that rely on fork behavior.
-
----
-
-## Downstream Application Parity
-
-Remaining rdpapp parity is tracked downstream, but these items can still drive reusable framework work if repeated patterns emerge:
-
-- full SFTP browser;
-- richer credential CRUD;
-- offline/deactivation licensing flows;
-- pop-out windows;
-- import/export UI polish;
-- broader RDP/VNC controls.
-
-Do not implement these directly in FluentGUI unless they clearly reduce to generic primitives, tokens, or shell behavior.

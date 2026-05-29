@@ -24,4 +24,4 @@ fluent-primitives  = { path = "crates/fluent-primitives",  version = "2.4.0" }
 fluent-ribbon      = { path = "crates/fluent-ribbon",      version = "2.0.2" }
 fluent-layout      = { path = "crates/fluent-layout",      version = "2.2.0" }
 fluent-app         = { path = "crates/fluent-app",         version = "2.3.0" }
-fluent-test-utils  = { path = "crates/fluent-test-utils",  version = "0.1.0" }
+fluent-test-utils  = { path = "crates/fluent-test-utils" }
