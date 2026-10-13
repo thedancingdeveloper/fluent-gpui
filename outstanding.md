@@ -105,10 +105,15 @@ Current implementation notes:
 
 ## GPUI Fork Maintenance
 
-Outstanding maintenance tasks:
+The fork's upstream base and its local patches are tracked in
+[`crates/gpui/UPSTREAM.md`](crates/gpui/UPSTREAM.md). The base is zed commit
+`08d95ad9d31f` (2025-10-22). Upstream has since replaced the Blade, Metal and
+DirectX renderers with `crates/gpui_wgpu` and split the platform backends into
+their own crates, so the renderer patches have to be rewritten rather than
+merged. That work is WI-1347 through WI-1350.
+
+Still open:
 
 1. Keep `crates/gpui/Cargo.toml` and `crates/gpui/Cargo.toml.orig` aligned when the vendored fork version changes.
 2. Keep root `Cargo.toml` dependency range compatible with the fork version.
-3. Track local GPUI patches in commit messages and docs so downstream apps know why the fork exists.
-4. Decide whether each local patch should be upstreamed, kept local, or removed after a future GPUI release.
-5. Re-run workspace and targeted GPUI checks before publishing FluentGUI crates that rely on fork behavior.
+3. Re-run workspace and targeted GPUI checks before publishing FluentGUI crates that rely on fork behavior.
