@@ -13,7 +13,7 @@ pub trait FluentTextExt: Styled + Sized {
     /// jiggle horizontally as the values change. Idempotent: calling twice
     /// only sets the feature once.
     fn tabular_nums(mut self) -> Self {
-        let style = self.text_style().get_or_insert_with(Default::default);
+        let style = self.text_style();
         let mut features: Vec<(String, u32)> = style
             .font_features
             .as_ref()

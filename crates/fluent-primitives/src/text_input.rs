@@ -273,7 +273,7 @@ impl TextInput {
     }
 
     fn handle_key(&mut self, ev: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
-        if crate::focus::handle_tab_navigation(ev, window) {
+        if crate::focus::handle_tab_navigation(ev, window, cx) {
             cx.notify();
             return;
         }
@@ -382,7 +382,7 @@ impl TextInput {
             return;
         }
         let focus_handle = self.focus_handle(cx);
-        window.focus(&focus_handle);
+        window.focus(&focus_handle, cx);
         self.is_selecting = true;
 
         if event.modifiers.shift {
@@ -745,8 +745,15 @@ impl Element for TextElement {
             window.paint_quad(selection);
         }
         let line = prepaint.line.take().unwrap();
-        line.paint(bounds.origin, window.line_height(), window, cx)
-            .unwrap();
+        line.paint(
+            bounds.origin,
+            window.line_height(),
+            gpui::TextAlign::Left,
+            None,
+            window,
+            cx,
+        )
+        .unwrap();
 
         if focus_handle.is_focused(window) && !disabled {
             if let Some(cursor) = prepaint.cursor.take() {

@@ -2,6 +2,7 @@ use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, SharedString, Window,
 };
+use std::sync::Arc;
 
 /// A dismissable tag / token chip.
 #[allow(clippy::type_complexity)]
@@ -57,7 +58,7 @@ impl RenderOnce for Chip {
             .child(self.label);
 
         if has_dismiss {
-            let dismiss_id = ElementId::NamedChild(Box::new(self.id), "dismiss".into());
+            let dismiss_id = ElementId::NamedChild(Arc::new(self.id), "dismiss".into());
             el = el.child(
                 div()
                     .id(dismiss_id)
