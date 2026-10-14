@@ -148,3 +148,9 @@ signature diff. The rows known to matter are called out under "Notes".
 - `Window::alloc_video_texture`, `paint_video_frame`, `free_video_texture` and
   `VideoTextureId` exist only in the base fork. They are not among the 92
   symbols the fluent crates import; re-applying them is WI-1348.
+
+## Port status
+
+| Crate | Item | Result |
+|---|---|---|
+| `fluent-core` | WI-1425 | No source change. Every symbol it imports is in "unchanged" above, and `cargo check`, `cargo test` (22 unit tests) and `cargo clippy --no-deps -D warnings` pass against `vendor/zed` with the public API untouched. |
