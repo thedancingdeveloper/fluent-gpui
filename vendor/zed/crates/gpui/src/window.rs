@@ -4641,10 +4641,15 @@ impl Window {
             if shadow.inset {
                 continue;
             }
-            let shadow_bounds = (bounds + shadow.offset).dilate(shadow.spread_radius);
+            let shadow_bounds = (bounds
+                + Point::new(
+                    self.scale_length_for_paint(shadow.offset.x),
+                    self.scale_length_for_paint(shadow.offset.y),
+                ))
+            .dilate(self.scale_length_for_paint(shadow.spread_radius));
             self.next_frame.scene.insert_primitive(Shadow {
                 order: 0,
-                blur_radius: shadow.blur_radius.scale(scale_factor),
+                blur_radius: self.scale_length_for_paint(shadow.blur_radius).scale(scale_factor),
                 bounds: self.cover_bounds(shadow_bounds),
                 content_mask,
                 corner_radii: corner_radii.scale(scale_factor),
@@ -4679,19 +4684,25 @@ impl Window {
             if !shadow.inset {
                 continue;
             }
-            let hole = (bounds + shadow.offset).dilate(-shadow.spread_radius);
+            let spread = self.scale_length_for_paint(shadow.spread_radius);
+            let hole = (bounds
+                + Point::new(
+                    self.scale_length_for_paint(shadow.offset.x),
+                    self.scale_length_for_paint(shadow.offset.y),
+                ))
+            .dilate(-spread);
             // Clamp at zero so a large spread can't produce negative radii, which would
             // break the SDF in the shader.
             let zero = Pixels::ZERO;
             let hole_corner_radii = Corners {
-                top_left: (corner_radii.top_left - shadow.spread_radius).max(zero),
-                top_right: (corner_radii.top_right - shadow.spread_radius).max(zero),
-                bottom_right: (corner_radii.bottom_right - shadow.spread_radius).max(zero),
-                bottom_left: (corner_radii.bottom_left - shadow.spread_radius).max(zero),
+                top_left: (corner_radii.top_left - spread).max(zero),
+                top_right: (corner_radii.top_right - spread).max(zero),
+                bottom_right: (corner_radii.bottom_right - spread).max(zero),
+                bottom_left: (corner_radii.bottom_left - spread).max(zero),
             };
             self.next_frame.scene.insert_primitive(Shadow {
                 order: 0,
-                blur_radius: shadow.blur_radius.scale(scale_factor),
+                blur_radius: self.scale_length_for_paint(shadow.blur_radius).scale(scale_factor),
                 bounds: self.cover_bounds(hole),
                 content_mask,
                 corner_radii: hole_corner_radii.scale(scale_factor),
