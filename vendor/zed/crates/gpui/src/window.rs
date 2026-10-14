@@ -1239,6 +1239,10 @@ pub struct Window {
     pub(crate) rendered_entity_stack: Vec<EntityId>,
     pub(crate) element_offset_stack: Vec<Point<Pixels>>,
     pub(crate) element_opacity: f32,
+    /// Visual scale stack: (origin, factor), innermost last.
+    ///
+    /// Painting transforms around these origins. Layout and hit testing do not.
+    element_scale_stack: Vec<(Point<Pixels>, f32)>,
     pub(crate) content_mask_stack: Vec<ContentMask<Pixels>>,
     pub(crate) requested_autoscroll: Option<Bounds<Pixels>>,
     /// The [`TextInputConfiguration`] most recently forwarded to the platform
@@ -2144,6 +2148,7 @@ impl Window {
             element_offset_stack: Vec::new(),
             content_mask_stack: Vec::new(),
             element_opacity: 1.0,
+            element_scale_stack: Vec::new(),
             requested_autoscroll: None,
             last_text_input_configuration: None,
             focused_text_input_active: false,
@@ -3222,6 +3227,7 @@ impl Window {
         exclusions: &[Range<ScaledPixels>],
     ) {
         self.invalidator.debug_assert_paint();
+        let origin = self.transform_point_for_paint(origin);
         let underline = self.underline(origin, width, style);
         if exclusions.is_empty() {
             self.next_frame.scene.insert_primitive(underline);
@@ -4227,6 +4233,67 @@ impl Window {
         result
     }
 
+    /// Paint `f` with `scale` applied around `origin` for this element and its
+    /// painted descendants. `None` and `1.0` are no-ops.
+    ///
+    /// This is a paint-only transform: layout, hitboxes and focus are unchanged.
+    pub fn with_element_scale<T>(
+        &mut self,
+        origin: Point<Pixels>,
+        scale: Option<f32>,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let Some(scale) = scale.filter(|scale| *scale != 1.0) else {
+            return f(self);
+        };
+        self.element_scale_stack.push((origin, scale));
+        let result = f(self);
+        self.element_scale_stack.pop();
+        result
+    }
+
+    /// Transform a point by the current element scale stack.
+    fn transform_point_for_paint(&self, point: Point<Pixels>) -> Point<Pixels> {
+        let mut point = point;
+        for &(origin, scale) in &self.element_scale_stack {
+            point = origin + (point - origin) * scale;
+        }
+        point
+    }
+
+    /// Transform a bounds by the current element scale stack, keeping its center
+    /// fixed relative to the scaled origins.
+    fn transform_bounds_for_paint(&self, bounds: Bounds<Pixels>) -> Bounds<Pixels> {
+        if self.element_scale_stack.is_empty() {
+            return bounds;
+        }
+        let center = self.transform_point_for_paint(bounds.center());
+        let mut size = bounds.size;
+        for &(_, scale) in &self.element_scale_stack {
+            size *= scale;
+        }
+        Bounds::centered_at(center, size)
+    }
+
+    /// Scale a length by the current element scale stack.
+    fn scale_length_for_paint(&self, length: Pixels) -> Pixels {
+        let mut length = length;
+        for &(_, scale) in &self.element_scale_stack {
+            length *= scale;
+        }
+        length
+    }
+
+    /// Scale corner radii by the current element scale stack, staying in pixels.
+    fn scale_corners_for_paint(&self, corners: Corners<Pixels>) -> Corners<Pixels> {
+        Corners {
+            top_left: self.scale_length_for_paint(corners.top_left),
+            top_right: self.scale_length_for_paint(corners.top_right),
+            bottom_right: self.scale_length_for_paint(corners.bottom_right),
+            bottom_left: self.scale_length_for_paint(corners.bottom_left),
+        }
+    }
+
     /// Perform prepaint on child elements in a "retryable" manner, so that any side effects
     /// of prepaints can be discarded before prepainting again. This is used to support autoscroll
     /// where we need to prepaint children to detect the autoscroll bounds, then adjust the
@@ -4563,6 +4630,8 @@ impl Window {
     ) {
         self.invalidator.debug_assert_paint();
 
+        let bounds = self.transform_bounds_for_paint(bounds);
+        let corner_radii = self.scale_corners_for_paint(corner_radii);
         let scale_factor = self.scale_factor();
         let content_mask = self.snapped_content_mask();
         let opacity = self.element_opacity();
@@ -4599,6 +4668,8 @@ impl Window {
     ) {
         self.invalidator.debug_assert_paint();
 
+        let bounds = self.transform_bounds_for_paint(bounds);
+        let corner_radii = self.scale_corners_for_paint(corner_radii);
         let scale_factor = self.scale_factor();
         let content_mask = self.snapped_content_mask();
         let opacity = self.element_opacity();
@@ -4684,6 +4755,15 @@ impl Window {
     pub fn paint_quad(&mut self, quad: PaintQuad) {
         self.invalidator.debug_assert_paint();
 
+        let mut quad = quad;
+        quad.bounds = self.transform_bounds_for_paint(quad.bounds);
+        quad.corner_radii = self.scale_corners_for_paint(quad.corner_radii);
+        quad.border_widths = Edges {
+            top: self.scale_length_for_paint(quad.border_widths.top),
+            right: self.scale_length_for_paint(quad.border_widths.right),
+            bottom: self.scale_length_for_paint(quad.border_widths.bottom),
+            left: self.scale_length_for_paint(quad.border_widths.left),
+        };
         let opacity = self.element_opacity();
         let snapped_bounds = self.snap_bounds(quad.bounds);
         let snapped_border_widths = self.snap_border_widths(quad.border_widths);
@@ -4755,6 +4835,10 @@ impl Window {
     pub fn paint_path(&mut self, mut path: Path<Pixels>, color: impl Into<Background>) {
         self.invalidator.debug_assert_paint();
 
+        path.bounds = self.transform_bounds_for_paint(path.bounds);
+        for vertex in path.vertices.iter_mut() {
+            vertex.xy_position = self.transform_point_for_paint(vertex.xy_position);
+        }
         let scale_factor = self.scale_factor();
         let content_mask = self.content_mask();
         let opacity = self.element_opacity();
@@ -4776,6 +4860,7 @@ impl Window {
         style: &UnderlineStyle,
     ) {
         self.invalidator.debug_assert_paint();
+        let origin = self.transform_point_for_paint(origin);
         let underline = self.underline(origin, width, style);
         self.next_frame.scene.insert_primitive(underline);
     }
@@ -4828,6 +4913,8 @@ impl Window {
     ) -> Result<()> {
         self.invalidator.debug_assert_paint();
 
+        let origin = self.transform_point_for_paint(origin);
+        let font_size = self.scale_length_for_paint(font_size);
         let element_opacity = self.element_opacity();
         let scale_factor = self.scale_factor();
         let glyph_origin = origin.scale(scale_factor);
@@ -4932,6 +5019,8 @@ impl Window {
     ) -> Result<()> {
         self.invalidator.debug_assert_paint();
 
+        let origin = self.transform_point_for_paint(origin);
+        let font_size = self.scale_length_for_paint(font_size);
         let scale_factor = self.scale_factor();
         let glyph_origin = origin.scale(scale_factor);
         let integer_origin = glyph_origin.map(|c| ScaledPixels(round_half_toward_zero(c.0)));
@@ -4992,7 +5081,7 @@ impl Window {
         self.invalidator.debug_assert_paint();
 
         let element_opacity = self.element_opacity();
-        let bounds = self.snap_bounds(bounds);
+        let bounds = self.snap_bounds(self.transform_bounds_for_paint(bounds));
 
         let params = RenderSvgParams {
             path,
@@ -5061,6 +5150,9 @@ impl Window {
     ) -> Result<()> {
         self.invalidator.debug_assert_paint();
 
+        let bounds = self.transform_bounds_for_paint(bounds);
+        let image_bounds = self.transform_bounds_for_paint(image_bounds);
+        let corner_radii = self.scale_corners_for_paint(corner_radii);
         let visible_bounds = bounds.intersect(&image_bounds);
         if visible_bounds.size.width <= Pixels::ZERO || visible_bounds.size.height <= Pixels::ZERO {
             return Ok(());
@@ -5161,6 +5253,7 @@ impl Window {
 
         self.invalidator.debug_assert_paint();
 
+        let bounds = self.transform_bounds_for_paint(bounds);
         let bounds = self.snap_bounds(bounds);
         let content_mask = self.snapped_content_mask();
         self.next_frame.scene.insert_primitive(PaintSurface {
