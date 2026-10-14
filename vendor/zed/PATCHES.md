@@ -4,4 +4,4 @@ Each local patch to this tree is a commit on the integrating branch, never on `z
 
 | patch | commit | files |
 |---|---|---|
-| _none yet_ | | |
+| `assets/fonts` | this commit | `vendor/zed/assets/fonts/` |
