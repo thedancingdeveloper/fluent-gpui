@@ -205,6 +205,10 @@ name = "opacity"
 path = "examples/opacity.rs"
 
 [[example]]
+name = "scale"
+path = "examples/scale.rs"
+
+[[example]]
 name = "pattern"
 path = "examples/pattern.rs"
 
