@@ -1,0 +1,23 @@
+[package]
+name = "bench_metrics"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+
+[lib]
+path = "src/bench_metrics.rs"
+doctest = false
+
+[features]
+test-support = []
+
+[dependencies]
+anyhow = { version = "1.0.86" }
+criterion = { version = "0.8.2", features = ["html_reports"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = { version = "0.2" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+perf-event = { package = "perf-event2", version = "0.7.4" }

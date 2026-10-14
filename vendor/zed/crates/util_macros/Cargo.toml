@@ -1,0 +1,20 @@
+[package]
+name = "util_macros"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+description = "Utility macros for Zed"
+
+[lib]
+path = "src/util_macros.rs"
+proc-macro = true
+test = false
+
+[dependencies]
+quote = { version = "1.0.9" }
+syn = { version = "2.0", default-features = false, features = ["proc-macro", "full", "extra-traits", "clone-impls", "parsing", "printing"] }
+perf = { path = "../perf" }
+
+[features]
+perf-enabled = []
