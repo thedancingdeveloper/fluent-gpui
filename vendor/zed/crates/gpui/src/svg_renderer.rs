@@ -102,6 +102,25 @@ pub struct SvgRenderer {
 /// scales should retain this value to avoid re-paying the parse cost.
 pub struct ParsedSvg(usvg::Tree);
 
+// Module-level so `warmup_svg_font_db` can prime `load_system_fonts` before the
+// first SVG render. The per-renderer enriched DB (bundled fonts, generic
+// family fixes) stays lazy inside `SvgRenderer::new`.
+static SYSTEM_FONT_DB: LazyLock<Arc<usvg::fontdb::Database>> = LazyLock::new(|| {
+    let mut db = usvg::fontdb::Database::new();
+    db.load_system_fonts();
+    Arc::new(db)
+});
+
+/// Pre-warm the usvg system font database on a background thread so the first
+/// SVG render does not block the UI thread with a full font-cache scan.
+///
+/// Call this once from `main()` via `std::thread::spawn(gpui::warmup_svg_font_db)`
+/// before opening any windows. The enriched per-renderer database is still
+/// built lazily on the first render.
+pub fn warmup_svg_font_db() {
+    let _ = &*SYSTEM_FONT_DB;
+}
+
 /// The size in which to rasterize the SVG.
 #[derive(Clone, Copy)]
 pub enum SvgSize {
@@ -122,12 +141,6 @@ impl From<f32> for SvgSize {
 impl SvgRenderer {
     /// Creates a new SVG renderer with the provided asset source.
     pub fn new(asset_source: Arc<dyn AssetSource>) -> Self {
-        static SYSTEM_FONT_DB: LazyLock<Arc<usvg::fontdb::Database>> = LazyLock::new(|| {
-            let mut db = usvg::fontdb::Database::new();
-            db.load_system_fonts();
-            Arc::new(db)
-        });
-
         // Build the enriched font DB lazily on first SVG render rather than
         // eagerly at construction time. This avoids the expensive deep-clone
         // of the system font database for code paths that never render SVGs
@@ -520,6 +533,15 @@ mod tests {
             face.families.iter().any(|(name, _)| name.contains("Lilex")),
             "Monospace should map to Lilex, got {:?}",
             face.families
+        );
+    }
+
+    #[test]
+    fn warmup_svg_font_db_populates_before_renderer_use() {
+        warmup_svg_font_db();
+        assert!(
+            !SYSTEM_FONT_DB.is_empty(),
+            "warmup should load system fonts before any SvgRenderer is built"
         );
     }
 }
