@@ -2,8 +2,8 @@ use std::sync::{Arc, Mutex};
 
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
-    anchored, canvas, deferred, div, point, prelude::*, px, svg, App, Bounds, ClickEvent, Context,
-    Corner, ElementId, FocusHandle, IntoElement, KeyDownEvent, MouseButton, Pixels, Point, Render,
+    anchored, canvas, deferred, div, point, prelude::*, px, svg, Anchor, App, Bounds, ClickEvent,
+    Context, ElementId, FocusHandle, IntoElement, KeyDownEvent, MouseButton, Pixels, Point, Render,
     SharedString, WeakEntity, Window,
 };
 
@@ -628,7 +628,7 @@ impl Render for MenuButton {
                 })
                 .on_click(cx.listener(
                     move |button: &mut MenuButton, ev: &ClickEvent, window, cx| {
-                        window.focus(&focus_handle);
+                        window.focus(&focus_handle, cx);
                         button.update_origin(point(
                             ev.position().x,
                             ev.position().y + px(cx.theme().components.dropdown_height),
@@ -682,7 +682,7 @@ impl Render for MenuButton {
             root = root.child(deferred(
                 overlay.child(
                     anchored()
-                        .anchor(Corner::TopLeft)
+                        .anchor(Anchor::TopLeft)
                         .position(self.popup_origin)
                         .snap_to_window()
                         .child(menu),
@@ -699,7 +699,7 @@ mod tests {
     use std::time::Duration;
 
     use fluent_test_utils::init_fluent_test;
-    use gpui::{AppContext as _, ClickEvent, TestAppContext};
+    use gpui::{ClickEvent, TestAppContext};
 
     use super::*;
 
