@@ -96,6 +96,13 @@ struct GammaParams {
 @group(2) @binding(0) var t_sprite: texture_2d<f32>;
 @group(2) @binding(1) var s_sprite: sampler;
 
+// A copy of the colour target as it stood before the current quad batch,
+// bound on the quads pipeline (group 3) and unused everywhere else. The quad
+// fragment shader blurs it directly when a quad's background tag is
+// BackdropBlur, so there is no separate blur pass.
+@group(3) @binding(0) var t_backdrop: texture_2d<f32>;
+@group(3) @binding(1) var s_backdrop: sampler;
+
 const M_PI_F: f32 = 3.1415926;
 const GRAYSCALE_FACTORS: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
 
@@ -135,6 +142,7 @@ struct Background {
     // 1u is LinearGradient
     // 2u is PatternSlash
     // 3u is Checkerboard
+    // 4u is BackdropBlur
     tag: u32,
     // 0u is sRGB linear color
     // 1u is Oklab color
@@ -539,6 +547,20 @@ struct QuadVarying {
 }
 
 @vertex
+fn vs_backdrop(@builtin(vertex_index) index: u32) -> @builtin(position) vec4<f32> {
+    let x = f32(index & 1u) * 2.0 - 1.0;
+    let y = f32((index >> 1u) & 1u) * 2.0 - 1.0;
+    return vec4<f32>(x, y, 0.0, 1.0);
+}
+
+@fragment
+fn fs_backdrop(@builtin(position) position: vec4<f32>) -> @location(0) vec4<f32> {
+    let dims = textureDimensions(t_sprite);
+    let texel = vec2<i32>(position.xy);
+    return textureLoad(t_sprite, texel, 0);
+}
+
+@vertex
 fn vs_quad(@builtin(vertex_index) vertex_id: u32, @builtin(instance_index) instance_id: u32) -> QuadVarying {
     let unit_vertex = vec2<f32>(f32(vertex_id & 1u), 0.5 * f32(vertex_id & 2u));
     let quad = load_quad(instance_id);
@@ -570,8 +592,60 @@ fn fs_quad(input: QuadVarying) -> @location(0) vec4<f32> {
 
     let quad = load_quad(input.quad_id);
 
-    let background_color = gradient_color(quad.background, input.position.xy, quad.bounds,
-        input.background_solid, input.background_color0, input.background_color1);
+    var background_color: vec4<f32>;
+    if (quad.background.tag == 4u) {
+        // BackdropBlur. `t_backdrop` holds the colour target as it stood
+        // before this quad batch, and the blur radius rides in
+        // `gradient_angle_or_pattern_height` (device pixels). A 13-tap
+        // cross-pattern kernel approximates a gaussian of sigma = radius / 2,
+        // which is the look the old blade renderer produced with its own blur
+        // pass. `solid` is the tint: its alpha is the tint strength, and it
+        // composites over the blur with the standard "over" operator.
+        let radius = max(quad.background.gradient_angle_or_pattern_height, 0.5);
+        let uv = input.position.xy / globals.viewport_size;
+        let step = 1.0 / globals.viewport_size;
+        let off1 = step * (radius * 0.25);
+        let off2 = step * (radius * 0.5);
+        let off3 = step * (radius * 0.75);
+        let off4 = step * radius;
+
+        let w0 = 0.227027;
+        let w1 = 0.194594;
+        let w2 = 0.121622;
+        let w3 = 0.054054;
+        let w4 = 0.016216;
+
+        var blurred = textureSample(t_backdrop, s_backdrop, uv) * w0;
+        blurred += textureSample(t_backdrop, s_backdrop, uv + vec2<f32>(off1.x, 0.0)) * w1;
+        blurred += textureSample(t_backdrop, s_backdrop, uv - vec2<f32>(off1.x, 0.0)) * w1;
+        blurred += textureSample(t_backdrop, s_backdrop, uv + vec2<f32>(off2.x, 0.0)) * w2;
+        blurred += textureSample(t_backdrop, s_backdrop, uv - vec2<f32>(off2.x, 0.0)) * w2;
+        blurred += textureSample(t_backdrop, s_backdrop, uv + vec2<f32>(off3.x, 0.0)) * w3;
+        blurred += textureSample(t_backdrop, s_backdrop, uv - vec2<f32>(off3.x, 0.0)) * w3;
+        blurred += textureSample(t_backdrop, s_backdrop, uv + vec2<f32>(off4.x, 0.0)) * w4;
+        blurred += textureSample(t_backdrop, s_backdrop, uv - vec2<f32>(off4.x, 0.0)) * w4;
+        blurred += textureSample(t_backdrop, s_backdrop, uv + vec2<f32>(0.0, off1.y)) * w1;
+        blurred += textureSample(t_backdrop, s_backdrop, uv - vec2<f32>(0.0, off1.y)) * w1;
+        blurred += textureSample(t_backdrop, s_backdrop, uv + vec2<f32>(0.0, off2.y)) * w2;
+        blurred += textureSample(t_backdrop, s_backdrop, uv - vec2<f32>(0.0, off2.y)) * w2;
+        blurred += textureSample(t_backdrop, s_backdrop, uv + vec2<f32>(0.0, off3.y)) * w3;
+        blurred += textureSample(t_backdrop, s_backdrop, uv - vec2<f32>(0.0, off3.y)) * w3;
+        blurred += textureSample(t_backdrop, s_backdrop, uv + vec2<f32>(0.0, off4.y)) * w4;
+        blurred += textureSample(t_backdrop, s_backdrop, uv - vec2<f32>(0.0, off4.y)) * w4;
+
+        // w0 plus both axes of four offset pairs.
+        let total_weight = w0 + 4.0 * (w1 + w2 + w3 + w4);
+        blurred = blurred / total_weight;
+
+        let tint = input.background_solid;
+        background_color = vec4<f32>(
+            tint.rgb * tint.a + blurred.rgb * (1.0 - tint.a),
+            tint.a + blurred.a * (1.0 - tint.a),
+        );
+    } else {
+        background_color = gradient_color(quad.background, input.position.xy, quad.bounds,
+            input.background_solid, input.background_color0, input.background_color1);
+    }
 
     let unrounded = quad.corner_radii.top_left == 0.0 &&
         quad.corner_radii.bottom_left == 0.0 &&

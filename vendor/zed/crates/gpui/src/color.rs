@@ -747,6 +747,11 @@ pub(crate) enum BackgroundTag {
     LinearGradient = 1,
     PatternSlash = 2,
     Checkerboard = 3,
+    /// A blurred copy of the pixels drawn behind the element, tinted with
+    /// `solid`. `gradient_angle_or_pattern_height` carries the blur radius in
+    /// device pixels. Tag 4, because upstream added `Checkerboard` at 3 after
+    /// this patch was first written.
+    BackdropBlur = 4,
 }
 
 /// A color space for color interpolation.
@@ -805,6 +810,11 @@ impl std::fmt::Debug for Background {
                 "Checkerboard({:?}, {})",
                 self.solid, self.gradient_angle_or_pattern_height
             ),
+            BackgroundTag::BackdropBlur => write!(
+                f,
+                "BackdropBlur(radius: {}, tint: {:?})",
+                self.gradient_angle_or_pattern_height, self.solid
+            ),
         }
     }
 }
@@ -843,6 +853,22 @@ pub fn checkerboard(color: impl Into<Hsla>, size: f32) -> Background {
         tag: BackgroundTag::Checkerboard,
         solid: color.into(),
         gradient_angle_or_pattern_height: size,
+        ..Default::default()
+    }
+}
+
+/// Creates a backdrop-blur background: the pixels already drawn behind the
+/// element are blurred by `radius` device pixels and tinted with `tint`.
+///
+/// `tint`'s alpha is the tint strength — `hsla(0., 0., 0., 0.)` leaves the
+/// blur untinted, an opaque tint hides it. A renderer that cannot capture its
+/// own colour target (the Metal path today) draws `tint` as a flat colour
+/// instead, which is why callers pick a tint that reads on its own.
+pub fn backdrop_blur(radius: f32, tint: impl Into<Hsla>) -> Background {
+    Background {
+        tag: BackgroundTag::BackdropBlur,
+        solid: tint.into(),
+        gradient_angle_or_pattern_height: radius,
         ..Default::default()
     }
 }
@@ -943,7 +969,15 @@ impl Background {
             BackgroundTag::LinearGradient => self.colors.iter().all(|c| c.color.is_transparent()),
             BackgroundTag::PatternSlash => self.solid.is_transparent(),
             BackgroundTag::Checkerboard => self.solid.is_transparent(),
+            // A blur always shows whatever is behind it, even with no tint.
+            BackgroundTag::BackdropBlur => false,
         }
+    }
+
+    /// Whether this background needs the renderer to capture the pixels drawn
+    /// so far, so the quad shader can blur them.
+    pub fn needs_backdrop(&self) -> bool {
+        matches!(self.tag, BackgroundTag::BackdropBlur)
     }
 }
 
