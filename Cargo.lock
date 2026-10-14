@@ -1965,6 +1965,7 @@ dependencies = [
  "fluent-core",
  "fluent-layout",
  "gpui",
+ "gpui_platform",
 ]
 
 [[package]]
@@ -2009,6 +2010,7 @@ version = "0.1.0"
 dependencies = [
  "fluent-core",
  "gpui",
+ "gpui_platform",
 ]
 
 [[package]]

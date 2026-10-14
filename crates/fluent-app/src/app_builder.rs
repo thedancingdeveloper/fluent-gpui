@@ -3,8 +3,8 @@ use std::sync::Arc;
 use fluent_core::Theme;
 use fluent_layout::{modal::ModalStack, ToastStack};
 use gpui::{
-    prelude::*, px, size, App, Application, AssetSource, Bounds, Context, Entity, IntoElement,
-    Render, SharedString, TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions,
+    prelude::*, px, size, App, AssetSource, Bounds, Context, Entity, IntoElement, Render,
+    SharedString, TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions,
 };
 
 use crate::{
@@ -159,7 +159,7 @@ impl FluentApp {
         let dark = self.dark;
         let assets = self.assets;
 
-        Application::new()
+        gpui_platform::application()
             .with_assets(FluentAssets::new(assets))
             .run(move |cx: &mut App| {
                 if dark {

@@ -2,6 +2,13 @@ use fluent_core::Theme;
 
 pub use gpui::{Context, Entity, TestAppContext, VisualTestContext, Window};
 
+/// Build the GPUI application the way the ported crates do: the native platform
+/// comes from `gpui_platform`, not `gpui::Application::new`, which the vendored
+/// gpui no longer provides.
+pub fn application() -> gpui::Application {
+    gpui_platform::application()
+}
+
 pub fn init_fluent_test(cx: &mut TestAppContext) {
     cx.update(Theme::init);
 }
