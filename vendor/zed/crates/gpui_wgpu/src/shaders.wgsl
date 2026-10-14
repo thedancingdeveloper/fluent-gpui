@@ -1310,6 +1310,51 @@ fn fs_poly_sprite(input: PolySpriteVarying) -> @location(0) vec4<f32> {
     return blend_color(color, sprite.opacity * saturate(0.5 - distance));
 }
 
+// --- video frames --- //
+
+struct VideoFrame {
+    order: u32,
+    bounds: Bounds,
+    content_mask: ContentMask,
+    corner_radii: Corners,
+    texture_id: u32,
+    texture_id_hi: u32,
+    opacity: f32,
+    pad: u32,
+}
+
+struct VideoFrameVarying {
+    @builtin(position) position: vec4<f32>,
+    @location(0) texture_position: vec2<f32>,
+    @location(1) @interpolate(flat) frame_id: u32,
+    @location(3) clip_distances: vec4<f32>,
+}
+
+@vertex
+fn vs_video_frame(@builtin(vertex_index) vertex_id: u32, @builtin(instance_index) instance_id: u32) -> VideoFrameVarying {
+    let unit_vertex = vec2<f32>(f32(vertex_id & 1u), 0.5 * f32(vertex_id & 2u));
+    let frame = load_video_frame(instance_id);
+
+    var out = VideoFrameVarying();
+    out.position = to_device_position(unit_vertex, frame.bounds);
+    out.texture_position = unit_vertex;
+    out.frame_id = instance_id;
+    out.clip_distances = distance_from_clip_rect(unit_vertex, frame.bounds, frame.content_mask);
+    return out;
+}
+
+@fragment
+fn fs_video_frame(input: VideoFrameVarying) -> @location(0) vec4<f32> {
+    let sample = textureSample(t_sprite, s_sprite, input.texture_position);
+    if (any(input.clip_distances < vec4<f32>(0.0))) {
+        return vec4<f32>(0.0);
+    }
+
+    let frame = load_video_frame(input.frame_id);
+    let distance = quad_sdf(input.position.xy, frame.bounds, frame.corner_radii);
+    return blend_color(sample, frame.opacity * saturate(0.5 - distance));
+}
+
 // --- surfaces --- //
 
 struct SurfaceParams {

@@ -49,6 +49,13 @@ pub struct Scene {
     pub monochrome_sprites: Vec<MonochromeSprite>,
     pub subpixel_sprites: Vec<SubpixelSprite>,
     pub polychrome_sprites: Vec<PolychromeSprite>,
+    pub video_frames: Vec<VideoFrame>,
+    /// The pixels behind [`Self::video_frames`], keyed by texture id.
+    ///
+    /// A frame is painted from a standalone texture the renderer owns. This map
+    /// carries the pixels the renderer has not uploaded yet, so a texture that
+    /// is not painted this frame is simply absent and keeps its GPU copy.
+    pub video_frame_pixels: std::collections::HashMap<u64, VideoFramePixels>,
     pub surfaces: Vec<PaintSurface>,
 }
 
@@ -65,6 +72,8 @@ impl Scene {
         self.monochrome_sprites.clear();
         self.subpixel_sprites.clear();
         self.polychrome_sprites.clear();
+        self.video_frames.clear();
+        self.video_frame_pixels.clear();
         self.surfaces.clear();
     }
 
@@ -129,6 +138,10 @@ impl Scene {
                 sprite.order = order;
                 self.polychrome_sprites.push(*sprite);
             }
+            Primitive::VideoFrame(video_frame) => {
+                video_frame.order = order;
+                self.video_frames.push(*video_frame);
+            }
             Primitive::Surface(surface) => {
                 surface.order = order;
                 self.surfaces.push(surface.clone());
@@ -159,6 +172,7 @@ impl Scene {
             .sort_by_key(|sprite| (sprite.order, sprite.tile.tile_id));
         self.polychrome_sprites
             .sort_by_key(|sprite| (sprite.order, sprite.tile.tile_id));
+        self.video_frames.sort_by_key(|frame| frame.order);
         self.surfaces.sort_by_key(|surface| surface.order);
     }
 
@@ -185,6 +199,8 @@ impl Scene {
             subpixel_sprites_iter: self.subpixel_sprites.iter().peekable(),
             polychrome_sprites_start: 0,
             polychrome_sprites_iter: self.polychrome_sprites.iter().peekable(),
+            video_frames_start: 0,
+            video_frames_iter: self.video_frames.iter().peekable(),
             surfaces_start: 0,
             surfaces_iter: self.surfaces.iter().peekable(),
         }
@@ -208,6 +224,7 @@ pub(crate) enum PrimitiveKind {
     MonochromeSprite,
     SubpixelSprite,
     PolychromeSprite,
+    VideoFrame,
     Surface,
 }
 
@@ -227,6 +244,7 @@ pub enum Primitive {
     MonochromeSprite(MonochromeSprite),
     SubpixelSprite(SubpixelSprite),
     PolychromeSprite(PolychromeSprite),
+    VideoFrame(VideoFrame),
     Surface(PaintSurface),
 }
 
@@ -241,6 +259,7 @@ impl Primitive {
             Primitive::MonochromeSprite(sprite) => &sprite.bounds,
             Primitive::SubpixelSprite(sprite) => &sprite.bounds,
             Primitive::PolychromeSprite(sprite) => &sprite.bounds,
+            Primitive::VideoFrame(video_frame) => &video_frame.bounds,
             Primitive::Surface(surface) => &surface.bounds,
         }
     }
@@ -254,6 +273,7 @@ impl Primitive {
             Primitive::MonochromeSprite(sprite) => &sprite.content_mask,
             Primitive::SubpixelSprite(sprite) => &sprite.content_mask,
             Primitive::PolychromeSprite(sprite) => &sprite.content_mask,
+            Primitive::VideoFrame(video_frame) => &video_frame.content_mask,
             Primitive::Surface(surface) => &surface.content_mask,
         }
     }
@@ -281,6 +301,8 @@ struct BatchIterator<'a> {
     subpixel_sprites_iter: Peekable<slice::Iter<'a, SubpixelSprite>>,
     polychrome_sprites_start: usize,
     polychrome_sprites_iter: Peekable<slice::Iter<'a, PolychromeSprite>>,
+    video_frames_start: usize,
+    video_frames_iter: Peekable<slice::Iter<'a, VideoFrame>>,
     surfaces_start: usize,
     surfaces_iter: Peekable<slice::Iter<'a, PaintSurface>>,
 }
@@ -311,6 +333,10 @@ impl<'a> Iterator for BatchIterator<'a> {
             (
                 self.polychrome_sprites_iter.peek().map(|s| s.order),
                 PrimitiveKind::PolychromeSprite,
+            ),
+            (
+                self.video_frames_iter.peek().map(|s| s.order),
+                PrimitiveKind::VideoFrame,
             ),
             (
                 self.surfaces_iter.peek().map(|s| s.order),
@@ -447,6 +473,20 @@ impl<'a> Iterator for BatchIterator<'a> {
                     range: sprites_start..sprites_end,
                 })
             }
+            PrimitiveKind::VideoFrame => {
+                let frames_start = self.video_frames_start;
+                let mut frames_end = frames_start + 1;
+                self.video_frames_iter.next();
+                while self
+                    .video_frames_iter
+                    .next_if(|frame| (frame.order, batch_kind) < max_order_and_kind)
+                    .is_some()
+                {
+                    frames_end += 1;
+                }
+                self.video_frames_start = frames_end;
+                Some(PrimitiveBatch::VideoFrames(frames_start..frames_end))
+            }
             PrimitiveKind::Surface => {
                 let surfaces_start = self.surfaces_start;
                 let mut surfaces_end = surfaces_start + 1;
@@ -492,6 +532,7 @@ pub enum PrimitiveBatch {
         texture_id: AtlasTextureId,
         range: Range<usize>,
     },
+    VideoFrames(Range<usize>),
     Surfaces(Range<usize>),
 }
 
@@ -524,6 +565,7 @@ impl PrimitiveBatch {
                     texture_id.index
                 )
             }
+            Self::VideoFrames(range) => format!("video frames ({})", range.len()),
             Self::Surfaces(range) => format!("surfaces ({})", range.len()),
         }
     }
@@ -760,6 +802,42 @@ pub struct PolychromeSprite {
 impl From<PolychromeSprite> for Primitive {
     fn from(sprite: PolychromeSprite) -> Self {
         Primitive::PolychromeSprite(sprite)
+    }
+}
+
+/// The pixels of one video texture, in tightly packed BGRA8.
+#[derive(Clone, Debug)]
+#[expect(missing_docs)]
+pub struct VideoFramePixels {
+    pub width: u32,
+    pub height: u32,
+    pub pixels: std::sync::Arc<[u8]>,
+    /// Bumped on every upload, so the renderer re-uploads only when it changes.
+    pub generation: u64,
+}
+
+/// A video frame painted from a standalone GPU texture.
+///
+/// Unlike [`PolychromeSprite`], the texture is not an atlas tile: the whole
+/// texture is sampled, clipped by [`Self::content_mask`] and rounded by
+/// [`Self::corner_radii`]. The texture itself lives in the renderer, keyed by
+/// [`Self::texture_id`].
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+#[expect(missing_docs)]
+pub struct VideoFrame {
+    pub order: DrawOrder,
+    pub bounds: Bounds<ScaledPixels>,
+    pub content_mask: ContentMask<ScaledPixels>,
+    pub corner_radii: Corners<ScaledPixels>,
+    pub texture_id: u64,
+    pub opacity: f32,
+    pub pad: u32,
+}
+
+impl From<VideoFrame> for Primitive {
+    fn from(video_frame: VideoFrame) -> Self {
+        Primitive::VideoFrame(video_frame)
     }
 }
 

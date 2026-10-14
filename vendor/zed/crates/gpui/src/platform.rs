@@ -1739,6 +1739,28 @@ impl From<RenderImageParams> for AtlasKey {
     }
 }
 
+/// A handle to a standalone GPU texture holding one video frame.
+///
+/// Video frames are full-frame images that arrive every frame, so they are
+/// not packed into the sprite atlas. The id is renderer-local and must be
+/// freed with [`Window::free_video_texture`](crate::Window::free_video_texture)
+/// once the frame is no longer painted.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct VideoTextureId(pub(crate) u64);
+
+impl VideoTextureId {
+    /// Build an id from the raw value stored on a painted frame.
+    pub fn new(id: u64) -> Self {
+        Self(id)
+    }
+
+    /// The raw value, for matching a painted frame back to its texture.
+    pub fn as_u64(self) -> u64 {
+        self.0
+    }
+}
+
 #[expect(missing_docs)]
 pub trait PlatformAtlas {
     /// The builder runs with the atlas locked and must not re-enter the same atlas.
