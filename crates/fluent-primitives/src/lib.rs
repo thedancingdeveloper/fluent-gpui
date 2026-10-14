@@ -56,6 +56,30 @@ pub use spinner::Spinner;
 pub use suggestion_popover::{
     SuggestionItem, SuggestionKeyAction, SuggestionListState, SuggestionPopover,
 };
+
+/// The reference corner a popover anchors to.
+///
+/// Upstream gpui dropped its `Corner` enum and replaced it with `Anchor`,
+/// which adds centre edges. This keeps the four-corner public API the rest of
+/// the crates already use, and converts into `gpui::Anchor` at the call site.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Corner {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+
+impl From<Corner> for gpui::Anchor {
+    fn from(corner: Corner) -> Self {
+        match corner {
+            Corner::TopLeft => gpui::Anchor::TopLeft,
+            Corner::TopRight => gpui::Anchor::TopRight,
+            Corner::BottomLeft => gpui::Anchor::BottomLeft,
+            Corner::BottomRight => gpui::Anchor::BottomRight,
+        }
+    }
+}
 pub use switch::Switch;
 pub use text_ext::FluentTextExt;
 pub use text_input::TextInput;

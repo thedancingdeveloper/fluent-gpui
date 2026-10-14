@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    anchored, deferred, div, prelude::*, px, App, ClickEvent, Corner, IntoElement, MouseDownEvent,
-    Point, RenderOnce, SharedString, Window,
+    anchored, deferred, div, prelude::*, px, App, ClickEvent, IntoElement, MouseDownEvent, Point,
+    RenderOnce, SharedString, Window,
 };
 
 type SelectHandler = Arc<dyn Fn(SuggestionItem, &ClickEvent, &mut Window, &mut App) + 'static>;
@@ -133,7 +133,7 @@ pub struct SuggestionPopover {
     open: bool,
     exiting: bool,
     position: Point<gpui::Pixels>,
-    anchor: Corner,
+    anchor: crate::Corner,
     items: Vec<SuggestionItem>,
     highlighted: Option<usize>,
     empty_text: SharedString,
@@ -151,7 +151,7 @@ impl SuggestionPopover {
             open: true,
             exiting: false,
             position,
-            anchor: Corner::TopLeft,
+            anchor: crate::Corner::TopLeft,
             items: Vec::new(),
             highlighted: None,
             empty_text: "No suggestions".into(),
@@ -174,7 +174,7 @@ impl SuggestionPopover {
         self
     }
 
-    pub fn anchor(mut self, anchor: Corner) -> Self {
+    pub fn anchor(mut self, anchor: crate::Corner) -> Self {
         self.anchor = anchor;
         self
     }
@@ -387,7 +387,7 @@ impl RenderOnce for SuggestionPopover {
 
         div().child(deferred(
             anchored()
-                .anchor(self.anchor)
+                .anchor(self.anchor.into())
                 .position(self.position)
                 .snap_to_window()
                 .child(list),

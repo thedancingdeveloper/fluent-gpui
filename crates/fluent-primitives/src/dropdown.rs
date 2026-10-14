@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
     anchored, canvas, deferred, div, point, prelude::*, px, svg, App, Bounds, ClickEvent, Context,
-    Corner, ElementId, IntoElement, Pixels, Point, Render, SharedString, Window,
+    ElementId, IntoElement, Pixels, Point, Render, SharedString, Window,
 };
 
 #[derive(Clone, Debug)]
@@ -341,7 +341,7 @@ impl Render for Dropdown {
 
             el = el.child(deferred(
                 anchored()
-                    .anchor(Corner::TopLeft)
+                    .anchor(crate::Corner::TopLeft.into())
                     .position(self.drop_origin)
                     .snap_to_window()
                     .child(list),
@@ -357,7 +357,7 @@ mod tests {
     use std::time::Duration;
 
     use fluent_test_utils::init_fluent_test;
-    use gpui::{AppContext as _, TestAppContext};
+    use gpui::TestAppContext;
 
     use super::*;
 

@@ -82,7 +82,7 @@ impl Searchbox {
     }
 
     fn handle_key(&mut self, ev: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
-        if crate::focus::handle_tab_navigation(ev, window) {
+        if crate::focus::handle_tab_navigation(ev, window, cx) {
             cx.notify();
             return;
         }
@@ -122,7 +122,7 @@ impl Searchbox {
             return;
         }
         let handle = self.focus_handle(cx);
-        window.focus(&handle);
+        window.focus(&handle, cx);
         cx.notify();
     }
 }

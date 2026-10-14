@@ -3,8 +3,8 @@ use std::sync::{Arc, Mutex};
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
     anchored, canvas, deferred, div, point, prelude::*, px, svg, App, Bounds, ClickEvent, Context,
-    Corner, CursorStyle, FocusHandle, Focusable, FontWeight, IntoElement, KeyDownEvent,
-    MouseButton, MouseDownEvent, Pixels, Point, Render, SharedString, Window,
+    CursorStyle, FocusHandle, Focusable, FontWeight, IntoElement, KeyDownEvent, MouseButton,
+    MouseDownEvent, Pixels, Point, Render, SharedString, Window,
 };
 
 const MIN_YEAR: i32 = 1;
@@ -469,7 +469,7 @@ impl DateTimePicker {
     }
 
     fn handle_key(&mut self, ev: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
-        if crate::focus::handle_tab_navigation(ev, window) {
+        if crate::focus::handle_tab_navigation(ev, window, cx) {
             cx.notify();
             return;
         }
@@ -508,7 +508,7 @@ impl DateTimePicker {
         }
 
         let handle = self.focus_handle(cx);
-        window.focus(&handle);
+        window.focus(&handle, cx);
         self.update_origin(point(
             ev.position.x,
             ev.position.y + px(cx.theme().components.dropdown_height),
@@ -697,7 +697,7 @@ impl Render for DateTimePicker {
 
             root = root.child(deferred(
                 anchored()
-                    .anchor(Corner::TopLeft)
+                    .anchor(crate::Corner::TopLeft.into())
                     .position(self.drop_origin)
                     .snap_to_window()
                     .child(panel),
