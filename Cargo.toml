@@ -43,6 +43,7 @@ members = [
 
 [workspace.dependencies]
 gpui = { path = "vendor/zed/crates/gpui", version = "0.2" }
+gpui_platform = { path = "vendor/zed/crates/gpui_platform", version = "0.1" }
 
 fluent-core        = { path = "crates/fluent-core",        version = "2.4.0" }
 fluent-primitives  = { path = "crates/fluent-primitives",  version = "2.4.0" }

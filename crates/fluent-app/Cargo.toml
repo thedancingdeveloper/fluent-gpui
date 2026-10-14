@@ -10,5 +10,6 @@ categories = ["gui"]
 
 [dependencies]
 gpui            = { workspace = true }
+gpui_platform   = { workspace = true }
 fluent-core     = { workspace = true }
 fluent-layout   = { workspace = true }

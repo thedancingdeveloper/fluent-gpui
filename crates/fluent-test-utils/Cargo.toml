@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 gpui = { workspace = true, features = ["test-support"] }
+gpui_platform = { workspace = true }
 fluent-core = { workspace = true }
