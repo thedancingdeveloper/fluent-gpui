@@ -4649,7 +4649,9 @@ impl Window {
             .dilate(self.scale_length_for_paint(shadow.spread_radius));
             self.next_frame.scene.insert_primitive(Shadow {
                 order: 0,
-                blur_radius: self.scale_length_for_paint(shadow.blur_radius).scale(scale_factor),
+                blur_radius: self
+                    .scale_length_for_paint(shadow.blur_radius)
+                    .scale(scale_factor),
                 bounds: self.cover_bounds(shadow_bounds),
                 content_mask,
                 corner_radii: corner_radii.scale(scale_factor),
@@ -4702,7 +4704,9 @@ impl Window {
             };
             self.next_frame.scene.insert_primitive(Shadow {
                 order: 0,
-                blur_radius: self.scale_length_for_paint(shadow.blur_radius).scale(scale_factor),
+                blur_radius: self
+                    .scale_length_for_paint(shadow.blur_radius)
+                    .scale(scale_factor),
                 bounds: self.cover_bounds(hole),
                 content_mask,
                 corner_radii: hole_corner_radii.scale(scale_factor),
