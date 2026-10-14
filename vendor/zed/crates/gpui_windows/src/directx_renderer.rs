@@ -79,6 +79,11 @@ struct DirectXResources {
     path_intermediate_msaa_texture: ID3D11Texture2D,
     path_intermediate_msaa_view: Option<ID3D11RenderTargetView>,
 
+    // A copy of the render target taken before a run of backdrop-blur quads,
+    // bound at t2 so the quad shader can blur what was drawn before them.
+    backdrop_texture: ID3D11Texture2D,
+    backdrop_srv: Option<ID3D11ShaderResourceView>,
+
     // Cached viewport
     viewport: D3D11_VIEWPORT,
 }
@@ -368,7 +373,7 @@ impl DirectXRenderer {
                 .map(|annotation| Annotation::new(annotation, HSTRING::from(batch.label())));
             match batch {
                 PrimitiveBatch::Shadows(range) => self.draw_shadows(range.start, range.len()),
-                PrimitiveBatch::Quads(range) => self.draw_quads(range.start, range.len()),
+                PrimitiveBatch::Quads(range) => self.draw_quads(&scene.quads[range.clone()], range.start),
                 PrimitiveBatch::Paths(range) => {
                     let paths = &scene.paths[range];
                     self.draw_paths_to_intermediate(paths)?;
@@ -596,20 +601,62 @@ impl DirectXRenderer {
         )
     }
 
-    fn draw_quads(&mut self, start: usize, len: usize) -> Result<()> {
-        if len == 0 {
-            return Ok(());
+    /// Draw a quad batch. A backdrop-blur quad samples the render target as
+    /// it stood just before it, so the batch is drawn in runs that each start
+    /// at a blur quad, with a copy of the target taken between them. Adjacent
+    /// blur quads share one copy.
+    fn draw_quads(&mut self, quads: &[Quad], first: usize) -> Result<()> {
+        let mut start = 0;
+        while start < quads.len() {
+            let end = (start + 1..quads.len())
+                .find(|&ix| {
+                    quads[ix].background.needs_backdrop()
+                        && !quads[ix - 1].background.needs_backdrop()
+                })
+                .unwrap_or(quads.len());
+            if quads[start].background.needs_backdrop() {
+                self.capture_backdrop()?;
+            }
+            let devices = self.devices.as_ref().context("devices missing")?;
+            self.pipelines.quad_pipeline.draw_range(
+                &devices.device_context,
+                self.globals
+                    .batch_params_buffer
+                    .as_ref()
+                    .context("batch params buffer missing")?,
+                (first + start) as u32,
+                (end - start) as u32,
+            )?;
+            start = end;
         }
+        Ok(())
+    }
+
+    /// Copy the render target into the backdrop texture and bind it at t2,
+    /// with the shared linear sampler at s0, for the quad shader to blur.
+    fn capture_backdrop(&mut self) -> Result<()> {
         let devices = self.devices.as_ref().context("devices missing")?;
-        self.pipelines.quad_pipeline.draw_range(
-            &devices.device_context,
-            self.globals
-                .batch_params_buffer
-                .as_ref()
-                .context("batch params buffer missing")?,
-            start as u32,
-            len as u32,
-        )
+        let resources = self.resources.as_ref().context("resources missing")?;
+        let render_target = resources
+            .render_target
+            .as_ref()
+            .context("missing render target")?;
+        unsafe {
+            // Unbind the capture so the copy does not write a bound resource.
+            devices
+                .device_context
+                .PSSetShaderResources(2, Some(&[None]));
+            devices
+                .device_context
+                .CopyResource(&resources.backdrop_texture, render_target);
+            devices
+                .device_context
+                .PSSetShaderResources(2, Some(slice::from_ref(&resources.backdrop_srv)));
+            devices
+                .device_context
+                .PSSetSamplers(0, Some(slice::from_ref(&self.globals.sampler)));
+        }
+        Ok(())
     }
 
     fn draw_paths_to_intermediate(&mut self, paths: &[Path<ScaledPixels>]) -> Result<()> {
@@ -899,6 +946,8 @@ impl DirectXResources {
             viewport,
         ) = create_resources(devices, &swap_chain, width, height)?;
         set_rasterizer_state(&devices.device, &devices.device_context)?;
+        let (backdrop_texture, backdrop_srv) =
+            create_path_intermediate_texture(&devices.device, width, height)?;
 
         Ok(Self {
             swap_chain,
@@ -908,6 +957,8 @@ impl DirectXResources {
             path_intermediate_msaa_texture,
             path_intermediate_msaa_view,
             path_intermediate_srv,
+            backdrop_texture,
+            backdrop_srv,
             viewport,
         })
     }
@@ -934,6 +985,12 @@ impl DirectXResources {
         self.path_intermediate_msaa_texture = path_intermediate_msaa_texture;
         self.path_intermediate_msaa_view = path_intermediate_msaa_view;
         self.path_intermediate_srv = path_intermediate_srv;
+        // Release the old capture before allocating its replacement.
+        self.backdrop_srv = None;
+        let (backdrop_texture, backdrop_srv) =
+            create_path_intermediate_texture(&devices.device, width, height)?;
+        self.backdrop_texture = backdrop_texture;
+        self.backdrop_srv = backdrop_srv;
         self.viewport = viewport;
         Ok(())
     }

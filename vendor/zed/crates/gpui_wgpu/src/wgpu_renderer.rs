@@ -161,6 +161,9 @@ struct WgpuBindGroupLayouts {
     instances: wgpu::BindGroupLayout,
     texture: wgpu::BindGroupLayout,
     surfaces: wgpu::BindGroupLayout,
+    /// Bound as group 3 on the quads pipeline: the captured colour target that
+    /// a backdrop-blur quad samples.
+    backdrop: wgpu::BindGroupLayout,
 }
 
 /// Shared GPU context reference, used to coordinate device recovery across multiple windows.
@@ -194,6 +197,12 @@ struct WgpuResources {
     path_intermediate_view: Option<wgpu::TextureView>,
     path_msaa_texture: Option<wgpu::Texture>,
     path_msaa_view: Option<wgpu::TextureView>,
+    /// A copy of the colour target taken before a quad batch that contains a
+    /// backdrop blur, so the quad shader can sample what has been drawn so
+    /// far. Rebuilt when the target size changes.
+    backdrop_texture: Option<wgpu::Texture>,
+    backdrop_view: Option<wgpu::TextureView>,
+    backdrop_bind_group: Option<wgpu::BindGroup>,
 }
 
 struct CachedTextureBindGroup {
@@ -207,6 +216,9 @@ impl WgpuResources {
         self.path_intermediate_view = None;
         self.path_msaa_texture = None;
         self.path_msaa_view = None;
+        self.backdrop_texture = None;
+        self.backdrop_view = None;
+        self.backdrop_bind_group = None;
     }
 }
 
@@ -444,8 +456,13 @@ impl WgpuRenderer {
             );
         }
 
+        // COPY_SRC lets a backdrop-blur quad capture what was drawn before it.
+        // Where the surface cannot be copied from, the blur samples the last
+        // capture (or nothing) instead.
+        let surface_usage = wgpu::TextureUsages::RENDER_ATTACHMENT
+            | (surface_caps.usages & wgpu::TextureUsages::COPY_SRC);
         let surface_config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage: surface_usage,
             format: surface_format,
             width: clamped_width.max(1),
             height: clamped_height.max(1),
@@ -608,11 +625,37 @@ impl WgpuRendererCore {
             ],
         });
 
+        // Same shape as `texture`, but a distinct layout so the quads pipeline
+        // can bind the captured colour target at group 3 without colliding
+        // with the sprite texture at group 2.
+        let backdrop = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("backdrop_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+
         WgpuBindGroupLayouts {
             globals,
             instances,
             texture,
             surfaces,
+            backdrop,
         }
     }
 
@@ -724,12 +767,18 @@ impl WgpuRendererCore {
                                globals_layout: &wgpu::BindGroupLayout,
                                data_layout: &wgpu::BindGroupLayout,
                                texture_layout: Option<&wgpu::BindGroupLayout>,
+                               extra_layout: Option<&wgpu::BindGroupLayout>,
                                topology: wgpu::PrimitiveTopology,
                                color_targets: &[Option<wgpu::ColorTargetState>],
                                sample_count: u32,
                                module: &wgpu::ShaderModule| {
             let mut bind_group_layouts = vec![Some(globals_layout), Some(data_layout)];
-            bind_group_layouts.extend(texture_layout.map(Some));
+            if texture_layout.is_some() || extra_layout.is_some() {
+                bind_group_layouts.push(texture_layout);
+            }
+            if extra_layout.is_some() {
+                bind_group_layouts.push(extra_layout);
+            }
             let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some(&format!("{name}_layout")),
                 bind_group_layouts: &bind_group_layouts,
@@ -778,6 +827,8 @@ impl WgpuRendererCore {
             &layouts.globals,
             &layouts.instances,
             None,
+            // Group 3: the captured colour target a backdrop-blur quad samples.
+            Some(&layouts.backdrop),
             wgpu::PrimitiveTopology::TriangleStrip,
             &[Some(color_target.clone())],
             1,
@@ -791,6 +842,7 @@ impl WgpuRendererCore {
             &layouts.globals,
             &layouts.instances,
             None,
+            None,
             wgpu::PrimitiveTopology::TriangleStrip,
             &[Some(color_target.clone())],
             1,
@@ -803,6 +855,7 @@ impl WgpuRendererCore {
             "fs_path_rasterization",
             &layouts.globals,
             &layouts.instances,
+            None,
             None,
             wgpu::PrimitiveTopology::TriangleList,
             &[Some(wgpu::ColorTargetState {
@@ -834,6 +887,7 @@ impl WgpuRendererCore {
             &layouts.globals,
             &layouts.instances,
             Some(&layouts.texture),
+            None,
             wgpu::PrimitiveTopology::TriangleStrip,
             &[Some(wgpu::ColorTargetState {
                 format: surface_format,
@@ -851,6 +905,7 @@ impl WgpuRendererCore {
             &layouts.globals,
             &layouts.instances,
             None,
+            None,
             wgpu::PrimitiveTopology::TriangleStrip,
             &[Some(color_target.clone())],
             1,
@@ -864,6 +919,7 @@ impl WgpuRendererCore {
             &layouts.globals,
             &layouts.instances,
             Some(&layouts.texture),
+            None,
             wgpu::PrimitiveTopology::TriangleStrip,
             &[Some(color_target.clone())],
             1,
@@ -891,6 +947,7 @@ impl WgpuRendererCore {
                 &layouts.globals,
                 &layouts.instances,
                 Some(&layouts.texture),
+                None,
                 wgpu::PrimitiveTopology::TriangleStrip,
                 &[Some(wgpu::ColorTargetState {
                     format: surface_format,
@@ -911,6 +968,7 @@ impl WgpuRendererCore {
             &layouts.globals,
             &layouts.instances,
             Some(&layouts.texture),
+            None,
             wgpu::PrimitiveTopology::TriangleStrip,
             &[Some(color_target.clone())],
             1,
@@ -923,6 +981,7 @@ impl WgpuRendererCore {
             "fs_surface",
             &layouts.globals,
             &layouts.surfaces,
+            None,
             None,
             wgpu::PrimitiveTopology::TriangleStrip,
             &[Some(color_target)],
@@ -1337,6 +1396,36 @@ impl WgpuRendererCore {
         });
         let max_texture_size = device.limits().max_texture_dimension_2d;
 
+        let placeholder = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("backdrop_placeholder"),
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: target_format,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let placeholder_view = placeholder.create_view(&wgpu::TextureViewDescriptor::default());
+        let backdrop_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("backdrop_bind_group"),
+            layout: &bind_group_layouts.backdrop,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&placeholder_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&atlas_sampler),
+                },
+            ],
+        });
+
         Self {
             resources: WgpuResources {
                 device,
@@ -1353,6 +1442,9 @@ impl WgpuRendererCore {
                 path_intermediate_view: None,
                 path_msaa_texture: None,
                 path_msaa_view: None,
+                backdrop_texture: Some(placeholder),
+                backdrop_view: Some(placeholder_view),
+                backdrop_bind_group: Some(backdrop_bind_group),
             },
             atlas,
             path_globals_offset,
@@ -1523,12 +1615,49 @@ impl WgpuRendererCore {
 
             for batch in scene.batches() {
                 match batch {
-                    PrimitiveBatch::Quads(range) => self.draw_instances(
-                        &instance_bindings.quads,
-                        &self.resources().pipelines.quads,
-                        instance_range(range),
-                        &mut pass,
-                    ),
+                    PrimitiveBatch::Quads(range) => {
+                        // A blur quad samples the colour target as it stood
+                        // just before it, so the batch is drawn in runs that
+                        // each start at a blur quad, with a capture between
+                        // them. Adjacent blur quads share one capture.
+                        let quads = &scene.quads[range.clone()];
+                        let mut start = 0;
+                        while start < quads.len() {
+                            let blur = quads[start].background.needs_backdrop();
+                            let end = (start + 1..quads.len())
+                                .find(|&ix| {
+                                    quads[ix].background.needs_backdrop()
+                                        && !quads[ix - 1].background.needs_backdrop()
+                                })
+                                .unwrap_or(quads.len());
+                            if blur {
+                                drop(pass);
+                                self.capture_backdrop(&mut encoder, frame_view);
+                                pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                                    label: Some("main_pass_continued"),
+                                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                        view: frame_view,
+                                        resolve_target: None,
+                                        ops: wgpu::Operations {
+                                            load: wgpu::LoadOp::Load,
+                                            store: wgpu::StoreOp::Store,
+                                        },
+                                        depth_slice: None,
+                                    })],
+                                    depth_stencil_attachment: None,
+                                    ..Default::default()
+                                });
+                            }
+                            let first = range.start + start;
+                            let last = range.start + end;
+                            self.draw_quads(
+                                &instance_bindings.quads,
+                                instance_range(first..last),
+                                &mut pass,
+                            );
+                            start = end;
+                        }
+                    }
                     PrimitiveBatch::Shadows(range) => self.draw_instances(
                         &instance_bindings.shadows,
                         &self.resources().pipelines.shadows,
@@ -1730,6 +1859,106 @@ impl WgpuRendererCore {
                 },
             );
         }
+    }
+
+    /// Copy the colour target into the backdrop texture, so the quad shader
+    /// can blur what has already been drawn. The texture matches the target's
+    /// size and is rebuilt when that changes. A target that cannot be copied
+    /// from (a surface without COPY_SRC) leaves the previous capture bound.
+    fn capture_backdrop(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        frame_view: &wgpu::TextureView,
+    ) {
+        let texture = frame_view.texture();
+        if !texture.usage().contains(wgpu::TextureUsages::COPY_SRC) {
+            return;
+        }
+        let width = texture.width();
+        let height = texture.height();
+
+        let current = self
+            .resources()
+            .backdrop_texture
+            .as_ref()
+            .is_some_and(|backdrop| {
+                backdrop.width() == width
+                    && backdrop.height() == height
+                    && backdrop.format() == texture.format()
+            });
+        if !current {
+            let device = &self.resources().device;
+            let backdrop = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("backdrop_capture"),
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: texture.format(),
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            });
+            let view = backdrop.create_view(&wgpu::TextureViewDescriptor::default());
+            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("backdrop_bind_group"),
+                layout: &self.resources().bind_group_layouts.backdrop,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&self.resources().atlas_sampler),
+                    },
+                ],
+            });
+            let resources = self.resources_mut();
+            resources.backdrop_texture = Some(backdrop);
+            resources.backdrop_view = Some(view);
+            resources.backdrop_bind_group = Some(bind_group);
+        }
+
+        let backdrop = self.resources().backdrop_texture.as_ref().unwrap();
+        encoder.copy_texture_to_texture(
+            texture.as_image_copy(),
+            backdrop.as_image_copy(),
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+
+    fn draw_quads(
+        &self,
+        instances: &InstanceBinding,
+        range: Range<u32>,
+        pass: &mut wgpu::RenderPass<'_>,
+    ) {
+        if range.is_empty() {
+            return;
+        }
+        pass.set_pipeline(&self.resources().pipelines.quads);
+        pass.set_bind_group(0, &self.resources().globals_bind_group, &[]);
+        pass.set_bind_group(1, &instances.bind_group, &[]);
+        // The pipeline always binds the capture. Batches without a blur quad
+        // never sample it, but the binding has to exist, so a 1x1 placeholder
+        // stands in until the first capture.
+        pass.set_bind_group(
+            3,
+            self.resources().backdrop_bind_group.as_ref().unwrap(),
+            &[],
+        );
+        pass.draw(
+            0..4,
+            instances.first_instance + range.start..instances.first_instance + range.end,
+        );
     }
 
     fn draw_instances(
@@ -2689,6 +2918,68 @@ mod tests {
         assert_pixel(&image, 24, 16, RED);
         assert_pixel(&image, 40, 16, BLUE);
         assert_pixel(&image, 56, 16, BLUE);
+        Ok(())
+    }
+
+    /// A backdrop-blur quad must read what was drawn before it, not the clear
+    /// colour. A red quad fills the left half; a blur quad covers the seam.
+    /// Both share one quad batch, so the renderer has to split the batch and
+    /// capture between them. Away from the seam the backdrop shows through
+    /// unchanged; on the seam it is blurred into a mix of red and black.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn headless_renderer_blurs_the_pixels_drawn_behind_a_quad() -> anyhow::Result<()> {
+        let mut renderer = WgpuHeadlessRenderer::new()?;
+        let mut scene = Scene::default();
+        scene.insert_primitive(solid_quad(0.0, 0.0, 32.0, 32.0, gpui::red()));
+
+        let mut blur = solid_quad(16.0, 0.0, 32.0, 32.0, gpui::transparent_black());
+        blur.background = gpui::backdrop_blur(8.0, gpui::transparent_black());
+        scene.insert_primitive(blur);
+        scene.finish();
+
+        let image = renderer.render_scene_to_image(&scene, device_size(64, 32))?;
+        assert_pixel(&image, 8, 16, RED);
+        // Inside the blur, over the red quad: still red, since red blurs to red.
+        assert_pixel(&image, 24, 16, RED);
+        // Inside the blur, over untouched black: still black.
+        assert_pixel(&image, 40, 16, BLACK);
+        // Past the blur quad the red never reached.
+        assert_pixel(&image, 56, 16, BLACK);
+        // On the seam the red is spread across it: neither solid nor gone.
+        for x in [31, 32] {
+            let [r, g, b, _] = image.get_pixel(x, 16).0;
+            assert!(
+                (20..=235).contains(&r) && g <= 3 && b <= 3,
+                "pixel ({x}, 16) was {:?}, expected a red/black mix",
+                image.get_pixel(x, 16).0
+            );
+        }
+        Ok(())
+    }
+
+    /// The tint composites over the blurred backdrop.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn headless_renderer_tints_a_backdrop_blur() -> anyhow::Result<()> {
+        let mut renderer = WgpuHeadlessRenderer::new()?;
+        let mut scene = Scene::default();
+        scene.insert_primitive(solid_quad(0.0, 0.0, 64.0, 32.0, gpui::red()));
+
+        let mut blur = solid_quad(0.0, 0.0, 64.0, 32.0, gpui::transparent_black());
+        let mut tint = gpui::blue();
+        tint.a = 0.5;
+        blur.background = gpui::backdrop_blur(4.0, tint);
+        scene.insert_primitive(blur);
+        scene.finish();
+
+        let image = renderer.render_scene_to_image(&scene, device_size(64, 32))?;
+        let [r, g, b, _] = image.get_pixel(32, 16).0;
+        assert!(
+            (100..=160).contains(&r) && g <= 3 && (100..=160).contains(&b),
+            "pixel (32, 16) was {:?}, expected half red, half blue",
+            image.get_pixel(32, 16).0
+        );
         Ok(())
     }
 

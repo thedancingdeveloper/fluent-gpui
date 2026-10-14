@@ -16,6 +16,9 @@ cbuffer BatchParams: register(b1) {
 
 Texture2D<float4> t_sprite: register(t0);
 SamplerState s_sprite: register(s0);
+// A copy of the render target taken before the current run of backdrop-blur
+// quads. Bound only while such quads draw; the quad shader blurs it.
+Texture2D<float4> t_backdrop: register(t2);
 
 struct SubpixelSpriteFragmentOutput {
     float4 foreground : SV_Target0;
@@ -316,7 +319,8 @@ float quad_sdf(float2 pt, Bounds bounds, Corners corner_radii) {
 
 GradientColor prepare_gradient_color(uint tag, uint color_space, Hsla solid, LinearColorStop colors[2]) {
     GradientColor output;
-    if (tag == 0 || tag == 2 || tag == 3) {
+    // 4 (BackdropBlur) carries its tint in `solid`.
+    if (tag == 0 || tag == 2 || tag == 3 || tag == 4) {
         output.solid = hsla_to_rgba(solid);
     } else if (tag == 1) {
         output.color0 = hsla_to_rgba(colors[0].color);
@@ -558,8 +562,35 @@ QuadVertexOutput quad_vertex(uint vertex_id: SV_VertexID, uint instance_id: SV_I
 
 float4 quad_fragment(QuadFragmentInput input): SV_Target {
     Quad quad = quads[input.quad_id];
-    float4 background_color = gradient_color(quad.background, input.position.xy, quad.bounds,
-    input.background_solid, input.background_color0, input.background_color1);
+    float4 background_color;
+    if (quad.background.tag == 4) {
+        // BackdropBlur, mirroring `fs_quad` in gpui_wgpu's shaders.wgsl. The
+        // radius rides in `gradient_angle_or_pattern_height` (device pixels);
+        // a 13-tap cross kernel approximates a gaussian of sigma = radius / 2,
+        // and `solid` is the tint, composited over the blur.
+        float radius = max(quad.background.gradient_angle_or_pattern_height, 0.5);
+        float2 uv = input.position.xy / global_viewport_size;
+        float2 texel = 1.0 / global_viewport_size;
+        const float weights[5] = { 0.227027, 0.194594, 0.121622, 0.054054, 0.016216 };
+        float4 blurred = t_backdrop.Sample(s_sprite, uv) * weights[0];
+        for (int i = 1; i < 5; i++) {
+            float2 offset = texel * (radius * 0.25 * i);
+            blurred += t_backdrop.Sample(s_sprite, uv + float2(offset.x, 0.0)) * weights[i];
+            blurred += t_backdrop.Sample(s_sprite, uv - float2(offset.x, 0.0)) * weights[i];
+            blurred += t_backdrop.Sample(s_sprite, uv + float2(0.0, offset.y)) * weights[i];
+            blurred += t_backdrop.Sample(s_sprite, uv - float2(0.0, offset.y)) * weights[i];
+        }
+        blurred /= weights[0] + 4.0 * (weights[1] + weights[2] + weights[3] + weights[4]);
+
+        float4 tint = input.background_solid;
+        background_color = float4(
+            tint.rgb * tint.a + blurred.rgb * (1.0 - tint.a),
+            tint.a + blurred.a * (1.0 - tint.a)
+        );
+    } else {
+        background_color = gradient_color(quad.background, input.position.xy, quad.bounds,
+        input.background_solid, input.background_color0, input.background_color1);
+    }
 
     bool unrounded = quad.corner_radii.top_left == 0.0 &&
         quad.corner_radii.top_right == 0.0 &&

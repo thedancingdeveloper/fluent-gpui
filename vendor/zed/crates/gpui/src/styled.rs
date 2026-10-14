@@ -2,7 +2,7 @@ use crate::{
     self as gpui, AbsoluteLength, AlignContent, AlignItems, AlignSelf, BorderStyle, CursorStyle,
     DefiniteLength, Display, Fill, FlexDirection, FlexWrap, Font, FontFeatures, FontStyle,
     FontWeight, GridPlacement, GridTemplate, GridTemplateMinSize, Hsla, JustifyContent, Length,
-    SharedString, StrikethroughStyle, StyleRefinement, TextAlign, TextOverflow,
+    Pixels, SharedString, StrikethroughStyle, StyleRefinement, TextAlign, TextOverflow,
     TextStyleRefinement, UnderlineStyle, WhiteSpace, px, relative, rems,
 };
 pub use gpui_macros::{
@@ -493,6 +493,20 @@ pub trait Styled: Sized {
         Self: Sized,
     {
         self.style().background = Some(fill.into());
+        self
+    }
+
+    /// Blurs the pixels drawn behind the element by `radius` device pixels and
+    /// tints the result with `tint`. `tint`'s alpha is the tint strength.
+    ///
+    /// Equivalent to `bg(backdrop_blur(radius, tint))`.
+    fn backdrop_blur(mut self, radius: impl Into<Pixels>, tint: impl Into<Hsla>) -> Self
+    where
+        Self: Sized,
+    {
+        self.style().background = Some(
+            crate::backdrop_blur(f32::from(radius.into()), tint).into(),
+        );
         self
     }
 

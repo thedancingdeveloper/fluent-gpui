@@ -716,7 +716,10 @@ impl Style {
                 Some(color) => match color.tag {
                     BackgroundTag::Solid
                     | BackgroundTag::PatternSlash
-                    | BackgroundTag::Checkerboard => color.solid,
+                    | BackgroundTag::Checkerboard
+                    // The blur's border fades against its tint, which is what
+                    // the quad shader composites the blur under.
+                    | BackgroundTag::BackdropBlur => color.solid,
 
                     BackgroundTag::LinearGradient => color
                         .colors
