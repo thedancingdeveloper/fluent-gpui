@@ -5,16 +5,58 @@ on:
   pull_request:
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  check:
+    name: check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Operator decision 6 (WI-1346): GitHub-hosted Ubuntu and Windows only.
+        # macOS is out of scope.
+        os: [ubuntu-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v6.0.3
+      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # stable
         with:
+          toolchain: stable
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@f0d9c3887740aee45f6153b24b3a6b815192ec16 # v2.9.2
+      - name: Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev
       - name: Check format
         run: cargo fmt --all --check
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Test
         run: cargo test --workspace
+      - name: Build all targets
+        run: cargo build --workspace --all-targets
+
+  # WI-1423 drift guard. Becomes a real check once WI-1347 vendors zed into
+  # vendor/zed and records the upstream commit in vendor/zed/UPSTREAM.md:
+  # re-run scripts/vendor-zed.py at that rev and fail if the tree differs
+  # from the recorded commit plus the patches in vendor/zed/PATCHES.md.
+  vendor-drift:
+    name: vendor drift guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v6.0.3
+      - name: Guard vendored zed against the recorded upstream commit
+        run: |
+          if [ ! -d vendor/zed ]; then
+            echo "vendor/zed is absent: the zed snapshot has not been vendored yet (WI-1347). Drift guard is a no-op until then."
+            exit 0
+          fi
+          if [ ! -f scripts/vendor-zed.py ]; then
+            echo "::error::vendor/zed exists but scripts/vendor-zed.py does not, so the recorded upstream commit cannot be re-checked."
+            exit 1
+          fi
+          if [ ! -f vendor/zed/UPSTREAM.md ]; then
+            echo "::error::vendor/zed exists but vendor/zed/UPSTREAM.md does not record the upstream commit."
+            exit 1
+          fi
+          echo "::error::vendor/zed is present. Re-run scripts/vendor-zed.py at the commit recorded in vendor/zed/UPSTREAM.md and fail if the vendored files differ from that commit plus the patches documented in vendor/zed/PATCHES.md. That check is not implemented yet."
+          exit 1
