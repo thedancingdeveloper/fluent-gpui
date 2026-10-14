@@ -7,7 +7,32 @@ members = [
     "crates/fluent-layout",
     "crates/fluent-app",
     "crates/fluent-test-utils",
-    "crates/gpui",
+    # The published gpui 0.2 fork at crates/gpui is not a member while the
+    # vendored upstream snapshot supplies the gpui package. See
+    # docs/gpui-migration-plan.md §3.2.
+    "vendor/zed/crates/gpui",
+    "vendor/zed/crates/gpui_platform",
+    "vendor/zed/crates/gpui_linux",
+    "vendor/zed/crates/gpui_wgpu",
+    "vendor/zed/crates/gpui_macros",
+    "vendor/zed/crates/gpui_util",
+    "vendor/zed/crates/gpui_shared_string",
+    "vendor/zed/crates/bench_metrics",
+    "vendor/zed/crates/collections",
+    "vendor/zed/crates/derive_refineable",
+    "vendor/zed/crates/http_client",
+    "vendor/zed/crates/http_client_tls",
+    "vendor/zed/crates/path",
+    "vendor/zed/crates/perf",
+    "vendor/zed/crates/refineable",
+    "vendor/zed/crates/reqwest_client",
+    "vendor/zed/crates/scheduler",
+    "vendor/zed/crates/sum_tree",
+    "vendor/zed/crates/util",
+    "vendor/zed/crates/util_macros",
+    "vendor/zed/crates/zlog",
+    "vendor/zed/crates/ztracing",
+    "vendor/zed/crates/ztracing_macro",
     "examples/gallery",
     "examples/demo_app",
     "examples/hello_world",
@@ -17,7 +42,7 @@ members = [
 ]
 
 [workspace.dependencies]
-gpui = { path = "crates/gpui", version = "0.2" }
+gpui = { path = "vendor/zed/crates/gpui", version = "0.2" }
 
 fluent-core        = { path = "crates/fluent-core",        version = "2.4.0" }
 fluent-primitives  = { path = "crates/fluent-primitives",  version = "2.4.0" }

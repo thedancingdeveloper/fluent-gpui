@@ -1,0 +1,32 @@
+[package]
+name = "sum_tree"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+description = "A sum tree data structure, a concurrency-friendly B-tree"
+
+[lib]
+path = "src/sum_tree.rs"
+doctest = false
+
+[dependencies]
+heapless = { version = "0.9.2" }
+rayon = { version = "1.8" }
+ztracing = { path = "../ztracing" }
+tracing = { version = "0.1.40" }
+proptest = { git = "https://github.com/proptest-rs/proptest", rev = "3dca198a8fef1b32e3a66f1e1897c955b4dc5b5b", features = ["attr-macro"], optional = true }
+
+[dev-dependencies]
+log = { version = "0.4", default-features = false, features = ["std"] }
+ctor = { version = "1.0.12" }
+rand = { version = "0.9", default-features = false, features = ["std", "std_rng", "os_rng"] }
+proptest = { git = "https://github.com/proptest-rs/proptest", rev = "3dca198a8fef1b32e3a66f1e1897c955b4dc5b5b", features = ["attr-macro"] }
+zlog = { path = "../zlog" }
+
+
+[package.metadata.cargo-shear]
+ignored = ["tracing"]
+
+[features]
+test-support = ["proptest"]
