@@ -28,6 +28,23 @@ snapshot lives on its own branch:
 `zed-vendor` is cut from the first snapshot, so its history is the sequence of
 upstream revisions and a diff against it is exactly the local patches.
 
+## This snapshot
+
+Pinned at `76b8ab814f0d` (2026-10-14), the tip of zed `main` on that date. It is
+18 commits past `26363aabdb31` (2026-10-13), the reference SHA the migration plan
+was written against; none of those commits touch the gpui crate closure or the
+zed workspace manifest, so the closure matches the reference pin. The newer tip
+was taken because the plan's pin rule is the newest zed commit on which
+`gpui_platform` checks on Linux, and `cargo check -p gpui_platform` passes at
+this pin (rustc 1.96.1).
+
+The workspace `Cargo.toml` on `gpui-upstream` lists the crates the check needs
+as members and points the `gpui` workspace dependency at
+`vendor/zed/crates/gpui`. The published gpui 0.2 fork at `crates/gpui` is no
+longer a member, because both packages are named `gpui`; its source stays in the
+tree until the migration retires it. No file under `vendor/zed/` was patched to
+make the check pass.
+
 ## Checking a revision without committing it
 
 ```
