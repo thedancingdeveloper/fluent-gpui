@@ -30,6 +30,12 @@ draft:
   crates.io, a slow release cadence, web/wasm, AccessKit, kittest, and a proven record of
   agent-built Office-style UIs (storytold).
 
+Follow-up (same day): the repository was created as **https://github.com/thedancingdeveloper/fluent2-egui**
+(MIT OR Apache-2.0; scaffold, conventions, upstream tracking via `upstream.toml` and
+`scripts/upstream-check.py`). Its backlog is the Vogt initiative "fluent2-egui: Fluent 2 component
+library for egui" (WI-1531 to WI-1589, indexed in that repo's `docs/BACKLOG.md`), written so
+small-model workers can take items without design decisions.
+
 What changes in this document as a result: section 5's stage-2 items (tokens inside
 fluent-gpui) move into the new repository. Items that would make `fluent-core` consume the
 tokens are dropped. Section 4 (repo design) applies as written.
