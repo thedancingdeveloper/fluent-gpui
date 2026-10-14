@@ -3,6 +3,37 @@
 Status: research and design for the operator, 2026-10-14. No code, repository, work item or PR
 comes with this document. Session `ses_01M4YA9A18B1ZJDTT9NZQ1BTE5`.
 
+## Decision (operator, 2026-10-14)
+
+After discussing the egui and gpui comparison, the operator chose:
+
+1. **egui is the primary direction.** A new repository (working name `fluent2-egui`) becomes
+   the Fluent library going forward. This replaces the staged option C recommended in sections
+   0 and 3.3, which are kept below as the original analysis.
+2. **The fluent-gpui migration stack (PRs #1–#17, WI-1346) is parked.** The PRs stay open and
+   unmerged. fluent-gpui stays on its Oct-2025 gpui base (v2.4, `f601e54`) and gets fixes
+   only. The consumers (`email-desktop-fluent`, `rdpapp/migration-tool`) stay pinned and are
+   not ported.
+
+Facts that moved the recommendation from "C staged" to "egui primary", found after the first
+draft:
+
+- **No estate consumer uses the gpui-only features.** `email-desktop-fluent` (19.6k lines) and
+  `rdpapp/migration-tool` (26.4k lines) never call `backdrop_blur`, the video-frame API or
+  element scale, and both pin v2.4. They gain nothing from the migration.
+- **The migration's port PRs are tiny** (+6, +72, +1, +16, +15, +6 lines). Most of the stack is
+  the 208k-line copy of zed's gpui source (#5) and renderer patches with no current user. The
+  ongoing cost is that copy, re-copying it on every upstream change, and git-tag-only
+  distribution. None of that serves the goal of a library others can `cargo add`.
+- For the stated goal, distribution decides it. A library that cannot be published to
+  crates.io and tracks Zed's internal churn will not be adopted by other developers. egui has
+  crates.io, a slow release cadence, web/wasm, AccessKit, kittest, and a proven record of
+  agent-built Office-style UIs (storytold).
+
+What changes in this document as a result: section 5's stage-2 items (tokens inside
+fluent-gpui) move into the new repository. Items that would make `fluent-core` consume the
+tokens are dropped. Section 4 (repo design) applies as written.
+
 ## 0. Summary
 
 - **Licences permit extraction.** Every storytold repo reviewed is `MIT OR Apache-2.0` and ships
@@ -387,6 +418,9 @@ fluent2-egui/
 
 Sizes: S ≈ one worker session, M ≈ 2–3, L ≈ 4+. "grok" means a grok worker, following the
 operator's WI-1346 direction. "opus" marks items where judgement or design dominates.
+
+> After the operator's decision (top of this document), T1–T3 move into the new repository as
+> part of M0, and T4 and T5 are dropped. The table is kept as originally drafted.
 
 **Stage 2: tokens in fluent-gpui (after WI-1441):**
 
