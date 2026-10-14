@@ -26,8 +26,8 @@ use fluent_primitives::{
     ToggleButton,
 };
 use gpui::{
-    div, prelude::*, px, App, Application, Bounds, Context, Entity, IntoElement, Point,
-    SharedString, Size, TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions,
+    div, prelude::*, px, App, Bounds, Context, Entity, IntoElement, Point, SharedString, Size,
+    TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions,
 };
 
 const SENTINEL: &str = "/tmp/.fluent-screenshot-ready";
@@ -574,7 +574,9 @@ fn main() {
     let component = args.get(1).cloned().unwrap_or_else(|| "button".into());
     let dark = !args.iter().any(|a| a == "--light");
 
-    Application::new()
+    // The vendored gpui removed `Application::new()`; the platform crate
+    // constructs the application (see docs/gpui-api-drift.md).
+    gpui_platform::application()
         .with_assets(FluentAssets::new(None))
         .run(move |cx: &mut App| {
             if dark {

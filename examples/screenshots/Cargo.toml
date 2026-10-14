@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 gpui              = { workspace = true }
+gpui_platform     = { workspace = true }
 fluent-core       = { workspace = true }
 fluent-primitives = { workspace = true }
 fluent-layout     = { workspace = true }
