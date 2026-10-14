@@ -691,7 +691,7 @@ impl Render for MenuBar {
                     }
                 })
                 .on_mouse_down(MouseButton::Left, move |_, win, cx| {
-                    win.focus(&focus_handle);
+                    win.focus(&focus_handle, cx);
                     sw_click
                         .update(cx, |bar, cx| {
                             if bar.open_index == Some(idx) && !bar.closing {
@@ -788,7 +788,7 @@ mod tests {
     use std::time::Duration;
 
     use fluent_test_utils::init_fluent_test;
-    use gpui::{AppContext as _, TestAppContext};
+    use gpui::TestAppContext;
 
     use super::*;
 

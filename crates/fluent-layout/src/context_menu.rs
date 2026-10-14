@@ -666,7 +666,7 @@ impl Render for ContextMenu {
             self.ensure_selection();
         }
         if !self.closing && !focus_handle.is_focused(window) {
-            window.focus(&focus_handle);
+            window.focus(&focus_handle, cx);
         }
 
         let theme = cx.theme();
@@ -714,7 +714,7 @@ mod tests {
     use std::time::Duration;
 
     use fluent_test_utils::init_fluent_test;
-    use gpui::{point, px, AppContext as _, TestAppContext};
+    use gpui::{point, px, TestAppContext};
 
     use super::*;
 
