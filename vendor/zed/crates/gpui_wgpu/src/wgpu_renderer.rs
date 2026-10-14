@@ -134,10 +134,6 @@ struct WgpuPipelines {
     poly_sprites: wgpu::RenderPipeline,
     #[allow(dead_code)]
     surfaces: wgpu::RenderPipeline,
-    /// Copies the colour target into the backdrop texture by sampling it.
-    /// Unused while the capture pass in `capture_backdrop` is disabled.
-    #[allow(dead_code)]
-    backdrop_copy: wgpu::RenderPipeline,
 }
 
 /// One frame allocation of instance data, ready to bind.
@@ -460,8 +456,13 @@ impl WgpuRenderer {
             );
         }
 
+        // COPY_SRC lets a backdrop-blur quad capture what was drawn before it.
+        // Where the surface cannot be copied from, the blur samples the last
+        // capture (or nothing) instead.
+        let surface_usage = wgpu::TextureUsages::RENDER_ATTACHMENT
+            | (surface_caps.usages & wgpu::TextureUsages::COPY_SRC);
         let surface_config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage: surface_usage,
             format: surface_format,
             width: clamped_width.max(1),
             height: clamped_height.max(1),
@@ -988,41 +989,6 @@ impl WgpuRendererCore {
             &shader_module,
         );
 
-        let backdrop_copy_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("backdrop_copy_layout"),
-                bind_group_layouts: &[Some(&layouts.globals), None, Some(&layouts.texture)],
-                immediate_size: 0,
-            });
-        let backdrop_copy = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("backdrop_copy"),
-            layout: Some(&backdrop_copy_layout),
-            vertex: wgpu::VertexState {
-                module: &shader_module,
-                entry_point: Some("vs_backdrop"),
-                buffers: &[],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader_module,
-                entry_point: Some("fs_backdrop"),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: surface_format,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleStrip,
-                ..Default::default()
-            },
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
-            multiview_mask: None,
-            cache: None,
-        });
-
         WgpuPipelines {
             quads,
             shadows,
@@ -1033,7 +999,6 @@ impl WgpuRendererCore {
             subpixel_sprites,
             poly_sprites,
             surfaces,
-            backdrop_copy,
         }
     }
 
@@ -1293,7 +1258,6 @@ impl WgpuRenderer {
         if let Err(error) = core.render_frame(
             scene,
             &frame_view,
-            None,
             size,
             premultiplied_alpha,
             wgpu::Color::TRANSPARENT,
@@ -1546,7 +1510,6 @@ impl WgpuRendererCore {
         &mut self,
         scene: &Scene,
         target_view: &wgpu::TextureView,
-        sample_view: Option<&wgpu::TextureView>,
         size: Size<DevicePixels>,
         premultiplied_alpha: bool,
         clear_color: wgpu::Color,
@@ -1597,7 +1560,7 @@ impl WgpuRendererCore {
             bytemuck::bytes_of(&gamma_params),
         );
 
-        self.record_frame(scene, target_view, sample_view, clear_color)
+        self.record_frame(scene, target_view, clear_color)
             .inspect_err(|_| {
                 // Queue writes are staged before encoding; flush them even if the frame fails.
                 self.resources.queue.submit(std::iter::empty());
@@ -1608,7 +1571,6 @@ impl WgpuRendererCore {
         &mut self,
         scene: &Scene,
         frame_view: &wgpu::TextureView,
-        sample_view: Option<&wgpu::TextureView>,
         clear_color: wgpu::Color,
     ) -> Result<wgpu::SubmissionIndex> {
         let mut instance_offset = 0;
@@ -1635,7 +1597,6 @@ impl WgpuRendererCore {
                     label: Some("main_encoder"),
                 });
 
-        let mut submission = None;
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("main_pass"),
@@ -1655,42 +1616,47 @@ impl WgpuRendererCore {
             for batch in scene.batches() {
                 match batch {
                     PrimitiveBatch::Quads(range) => {
-                        if scene.quads[range.clone()]
-                            .iter()
-                            .any(|quad| quad.background.needs_backdrop())
-                        {
-                            // The quad shader blurs the colour target as it
-                            // stood before this batch. The preceding pass has
-                            // to be submitted before the copy, or the copy
-                            // reads a target the GPU has not written yet.
-                            drop(pass);
-                            submission = Some(self.resources().queue.submit([encoder.finish()]));
-                            encoder = self.resources().device.create_command_encoder(
-                                &wgpu::CommandEncoderDescriptor {
-                                    label: Some("backdrop_encoder"),
-                                },
+                        // A blur quad samples the colour target as it stood
+                        // just before it, so the batch is drawn in runs that
+                        // each start at a blur quad, with a capture between
+                        // them. Adjacent blur quads share one capture.
+                        let quads = &scene.quads[range.clone()];
+                        let mut start = 0;
+                        while start < quads.len() {
+                            let blur = quads[start].background.needs_backdrop();
+                            let end = (start + 1..quads.len())
+                                .find(|&ix| {
+                                    quads[ix].background.needs_backdrop()
+                                        && !quads[ix - 1].background.needs_backdrop()
+                                })
+                                .unwrap_or(quads.len());
+                            if blur {
+                                drop(pass);
+                                self.capture_backdrop(&mut encoder, frame_view);
+                                pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                                    label: Some("main_pass_continued"),
+                                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                        view: frame_view,
+                                        resolve_target: None,
+                                        ops: wgpu::Operations {
+                                            load: wgpu::LoadOp::Load,
+                                            store: wgpu::StoreOp::Store,
+                                        },
+                                        depth_slice: None,
+                                    })],
+                                    depth_stencil_attachment: None,
+                                    ..Default::default()
+                                });
+                            }
+                            let first = range.start + start;
+                            let last = range.start + end;
+                            self.draw_quads(
+                                &instance_bindings.quads,
+                                instance_range(first..last),
+                                &mut pass,
                             );
-                            self.capture_backdrop(&mut encoder, frame_view, sample_view);
-                            pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                                label: Some("main_pass_continued"),
-                                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                                    view: frame_view,
-                                    resolve_target: None,
-                                    ops: wgpu::Operations {
-                                        load: wgpu::LoadOp::Load,
-                                        store: wgpu::StoreOp::Store,
-                                    },
-                                    depth_slice: None,
-                                })],
-                                depth_stencil_attachment: None,
-                                ..Default::default()
-                            });
+                            start = end;
                         }
-                        self.draw_quads(
-                            &instance_bindings.quads,
-                            instance_range(range),
-                            &mut pass,
-                        );
                     }
                     PrimitiveBatch::Shadows(range) => self.draw_instances(
                         &instance_bindings.shadows,
@@ -1779,11 +1745,11 @@ impl WgpuRendererCore {
             }
         }
 
-        let index = self
+        let submission = self
             .resources()
             .queue
             .submit(std::iter::once(encoder.finish()));
-        Ok(submission.unwrap_or(index))
+        Ok(submission)
     }
 
     fn write_instances(
@@ -1895,39 +1861,45 @@ impl WgpuRendererCore {
         }
     }
 
-    /// Sample the colour target into the backdrop texture, so the quad shader
-    /// can blur what has already been drawn. A render pass rather than a copy:
-    /// a copy reads the texture before the preceding pass's store is visible,
-    /// and sampling it sees the stored contents. The texture matches the
-    /// target's size and is rebuilt when that changes.
+    /// Copy the colour target into the backdrop texture, so the quad shader
+    /// can blur what has already been drawn. The texture matches the target's
+    /// size and is rebuilt when that changes. A target that cannot be copied
+    /// from (a surface without COPY_SRC) leaves the previous capture bound.
     fn capture_backdrop(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         frame_view: &wgpu::TextureView,
-        sample_view: Option<&wgpu::TextureView>,
     ) {
         let texture = frame_view.texture();
+        if !texture.usage().contains(wgpu::TextureUsages::COPY_SRC) {
+            return;
+        }
         let width = texture.width();
         let height = texture.height();
 
-        let current = self.resources().backdrop_texture.as_ref().is_some_and(
-            |backdrop| backdrop.width() == width && backdrop.height() == height,
-        );
+        let current = self
+            .resources()
+            .backdrop_texture
+            .as_ref()
+            .is_some_and(|backdrop| {
+                backdrop.width() == width
+                    && backdrop.height() == height
+                    && backdrop.format() == texture.format()
+            });
         if !current {
             let device = &self.resources().device;
             let backdrop = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some("backdrop_capture"),
                 size: wgpu::Extent3d {
-                    width: width.max(1),
-                    height: height.max(1),
+                    width,
+                    height,
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: texture.format(),
-                usage: wgpu::TextureUsages::TEXTURE_BINDING
-                    | wgpu::TextureUsages::RENDER_ATTACHMENT,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 view_formats: &[],
             });
             let view = backdrop.create_view(&wgpu::TextureViewDescriptor::default());
@@ -1951,21 +1923,18 @@ impl WgpuRendererCore {
             resources.backdrop_bind_group = Some(bind_group);
         }
 
-        // KNOWN ISSUE (WI-1349): the capture pass below is disabled. Sampling
-        // the colour target into the backdrop texture makes the preceding
-        // pass's draws disappear from the target — the red quad drawn before
-        // the blur reads back black once this pass runs, and the blur quad
-        // then samples black. What was ruled out: creating the backdrop
-        // texture is harmless, and splitting the submission without this pass
-        // is harmless too. The suspect is the source bind group (the colour
-        // target bound as a sampled texture) or the capture pass itself.
-        // `textureLoad` of the target also reads black, while a constant
-        // fragment colour written by this pass does reach the blur quad, so
-        // the backdrop texture, its bind group and the quad shader's sampling
-        // of it all work. Re-enable by deleting this return.
-        let _ = (encoder, sample_view);
-        return;
+        let backdrop = self.resources().backdrop_texture.as_ref().unwrap();
+        encoder.copy_texture_to_texture(
+            texture.as_image_copy(),
+            backdrop.as_image_copy(),
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
     }
+
     fn draw_quads(
         &self,
         instances: &InstanceBinding,
@@ -1981,7 +1950,11 @@ impl WgpuRendererCore {
         // The pipeline always binds the capture. Batches without a blur quad
         // never sample it, but the binding has to exist, so a 1x1 placeholder
         // stands in until the first capture.
-        pass.set_bind_group(3, self.resources().backdrop_bind_group.as_ref().unwrap(), &[]);
+        pass.set_bind_group(
+            3,
+            self.resources().backdrop_bind_group.as_ref().unwrap(),
+            &[],
+        );
         pass.draw(
             0..4,
             instances.first_instance + range.start..instances.first_instance + range.end,
@@ -2543,9 +2516,6 @@ impl WgpuRenderer {
 struct HeadlessRenderTarget {
     texture: wgpu::Texture,
     view: wgpu::TextureView,
-    /// A second view of the same texture, created to be bound as a sampled
-    /// texture. The view a render pass writes through cannot be sampled.
-    sample_view: wgpu::TextureView,
 }
 
 #[cfg(all(
@@ -2632,18 +2602,11 @@ impl WgpuHeadlessRenderer {
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: self.core.target_format,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                    | wgpu::TextureUsages::COPY_SRC
-                    | wgpu::TextureUsages::TEXTURE_BINDING,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
                 view_formats: &[],
             });
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sample_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        self.render_target = Some(HeadlessRenderTarget {
-            texture,
-            view,
-            sample_view,
-        });
+        self.render_target = Some(HeadlessRenderTarget { texture, view });
         Ok(())
     }
 
@@ -2665,15 +2628,14 @@ impl WgpuHeadlessRenderer {
     fn render(&mut self, scene: &Scene, size: Size<DevicePixels>) -> anyhow::Result<()> {
         self.check_gpu_errors()?;
         self.ensure_render_target(size)?;
-        let (view, sample_view) = {
-            let target = self
-                .render_target
-                .as_ref()
-                .ok_or_else(|| anyhow::anyhow!("Headless render target was not created"))?;
-            (target.view.clone(), target.sample_view.clone())
-        };
+        let view = self
+            .render_target
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Headless render target was not created"))?
+            .view
+            .clone();
         self.core
-            .render_frame(scene, &view, Some(&sample_view), size, false, wgpu::Color::BLACK)?;
+            .render_frame(scene, &view, size, false, wgpu::Color::BLACK)?;
         Ok(())
     }
 
@@ -2960,12 +2922,10 @@ mod tests {
     }
 
     /// A backdrop-blur quad must read what was drawn before it, not the clear
-    /// colour. A red quad fills the left half; a blur quad covers the seam, so
-    /// its left edge has to come out red and its right edge black.
-    ///
-    /// Ignored: the capture pass that feeds the blur is disabled. See the
-    /// "Known issue" note on `capture_backdrop` and the PR for WI-1349.
-    #[ignore = "backdrop capture pass disabled; see WI-1349"]
+    /// colour. A red quad fills the left half; a blur quad covers the seam.
+    /// Both share one quad batch, so the renderer has to split the batch and
+    /// capture between them. Away from the seam the backdrop shows through
+    /// unchanged; on the seam it is blurred into a mix of red and black.
     #[cfg(target_os = "linux")]
     #[test]
     fn headless_renderer_blurs_the_pixels_drawn_behind_a_quad() -> anyhow::Result<()> {
@@ -2986,6 +2946,40 @@ mod tests {
         assert_pixel(&image, 40, 16, BLACK);
         // Past the blur quad the red never reached.
         assert_pixel(&image, 56, 16, BLACK);
+        // On the seam the red is spread across it: neither solid nor gone.
+        for x in [31, 32] {
+            let [r, g, b, _] = image.get_pixel(x, 16).0;
+            assert!(
+                (20..=235).contains(&r) && g <= 3 && b <= 3,
+                "pixel ({x}, 16) was {:?}, expected a red/black mix",
+                image.get_pixel(x, 16).0
+            );
+        }
+        Ok(())
+    }
+
+    /// The tint composites over the blurred backdrop.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn headless_renderer_tints_a_backdrop_blur() -> anyhow::Result<()> {
+        let mut renderer = WgpuHeadlessRenderer::new()?;
+        let mut scene = Scene::default();
+        scene.insert_primitive(solid_quad(0.0, 0.0, 64.0, 32.0, gpui::red()));
+
+        let mut blur = solid_quad(0.0, 0.0, 64.0, 32.0, gpui::transparent_black());
+        let mut tint = gpui::blue();
+        tint.a = 0.5;
+        blur.background = gpui::backdrop_blur(4.0, tint);
+        scene.insert_primitive(blur);
+        scene.finish();
+
+        let image = renderer.render_scene_to_image(&scene, device_size(64, 32))?;
+        let [r, g, b, _] = image.get_pixel(32, 16).0;
+        assert!(
+            (100..=160).contains(&r) && g <= 3 && (100..=160).contains(&b),
+            "pixel (32, 16) was {:?}, expected half red, half blue",
+            image.get_pixel(32, 16).0
+        );
         Ok(())
     }
 

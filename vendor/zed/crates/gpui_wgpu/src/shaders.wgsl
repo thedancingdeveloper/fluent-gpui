@@ -413,7 +413,8 @@ fn prepare_gradient_color(tag: u32, color_space: u32,
     solid: Hsla, colors: array<LinearColorStop, 2>) -> GradientColor {
     var result = GradientColor();
 
-    if (tag == 0u || tag == 2u || tag == 3u) {
+    // 4u (BackdropBlur) carries its tint in `solid`.
+    if (tag == 0u || tag == 2u || tag == 3u || tag == 4u) {
         result.solid = hsla_to_rgba(solid);
     } else if (tag == 1u) {
         // The hsla_to_rgba is returns a linear sRGB color
@@ -544,20 +545,6 @@ struct QuadVarying {
     @location(3) @interpolate(flat) background_solid: vec4<f32>,
     @location(4) @interpolate(flat) background_color0: vec4<f32>,
     @location(5) @interpolate(flat) background_color1: vec4<f32>,
-}
-
-@vertex
-fn vs_backdrop(@builtin(vertex_index) index: u32) -> @builtin(position) vec4<f32> {
-    let x = f32(index & 1u) * 2.0 - 1.0;
-    let y = f32((index >> 1u) & 1u) * 2.0 - 1.0;
-    return vec4<f32>(x, y, 0.0, 1.0);
-}
-
-@fragment
-fn fs_backdrop(@builtin(position) position: vec4<f32>) -> @location(0) vec4<f32> {
-    let dims = textureDimensions(t_sprite);
-    let texel = vec2<i32>(position.xy);
-    return textureLoad(t_sprite, texel, 0);
 }
 
 @vertex
