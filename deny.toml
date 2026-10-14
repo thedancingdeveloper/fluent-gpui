@@ -1,0 +1,119 @@
+# Dependency policy for the fluent-gpui workspace, including the vendored zed
+# gpui closure (WI-1424). Checked with `cargo deny check licenses advisories`.
+#
+# Targets cover the platforms we ship: Linux and Windows, x86_64 and aarch64.
+# macOS and wasm are out of scope (operator, 2026-10-14), so their
+# target-only crates are not part of this graph.
+
+[graph]
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc",
+    "aarch64-pc-windows-msvc",
+]
+all-features = false
+no-default-features = false
+
+[advisories]
+# Every entry is one advisory, one reason. Versions are what Cargo.lock holds
+# today; bump the reason when the lock moves past the affected range.
+ignore = [
+    # anyhow 1.0.102 (scheduler, gpui, the fluent crates). Unsound
+    # Error::downcast_mut. Fix is >=1.0.103, a lockfile-only bump, left for a
+    # follow-up so this review does not churn Cargo.lock.
+    { id = "RUSTSEC-2026-0190", reason = "anyhow 1.0.102; fixed in 1.0.103, not yet bumped" },
+    # crossbeam-epoch 0.9.18 via rayon. Invalid fmt::Pointer on a dangling
+    # Atomic/Shared. Fix is >=0.9.20; same lockfile follow-up.
+    { id = "RUSTSEC-2026-0204", reason = "crossbeam-epoch 0.9.18 via rayon; fixed in 0.9.20" },
+    # h2 0.4.14 via hyper-rustls (http_client_tls). Unbounded empty DATA
+    # frames. Fix is >=0.4.16.
+    { id = "RUSTSEC-2026-0258", reason = "h2 0.4.14 via hyper; fixed in 0.4.16" },
+    # quick-xml 0.39.3 via wayland-scanner. Quadratic duplicate-attribute
+    # check. Fix is >=0.41.0, which needs a wayland-rs release.
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml 0.39.3 via wayland-scanner; fixed in 0.41.0" },
+    # quick-xml 0.39.3, same crate. Unbounded namespace allocation in NsReader.
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml 0.39.3 via wayland-scanner; fixed in 0.41.0" },
+    # rustls 0.23.40 via http_client_tls. TLS 1.3 handshake messages accepted
+    # across encryption levels. Fix is >=0.23.45.
+    { id = "RUSTSEC-2026-0285", reason = "rustls 0.23.40; fixed in 0.23.45" },
+    # rustls-pemfile, unmaintained, pulled by rustls. No vulnerability; the
+    # replacement is rustls-pki-types, which rustls already uses internally.
+    { id = "RUSTSEC-2025-0134", reason = "rustls-pemfile unmaintained; transitive via rustls, no CVE" },
+    # rustybuzz 0.20.1 via usvg/resvg (gpui SVG path). Upstream says no safe
+    # upgrade exists yet, so the snapshot keeps it.
+    { id = "RUSTSEC-2026-0206", reason = "rustybuzz 0.20.1 unmaintained; no upgrade published" },
+    # ttf-parser 0.25.1 via fontdb/cosmic-text. Same situation as rustybuzz.
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser 0.25.1 unmaintained; no upgrade published" },
+    # event-listener 5.4.1 via zbus/accesskit_unix. !Send tags can cross
+    # threads through StackSlot. Fix needs an accesskit release.
+    { id = "RUSTSEC-2026-0221", reason = "event-listener 5.4.1 via zbus; no fixed release in tree" },
+    # memmap2 0.9.10 via fontdb/cosmic-text. Unchecked pointer offset. Fix
+    # needs a fontdb release.
+    { id = "RUSTSEC-2026-0186", reason = "memmap2 0.9.10 via fontdb; no fixed release in tree" },
+    # quinn-proto 0.11.14 via quinn (http_client_tls). Five advisories, all
+    # fixed upstream but not in a release this lockfile can reach:
+    #   RUSTSEC-2026-0339 pending connection-id retirements grow unbounded
+    #   RUSTSEC-2026-0338 zero-length STREAM frames panic unordered reads
+    #   RUSTSEC-2026-0185 unbounded out-of-order stream reassembly
+    #   RUSTSEC-2026-0340 peer min ACK delay panics ACK_FREQUENCY
+    #   RUSTSEC-2026-0342 zero-length DATAGRAM frames bypass the buffer limit
+    { id = "RUSTSEC-2026-0339", reason = "quinn-proto 0.11.14 via quinn; fixed upstream, no release in tree" },
+    { id = "RUSTSEC-2026-0338", reason = "quinn-proto 0.11.14 via quinn; fixed upstream, no release in tree" },
+    { id = "RUSTSEC-2026-0185", reason = "quinn-proto 0.11.14 via quinn; fixed upstream, no release in tree" },
+    { id = "RUSTSEC-2026-0340", reason = "quinn-proto 0.11.14 via quinn; fixed upstream, no release in tree" },
+    { id = "RUSTSEC-2026-0342", reason = "quinn-proto 0.11.14 via quinn; fixed upstream, no release in tree" },
+    # async-std 1.13.2, discontinued. Only reached through a non-default
+    # feature of a transitive crate; nothing in this workspace enables it.
+    { id = "RUSTSEC-2025-0052", reason = "async-std discontinued; not on the default feature graph" },
+    # paste 1.0.15, unmaintained, no vulnerability. Transitive macro crate.
+    { id = "RUSTSEC-2024-0436", reason = "paste unmaintained; transitive, no vulnerability" },
+]
+
+[licenses]
+# SPDX identifiers accepted for every crate. Additions need a reason in this
+# comment, not a silent edit.
+allow = [
+    "Apache-2.0",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "Zlib",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "MPL-2.0",
+    "BSL-1.0",
+    "CC0-1.0",
+    "OpenSSL",
+    # webpki-roots 1.0.9 (http_client_tls) ships its CA bundle under
+    # CDLA-Permissive-2.0, a permissive data licence. One crate, so it stays
+    # here rather than as an exception.
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.8
+
+# Crate-scoped exceptions. Prefer this over widening `allow` when only one
+# crate carries a licence.
+exceptions = []
+
+[licenses.private]
+# publish = false crates are still checked. This only skips the example
+# binaries (demo_app, gallery, form, hello_world, screenshots, widgets),
+# which carry no licence field and ship under the workspace LICENSE
+# (Apache-2.0). The vendored zed crates and fluent-test-utils set their own
+# licence, so they are checked.
+ignore = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+# Git sources pinned by the vendored snapshot. Each entry is a crate we
+# depend on through a rev, not a registry release.
+allow-git = [
+    # proptest, pulled by gpui's test-support feature.
+    "https://github.com/proptest-rs/proptest",
+    # zed's fork of the wasm thread crate, pulled by gpui_web / scheduler.
+    "https://github.com/zed-industries/wasm_thread",
+]
