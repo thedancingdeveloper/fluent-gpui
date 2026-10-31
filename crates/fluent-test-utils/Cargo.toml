@@ -2,7 +2,13 @@
 name = "fluent-test-utils"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
+publish = false
 
 [dependencies]
 gpui = { workspace = true, features = ["test-support"] }
 fluent-core = { workspace = true }
+
+[package.metadata.estate-gpui]
+# Must equal the zed commit in vendor/zed/UPSTREAM.md (scripts/check-zed-rev.sh).
+zed-rev = "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d"

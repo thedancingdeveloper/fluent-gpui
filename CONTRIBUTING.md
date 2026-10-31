@@ -59,9 +59,11 @@ Workers do not create git branches, push, open pull requests or poll CI.
 - Only `fluent-*` crates and the vendored tree (`vendor/zed`) may depend on
   `gpui`. Examples and tests use `fluent-*` too, as apps do. `fluent-core`
   re-exports what they need.
-- **Not yet built:** the CI layering guard (WI-2725) and the `fluent-core`
-  re-export. Until they land, the examples still import `gpui` from the
-  workspace; don't add new direct `gpui` imports outside `fluent-*`.
+- **Enforced in CI** by the `layering` job: `scripts/check-layering.py`
+  (manifests via `cargo metadata`, plus `gpui::` / `gpui_*::` paths in any
+  `.rs` file) and `deny.toml` `[bans]` (`gpui` with `wrappers`). The six
+  examples are a recorded baseline that may shrink, never grow; they still
+  import `gpui` until the `fluent-core` re-export lands.
 - Vendored code changes only through the patch process (§3).
 
 ---
@@ -127,8 +129,15 @@ YYYY-MM"). It is never folded into feature work. Steps:
 3. **Build on Windows and Linux.** Run the GPUI examples, the fork's
    validation examples `video_frame` and `backdrop_blur`, and the
    fluent-gpui gallery.
-4. **Licences.** `cargo deny check licenses` with the allow-list (Apache-2.0,
-   MIT, BSD, ISC, Zlib, Unicode) and **no GPL exception**. Spot-check
+4. **Licences.** `cargo deny check licenses bans` (the CI `deny` job) with the
+   `deny.toml` allow-list (Apache-2.0, MIT, BSD, ISC, Zlib, Unicode and other
+   permissive licences) and **no GPL, LGPL or AGPL exception**. MPL-2.0 is not
+   allowed globally; per-crate exceptions cover only `cbindgen`, `dwrote` and
+   `option-ext`, which the gpui tree forces: **pending operator confirmation
+   (required before the WI-2727 tag)**. Then bump
+   `[package.metadata.estate-gpui] zed-rev` in every `crates/fluent-*/Cargo.toml`
+   to the new commit; the CI `zed-rev` job (`scripts/check-zed-rev.sh`) fails
+   if it differs from `vendor/zed/UPSTREAM.md`. Spot-check
    `cargo tree -e normal` for any licence outside the list. A contaminated
    pull fails; it is not recorded as debt. Record the Zed commit and the
    result in `CHANGELOG.md`.
@@ -146,7 +155,7 @@ weeks, trigger the operator's review of the whole plan.
 
 The pull lands through graft like any change (§1), in a batch of its own.
 
-**Not yet built:** the pull tooling (WI-1422) and `deny.toml` (WI-2725).
+**Not yet built:** the pull tooling (WI-1422).
 The first pull is rehearsed in WI-2726 from this document alone; gaps found
 there are fixed here.
 
@@ -159,8 +168,8 @@ there are fixed here.
 | Format | `cargo fmt --all --check` |
 | Lint | `cargo clippy --workspace --all-targets -- -D warnings` |
 | Tests | `cargo test --workspace` |
-| Licences and advisories | `cargo deny check licenses advisories` (needs `deny.toml`, WI-2725) |
-| Layering | the layering guard (WI-2725) |
+| Licences and advisories | `cargo deny check licenses bans` (CI job `deny`) |
+| Layering | `python3 scripts/check-layering.py` (CI job `layering`); `scripts/check-zed-rev.sh` (CI job `zed-rev`) |
 | Visuals | screenshot baselines (`scripts/screenshots.sh`) for any change to `fluent-*` rendering |
 
 Where they run:
@@ -168,9 +177,9 @@ Where they run:
 - **Workers** run the subset for the crates they touched
   (`-p <crate>` instead of `--workspace`), with `CARGO_BUILD_JOBS` capped on
   shared hosts.
-- **CI** runs the workspace on Windows and Linux. Today only the Linux
-  `test` job exists and is required; a single `ci` check covering both
-  platforms replaces it with WI-2725.
+- **CI** runs the workspace on Windows and Linux. The `test` job is a matrix
+  (`ubuntu-latest`, `windows-latest`); the `ci` summary job needs `test`,
+  `layering`, `deny` and `zed-rev` and is the one required check. No macOS.
 - **GPU runtime validation** (WI-1438, WI-1439) is manual, on the approved
   hosts (desktop-tlk1gff for DirectX 11), and recorded on the work item.
 

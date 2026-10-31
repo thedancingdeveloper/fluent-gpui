@@ -16,3 +16,7 @@ fluent-ribbon    = { workspace = true }
 [dev-dependencies]
 fluent-test-utils = { workspace = true }
 gpui = { workspace = true, features = ["test-support"] }
+
+[package.metadata.estate-gpui]
+# Must equal the zed commit in vendor/zed/UPSTREAM.md (scripts/check-zed-rev.sh).
+zed-rev = "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d"
