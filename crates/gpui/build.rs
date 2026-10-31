@@ -40,7 +40,7 @@ fn check_wgsl_shaders() {
 
     let shader_source_path = "./src/platform/blade/shaders.wgsl";
     let shader_path = PathBuf::from_str(shader_source_path).unwrap();
-    println!("cargo:rerun-if-changed={}", &shader_path.display());
+    println!("cargo:rerun-if-changed={}", shader_path.display());
 
     let shader_source = std::fs::read_to_string(&shader_path).unwrap();
 
