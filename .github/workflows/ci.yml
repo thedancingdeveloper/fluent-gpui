@@ -9,6 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install Linux system libraries
+        # gpui's Linux backend (x11rb/xkbcommon/wayland/blade/font-kit) links
+        # these; the list follows zed's script/linux apt packages.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxcb1-dev libx11-xcb-dev libxkbcommon-dev libxkbcommon-x11-dev \
+            libwayland-dev libvulkan-dev libfontconfig-dev libfreetype-dev
       - uses: dtolnay/rust-toolchain@1.99.1
         with:
           components: rustfmt, clippy
