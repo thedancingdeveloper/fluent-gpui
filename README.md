@@ -60,6 +60,8 @@ fluent-primitives = { git = "https://github.com/thedancingdeveloper/fluent-gpui"
 fluent-layout     = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
 fluent-ribbon     = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
 fluent-app        = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
+# Until fluent-core re-exports GPUI (see §1), the quick start imports gpui directly.
+gpui              = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
 
 [dev-dependencies]
 fluent-test-utils = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
@@ -105,8 +107,12 @@ newer. (Both files arrive with the 3.x re-fork.)
 Linux build dependencies (Debian/Ubuntu):
 
 ```sh
-sudo apt-get install libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev
+sudo apt-get install libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev libfontconfig-dev libwayland-dev libvulkan-dev
 ```
+
+Without `libfontconfig-dev`, the build script for `yeslogic-fontconfig-sys`
+fails; alternatively set `RUST_FONTCONFIG_DLOPEN=on` to load fontconfig at
+runtime, but the link step still needs the `-dev` packages above.
 
 ---
 
