@@ -7,7 +7,6 @@ members = [
     "crates/fluent-layout",
     "crates/fluent-app",
     "crates/fluent-test-utils",
-    "crates/gpui",
     "examples/gallery",
     "examples/demo_app",
     "examples/hello_world",
@@ -15,9 +14,13 @@ members = [
     "examples/form",
     "examples/screenshots",
 ]
+# The vendored zed crates are path dependencies, not members: their own tests
+# and examples need zed assets that are not vendored (see vendor/zed/README.md).
+exclude = ["vendor/zed"]
 
 [workspace.dependencies]
-gpui = { path = "crates/gpui", version = "0.2" }
+gpui          = { path = "vendor/zed/crates/gpui" }
+gpui_platform = { path = "vendor/zed/crates/gpui_platform" }
 
 fluent-core        = { path = "crates/fluent-core",        version = "2.4.0" }
 fluent-primitives  = { path = "crates/fluent-primitives",  version = "2.4.0" }

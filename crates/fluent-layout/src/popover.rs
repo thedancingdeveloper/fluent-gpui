@@ -1,6 +1,6 @@
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    anchored, deferred, div, prelude::*, px, AnyElement, Corner, IntoElement, Point, RenderOnce,
+    anchored, deferred, div, prelude::*, px, Anchor, AnyElement, IntoElement, Point, RenderOnce,
     Window,
 };
 
@@ -9,7 +9,7 @@ use gpui::{
 pub struct Popover {
     open: bool,
     position: Point<gpui::Pixels>,
-    anchor: Corner,
+    anchor: Anchor,
     content: AnyElement,
 }
 
@@ -18,7 +18,7 @@ impl Popover {
         Self {
             open: true,
             position,
-            anchor: Corner::TopLeft,
+            anchor: Anchor::TopLeft,
             content: content.into_any_element(),
         }
     }
@@ -28,7 +28,7 @@ impl Popover {
         self
     }
 
-    pub fn anchor(mut self, anchor: Corner) -> Self {
+    pub fn anchor(mut self, anchor: Anchor) -> Self {
         self.anchor = anchor;
         self
     }

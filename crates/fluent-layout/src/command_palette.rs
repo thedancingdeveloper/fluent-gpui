@@ -417,7 +417,7 @@ impl Render for CommandPalette {
 
         // Self-focus on the first frame after opening
         if !self.focus_handle.is_focused(window) {
-            window.focus(&self.focus_handle);
+            window.focus(&self.focus_handle, cx);
         }
 
         let theme = cx.theme();

@@ -14,6 +14,7 @@ per crate.
 
 - CI: layering guard, `cargo deny` (no GPL exception), zed-rev check, Windows test job and a `ci` summary check (WI-2725).
 - Docs: `AGENTS.md` (how a worker session completes a work item) and a `CLAUDE.md` pointer.
+- Dependency: the workspace now builds on the vendored zed gpui (`vendor/zed`, zed ba63a022) instead of `crates/gpui`, which is removed. `fluent-app` starts through `gpui_platform::application()`. Breaking: `Popover::anchor` takes `gpui::Anchor` (was `gpui::Corner`). Windows and Linux only.
 
 ## Workspace release v2.4.0 — 2026-05-28
 
