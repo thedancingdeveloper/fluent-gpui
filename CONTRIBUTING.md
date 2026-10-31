@@ -73,18 +73,21 @@ Workers do not create git branches, push, open pull requests or poll CI.
 | Item | What it is |
 |---|---|
 | `vendor/zed/crates/*` | The Zed crate closure GPUI needs (`gpui`, `gpui_platform`, `gpui_linux`, `gpui_windows`, `sum_tree`, `collections`, `util`, `refineable`, `scheduler`, `http_client`, `macros`, `shared_string`, ...), filtered from Zed `main`. |
-| branch `zed-vendor` | Pristine copy of that closure. Only the vendor script writes to it. |
-| branch `main` | `zed-vendor` merged in, plus the patch series and the `fluent-*` crates. |
+| graft line `zed-vendor` | Pristine copy of that closure. Only the vendor script's output lands on it. |
+| line `backlog-1` / `main` | `zed-vendor` merged in (`g line merge zed-vendor --into backlog-1`), plus the patch series and the `fluent-*` crates. |
 | `vendor/zed/UPSTREAM.md` | Zed commit, date and crate list of the current snapshot. |
 | `vendor/zed/PATCHES.md` | Every local patch: name, Cargo feature, upstream files it touches, upstream PR if any. Also the current patch-budget count. |
 
-**Not yet built:** the vendor script `scripts/vendor-zed.py <rev>` and the
-`zed-vendor` branch (WI-1422), and the first snapshot (WI-1347). Today the
+The vendor script is `scripts/vendor-zed.py <rev> --zed <zed checkout>`
+(`--dry-run` lists the closure). It vendors Windows and Linux only: the
+`gpui_macos`, `gpui_apple` and `gpui_web` crates are left out.
+**Not yet built:** the first snapshot and the `zed-vendor` line, which is
+created from it with `g line create zed-vendor --from <changeset>` (WI-1347). Today the
 repository still carries the old GPUI copy in `crates/gpui`; it is replaced
 when the snapshot lands. Until the script exists, don't hand-copy Zed code
 into the repository.
 
-`zed-vendor` is the one branch besides `main`. It is not a work branch: it
+`zed-vendor` is a graft line, not a git branch, and not a work line: it
 is written only by the vendor script, during an upstream pull, and is never
 edited by hand.
 
@@ -102,7 +105,7 @@ edited by hand.
 - **Patch budget: 10 upstream files or fewer.** Growth is an operator
   decision, recorded in `PATCHES.md` with the date.
 - No hand edits under `vendor/zed` outside the files `PATCHES.md` lists.
-  `git diff zed-vendor..main -- vendor/zed` must touch only those files.
+  `g diff` of `vendor/zed` between the `zed-vendor` tip and `backlog-1` must touch only those files.
   Reviewers run it on any batch that touches `vendor/zed` (it becomes a CI
   check with WI-1441 / WI-2725).
 - A new patch: add the module and feature, its example and test, and its
@@ -118,7 +121,7 @@ YYYY-MM"). It is never folded into feature work. Steps:
 1. **Refresh `zed-vendor`** at a new Zed `main` commit with
    `scripts/vendor-zed.py <rev>`. Record the commit, date and crate list in
    `vendor/zed/UPSTREAM.md`.
-2. **Merge `zed-vendor` into `main` and re-apply the patch series**, patch
+2. **Merge `zed-vendor` into `backlog-1`** (`g line merge zed-vendor --into backlog-1`) **and re-apply the patch series**, patch
    by patch. A patch that no longer applies cleanly is rewritten, never
    force-merged. Update `PATCHES.md` and the budget count.
 3. **Build on Windows and Linux.** Run the GPUI examples, the fork's
