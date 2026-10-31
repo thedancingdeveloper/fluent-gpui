@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    anchored, deferred, div, prelude::*, px, App, ClickEvent, Corner, IntoElement, MouseDownEvent,
+    anchored, deferred, div, prelude::*, px, Anchor, App, ClickEvent, IntoElement, MouseDownEvent,
     Point, RenderOnce, SharedString, Window,
 };
 
@@ -133,7 +133,7 @@ pub struct SuggestionPopover {
     open: bool,
     exiting: bool,
     position: Point<gpui::Pixels>,
-    anchor: Corner,
+    anchor: Anchor,
     items: Vec<SuggestionItem>,
     highlighted: Option<usize>,
     empty_text: SharedString,
@@ -151,7 +151,7 @@ impl SuggestionPopover {
             open: true,
             exiting: false,
             position,
-            anchor: Corner::TopLeft,
+            anchor: Anchor::TopLeft,
             items: Vec::new(),
             highlighted: None,
             empty_text: "No suggestions".into(),
@@ -174,7 +174,7 @@ impl SuggestionPopover {
         self
     }
 
-    pub fn anchor(mut self, anchor: Corner) -> Self {
+    pub fn anchor(mut self, anchor: Anchor) -> Self {
         self.anchor = anchor;
         self
     }

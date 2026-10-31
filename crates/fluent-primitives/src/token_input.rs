@@ -340,7 +340,7 @@ impl TokenInput {
             return;
         }
 
-        if crate::focus::handle_tab_navigation(ev, window) {
+        if crate::focus::handle_tab_navigation(ev, window, cx) {
             cx.notify();
             return;
         }
@@ -408,7 +408,7 @@ impl TokenInput {
             return;
         }
         let handle = self.focus_handle(cx);
-        window.focus(&handle);
+        window.focus(&handle, cx);
         self.update_origin(point(
             ev.position.x,
             ev.position.y + px(cx.theme().components.dropdown_height),

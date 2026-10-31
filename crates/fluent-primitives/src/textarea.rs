@@ -87,7 +87,7 @@ impl Textarea {
     }
 
     fn handle_key(&mut self, ev: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
-        if crate::focus::handle_tab_navigation(ev, window) {
+        if crate::focus::handle_tab_navigation(ev, window, cx) {
             cx.notify();
             return;
         }
@@ -166,7 +166,7 @@ impl Textarea {
         }
 
         let focus_handle = self.focus_handle(cx);
-        window.focus(&focus_handle);
+        window.focus(&focus_handle, cx);
         cx.notify();
     }
 }

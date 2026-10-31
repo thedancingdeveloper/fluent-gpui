@@ -90,7 +90,7 @@ impl ToastStack {
         if let Some(timeout) = timeout {
             cx.spawn(async move |cx| {
                 cx.background_executor().timer(timeout).await;
-                cx.update(|cx| ToastStack::dismiss(id.as_ref(), cx)).ok();
+                cx.update(|cx| ToastStack::dismiss(id.as_ref(), cx));
             })
             .detach();
         }
