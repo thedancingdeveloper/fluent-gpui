@@ -714,7 +714,7 @@ mod tests {
     use std::time::Duration;
 
     use fluent_test_utils::init_fluent_test;
-    use gpui::{point, px, AppContext as _, TestAppContext};
+    use gpui::{point, px, TestAppContext};
 
     use super::*;
 
