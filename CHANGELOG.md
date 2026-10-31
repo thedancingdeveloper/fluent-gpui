@@ -18,6 +18,7 @@ per crate.
 - Dependency: the workspace now builds on the vendored zed gpui (`vendor/zed`, zed ba63a022) instead of `crates/gpui`, which is removed. `fluent-app` starts through `gpui_platform::application()`. Breaking: `Popover::anchor` takes `gpui::Anchor` (was `gpui::Corner`). Windows and Linux only.
 
 - Build: `cargo deny` bans now list the vendored gpui crates that depend on `gpui` as wrappers, and the vendoring docs no longer describe the removed `crates/gpui` copy (WI-2754).
+- Docs: README consumer snippet adds the direct `gpui` dependency the quick start needs, and the Linux build dependencies add `libxcb1-dev` and `libfontconfig-dev` (WI-2727).
 
 ## Workspace release v2.4.0 — 2026-05-28
 
