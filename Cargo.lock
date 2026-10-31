@@ -2006,25 +2006,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gpui_ios"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "block2",
- "futures",
- "gpui",
- "log",
- "objc2",
- "objc2-core-foundation",
- "objc2-foundation",
- "objc2-quartz-core",
- "objc2-ui-kit",
- "parking_lot",
- "raw-window-handle",
- "uuid",
-]
-
-[[package]]
 name = "gpui_linux"
 version = "0.1.0"
 dependencies = [
@@ -2084,7 +2065,6 @@ dependencies = [
  "anyhow",
  "console_error_panic_hook",
  "gpui",
- "gpui_ios",
  "gpui_linux",
  "gpui_windows",
 ]
@@ -3198,9 +3178,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a180dd8642fa45cdb7dd721cd4c11b1cadd4929ce112ebd8b9f5803cc79d536"
 dependencies = [
  "bitflags 2.11.1",
- "block2",
  "dispatch2",
- "libc",
  "objc2",
 ]
 
@@ -3280,20 +3258,6 @@ dependencies = [
  "objc2-core-graphics",
  "objc2-foundation",
  "objc2-metal",
-]
-
-[[package]]
-name = "objc2-ui-kit"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d87d638e33c06f577498cbcc50491496a3ed4246998a7fbba7ccb98b1e7eab22"
-dependencies = [
- "bitflags 2.11.1",
- "block2",
- "objc2",
- "objc2-core-foundation",
- "objc2-foundation",
- "objc2-quartz-core",
 ]
 
 [[package]]

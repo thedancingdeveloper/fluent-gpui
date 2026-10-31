@@ -50,7 +50,7 @@ wildcards = "allow"
 #                               -- BASELINE: examples that predate the rule and
 #                                  still call gpui directly. Shrink this list as
 #                                  they move to fluent-* re-exports; never grow it.
-#   gpui_ios, gpui_linux, gpui_macros, gpui_platform, gpui_windows, gpui_wgpu
+#   gpui_linux, gpui_macros, gpui_platform, gpui_windows, gpui_wgpu
 #                               -- the vendored zed closure (vendor/zed) crates
 #                                  that depend on gpui directly. They are not
 #                                  exempt: each one is listed by name. Keep this
@@ -63,6 +63,6 @@ deny = [
         "fluent-core", "fluent-primitives", "fluent-ribbon", "fluent-layout",
         "fluent-app", "fluent-test-utils",
         "gallery", "demo_app", "hello_world", "widgets", "form", "screenshots",
-        "gpui_ios", "gpui_linux", "gpui_macros", "gpui_platform", "gpui_windows", "gpui_wgpu",
+        "gpui_linux", "gpui_macros", "gpui_platform", "gpui_windows", "gpui_wgpu",
     ] },
 ]

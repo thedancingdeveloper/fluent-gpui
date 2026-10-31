@@ -29,8 +29,12 @@ DEP_SECTIONS = ("dependencies", "dev-dependencies", "build-dependencies")
 # fluent-gpui supports Windows and Linux only. These platform crates are left
 # out of the closure, and every dependency on them and feature forwarding to
 # them is removed from the vendored manifests. The code that uses them is
-# behind `cfg(target_os = "macos")` / wasm and never compiles here.
-EXCLUDED = ("gpui_macos", "gpui_apple", "gpui_web")
+# behind `cfg(target_os = "macos" | "ios")` / wasm and never compiles here.
+EXCLUDED = ("gpui_macos", "gpui_apple", "gpui_ios", "gpui_web")
+# Features that existed only to forward to an excluded crate, dropped by name.
+# Named, not inferred: a default list can still name a feature whose members
+# were all excluded (`default = ["multithreaded"]`), and that feature must stay.
+DROPPED_FEATURES = ("runtime_shaders",)
 _EXCLUDED_ALT = "|".join(EXCLUDED)
 _EXCLUDED_ITEM = rf'"(?:dep:)?(?:{_EXCLUDED_ALT})(?:\??/[^"]*)?"'
 
@@ -330,6 +334,8 @@ def drop_excluded(lines: list[str]) -> list[str]:
         stripped = line.strip()
         if re.match(rf"(?:{_EXCLUDED_ALT})\s*[.=]", stripped):
             continue
+        if re.match(rf"(?:{'|'.join(DROPPED_FEATURES)})\s*=", stripped):
+            continue
         if not stripped.startswith("#"):
             line = re.sub(_EXCLUDED_ITEM + r"\s*,\s*", "", line)
             line = re.sub(r",\s*" + _EXCLUDED_ITEM, "", line)
@@ -571,9 +577,7 @@ resolved to, inherited `[lints]` tables are dropped, and `publish` is `false`.
 
 fluent-gpui supports Windows and Linux only, so {excluded} are left out, and
 the dependencies on them and feature forwards to them are removed from the
-vendored manifests. The code that uses them is behind macOS or wasm `cfg`s.
-
-`gpui_ios` is still vendored: WI-2728 trims it from the tree.
+vendored manifests. The code that uses them is behind macOS, iOS or wasm `cfg`s.
 
 Nothing here is published to crates.io.
 
