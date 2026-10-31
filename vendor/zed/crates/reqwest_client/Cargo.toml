@@ -1,0 +1,27 @@
+[package]
+name = "reqwest_client"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+
+[features]
+test-support = []
+
+[lib]
+path = "src/reqwest_client.rs"
+doctest = false
+
+[dependencies]
+anyhow = { version = "1.0.86" }
+bytes = { version = "1.0" }
+futures = { version = "0.3.34" }
+http_client = { path = "../http_client" }
+log = { version = "0.4", default-features = false, features = ["std"] }
+tokio = { version = "1", features = ["rt-multi-thread"] }
+regex = { version = "1.5", default-features = false, features = ["std", "perf"] }
+reqwest = { git = "https://github.com/zed-industries/reqwest.git", rev = "33bc764aa15ff7b200bf7c93bd96e24878d53e14", default-features = false, features = ["http2", "macos-system-configuration", "rustls-tls-native-roots", "socks", "stream"], package = "zed-reqwest", version = "0.12.15-zed" }
+gpui_util = { path = "../gpui_util" }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+http_client_tls = { path = "../http_client_tls" }
