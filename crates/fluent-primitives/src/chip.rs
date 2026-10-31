@@ -57,7 +57,7 @@ impl RenderOnce for Chip {
             .child(self.label);
 
         if has_dismiss {
-            let dismiss_id = ElementId::NamedChild(Box::new(self.id), "dismiss".into());
+            let dismiss_id = ElementId::NamedChild(std::sync::Arc::new(self.id), "dismiss".into());
             el = el.child(
                 div()
                     .id(dismiss_id)

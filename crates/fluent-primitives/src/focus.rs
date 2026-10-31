@@ -9,23 +9,23 @@ pub fn install_focus_keybindings(cx: &mut App) {
     ]);
 }
 
-pub(crate) fn focus_next(_: &FocusNextControl, window: &mut Window, _: &mut App) {
-    window.focus_next();
+pub(crate) fn focus_next(_: &FocusNextControl, window: &mut Window, cx: &mut App) {
+    window.focus_next(cx);
 }
 
-pub(crate) fn focus_previous(_: &FocusPreviousControl, window: &mut Window, _: &mut App) {
-    window.focus_prev();
+pub(crate) fn focus_previous(_: &FocusPreviousControl, window: &mut Window, cx: &mut App) {
+    window.focus_prev(cx);
 }
 
-pub(crate) fn handle_tab_navigation(ev: &KeyDownEvent, window: &mut Window) -> bool {
+pub(crate) fn handle_tab_navigation(ev: &KeyDownEvent, window: &mut Window, cx: &mut App) -> bool {
     if ev.keystroke.key != "tab" {
         return false;
     }
 
     if ev.keystroke.modifiers.shift {
-        window.focus_prev();
+        window.focus_prev(cx);
     } else {
-        window.focus_next();
+        window.focus_next(cx);
     }
     true
 }

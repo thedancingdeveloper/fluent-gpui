@@ -666,7 +666,7 @@ impl Render for ContextMenu {
             self.ensure_selection();
         }
         if !self.closing && !focus_handle.is_focused(window) {
-            window.focus(&focus_handle);
+            window.focus(&focus_handle, cx);
         }
 
         let theme = cx.theme();
