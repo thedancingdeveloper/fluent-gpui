@@ -10,6 +10,10 @@ per crate.
 
 ---
 
+## Unreleased
+
+- Docs: `AGENTS.md` (how a worker session completes a work item) and a `CLAUDE.md` pointer.
+
 ## Workspace release v2.4.0 — 2026-05-28
 
 Cohesive uplift focused on application primitives (multi-value inputs, date/time
