@@ -29,8 +29,8 @@ allow = [
     "Zlib",
 ]
 # MPL-2.0 is not on the allow-list. These crates are forced by the gpui tree
-# and are allowed one by one; a new MPL crate fails CI. Status: pending
-# operator confirmation (required before the WI-2727 tag). Never add a GPL/LGPL/AGPL entry here.
+# and are allowed one by one; a new MPL crate fails CI. Accepted by the
+# operator on 2026-10-31. Never add a GPL/LGPL/AGPL entry here.
 exceptions = [
     { name = "cbindgen", allow = ["MPL-2.0"] },    # forced by gpui (build dependency)
     { name = "dwrote", allow = ["MPL-2.0"] },      # forced by gpui (Windows DirectWrite text, via font-kit/gpui)
@@ -50,13 +50,19 @@ wildcards = "allow"
 #                               -- BASELINE: examples that predate the rule and
 #                                  still call gpui directly. Shrink this list as
 #                                  they move to fluent-* re-exports; never grow it.
-# The vendored zed closure (vendor/zed) and crates/gpui are gpui itself and
-# are not wrappers. scripts/check-layering.py enforces the same list for
-# `gpui_*` crates and for `gpui::` paths in source.
+#   gpui_ios, gpui_linux, gpui_macros, gpui_platform, gpui_windows, gpui_wgpu
+#                               -- the vendored zed closure (vendor/zed) crates
+#                                  that depend on gpui directly. They are not
+#                                  exempt: each one is listed by name. Keep this
+#                                  list in step with the vendor tree; a crate
+#                                  that gains a gpui dependency must be added.
+# scripts/check-layering.py enforces the layering rule for `gpui_*` crates and
+# for `gpui::` paths in source.
 deny = [
     { crate = "gpui", wrappers = [
         "fluent-core", "fluent-primitives", "fluent-ribbon", "fluent-layout",
         "fluent-app", "fluent-test-utils",
         "gallery", "demo_app", "hello_world", "widgets", "form", "screenshots",
+        "gpui_ios", "gpui_linux", "gpui_macros", "gpui_platform", "gpui_windows", "gpui_wgpu",
     ] },
 ]

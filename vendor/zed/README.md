@@ -10,6 +10,8 @@ fluent-gpui supports Windows and Linux only, so `gpui_macos`, `gpui_apple`, `gpu
 the dependencies on them and feature forwards to them are removed from the
 vendored manifests. The code that uses them is behind macOS or wasm `cfg`s.
 
+`gpui_ios` is still vendored: WI-2728 trims it from the tree.
+
 Nothing here is published to crates.io.
 
 ## The pristine line

@@ -8,7 +8,7 @@ system on top of it, for native desktop apps on **Windows and Linux only**. Apps
 | Path | What it is |
 |---|---|
 | `crates/fluent-*` | The library: `fluent-core`, `fluent-primitives`, `fluent-layout`, `fluent-ribbon`, `fluent-app`, `fluent-test-utils` |
-| `vendor/zed/crates/*` | Vendored upstream Zed crate closure (gpui and what it needs), plus named estate patches. Replaces the old `crates/gpui` copy once the 3.x vendoring lands |
+| `vendor/zed/crates/*` | Vendored upstream Zed crate closure (gpui and what it needs), plus named estate patches. The only gpui source; the old `crates/gpui` copy is gone |
 | `examples/` | Demo, gallery and sample apps |
 | `scripts/` | Dev scripts (screenshots, `vendor-zed.py` for vendoring) |
 | `docs/` | `graft.md` (how changes land), `VISUAL_TARGETS.md` |
