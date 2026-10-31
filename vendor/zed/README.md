@@ -1,16 +1,14 @@
 # Vendored zed crates
 
-`crates/` holds the path-dependency closure of zed's `gpui_platform` (25
+`crates/` holds the path-dependency closure of zed's `gpui_platform` (24
 crates at the revision in `UPSTREAM.md`), copied in by `scripts/vendor-zed.py`.
 The crates are rewritten to build outside zed's workspace: every inherited
 workspace field or dependency is replaced by the concrete version or path it
 resolved to, inherited `[lints]` tables are dropped, and `publish` is `false`.
 
-fluent-gpui supports Windows and Linux only, so `gpui_macos`, `gpui_apple`, `gpui_web` are left out, and
+fluent-gpui supports Windows and Linux only, so `gpui_macos`, `gpui_apple`, `gpui_ios`, `gpui_web` are left out, and
 the dependencies on them and feature forwards to them are removed from the
-vendored manifests. The code that uses them is behind macOS or wasm `cfg`s.
-
-`gpui_ios` is still vendored: WI-2728 trims it from the tree.
+vendored manifests. The code that uses them is behind macOS, iOS or wasm `cfg`s.
 
 Nothing here is published to crates.io.
 
