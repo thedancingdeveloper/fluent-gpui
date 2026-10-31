@@ -3,13 +3,19 @@ name: CI
 on:
   push:
   pull_request:
+  merge_group:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Install Linux system libraries
+        if: runner.os == 'Linux'
         # gpui's Linux backend (x11rb/xkbcommon/wayland/blade/font-kit) links
         # these; the list follows zed's script/linux apt packages.
         run: |
@@ -26,3 +32,42 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Test
         run: cargo test --workspace
+
+  # Only crates/fluent-* may use gpui (CONTRIBUTING.md §2).
+  layering:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - name: Layering guard
+        run: python3 scripts/check-layering.py
+
+  # Licence allow-list with no GPL/LGPL/AGPL exception, and the gpui bans
+  # (deny.toml, CONTRIBUTING.md §4).
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check licenses bans
+
+  # fluent-* zed-rev metadata equals vendor/zed/UPSTREAM.md (CONTRIBUTING.md §4).
+  zed-rev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check recorded zed rev
+        run: scripts/check-zed-rev.sh
+
+  # The one required check: Windows and Linux tests plus every guard.
+  ci:
+    if: always()
+    needs: [test, layering, deny, zed-rev]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All jobs passed
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | python3 -c 'import json,sys; n=json.load(sys.stdin); bad=[k for k,v in n.items() if v["result"]!="success"]; print("failed:", bad) if bad else print("ok"); sys.exit(1 if bad else 0)'
