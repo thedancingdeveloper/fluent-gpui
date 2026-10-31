@@ -1,0 +1,24 @@
+[package]
+name = "path"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+
+[lib]
+path = "src/path.rs"
+doctest = false
+
+[features]
+test-support = []
+
+[dependencies]
+anyhow = { version = "1.0.86" }
+dunce = { version = "1.0" }
+serde = { version = "1.0", features = ["rc", "derive"], optional = true }
+
+[target.'cfg(windows)'.dependencies]
+tendril = { version = "0.5" }
+
+[dev-dependencies]
+tempfile = { version = "3.20.0" }
