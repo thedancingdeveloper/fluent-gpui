@@ -1,0 +1,39 @@
+[package]
+name = "ztracing"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+
+[lib]
+doctest = false
+
+[features]
+tracing-tracy = ["dep:tracing-tracy", "dep:tracing-subscriber", "dep:zlog"]
+tracy = ["tracing-tracy", "tracy-client"]
+web = [
+    "dep:async-channel",
+    "dep:js-sys",
+    "dep:tracing-subscriber",
+    "dep:wasm-bindgen",
+    "dep:web-sys",
+    "dep:zlog",
+]
+
+[dependencies]
+zlog = { path = "../zlog", optional = true }
+tracing = { version = "0.1.40" }
+
+tracing-subscriber = { version = "0.3", optional = true }
+
+ztracing_macro = { path = "../ztracing_macro" }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+tracing-tracy = { version = "0.11", optional = true, features = ["ondemand"] }
+tracy-client = { version = "0.18", optional = true, features = ["ondemand"] }
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+async-channel = { version = "2.5", default-features = false, features = ["std"], optional = true }
+js-sys = { version = "0.3", optional = true }
+wasm-bindgen = { version = "0.2.120", optional = true }
+web-sys = { version = "0.3", features = ["console", "Performance"], optional = true }
