@@ -83,10 +83,9 @@ Workers do not create git branches, push, open pull requests or poll CI.
 The vendor script is `scripts/vendor-zed.py <rev> --zed <zed checkout>`
 (`--dry-run` lists the closure). It vendors Windows and Linux only: the
 `gpui_macos`, `gpui_apple` and `gpui_web` crates are left out.
-**Not yet built:** the first snapshot and the `zed-vendor` line, which is
-created from it with `g line create zed-vendor --from <changeset>` (WI-1347). Today the
-repository still carries the old GPUI copy in `crates/gpui`; it is replaced
-when the snapshot lands. Until the script exists, don't hand-copy Zed code
+The first snapshot is in `vendor/zed` (its zed commit is in `vendor/zed/UPSTREAM.md`),
+and the `zed-vendor` line was created from it (WI-1347). The old GPUI copy in
+`crates/gpui` is gone. Don't hand-copy Zed code
 into the repository.
 
 `zed-vendor` is a graft line, not a git branch, and not a work line: it
@@ -133,8 +132,8 @@ YYYY-MM"). It is never folded into feature work. Steps:
    `deny.toml` allow-list (Apache-2.0, MIT, BSD, ISC, Zlib, Unicode and other
    permissive licences) and **no GPL, LGPL or AGPL exception**. MPL-2.0 is not
    allowed globally; per-crate exceptions cover only `cbindgen`, `dwrote` and
-   `option-ext`, which the gpui tree forces: **pending operator confirmation
-   (required before the WI-2727 tag)**. Then bump
+   `option-ext`, which the gpui tree forces; the operator accepted these on
+   2026-10-31. Then bump
    `[package.metadata.estate-gpui] zed-rev` in every `crates/fluent-*/Cargo.toml`
    to the new commit; the CI `zed-rev` job (`scripts/check-zed-rev.sh`) fails
    if it differs from `vendor/zed/UPSTREAM.md`. Spot-check
