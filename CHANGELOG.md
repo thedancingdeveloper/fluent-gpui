@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- CI: layering guard, `cargo deny` (no GPL exception), zed-rev check, Windows test job and a `ci` summary check (WI-2725).
 - Docs: `AGENTS.md` (how a worker session completes a work item) and a `CLAUDE.md` pointer.
 
 ## Workspace release v2.4.0 — 2026-05-28

@@ -1,0 +1,62 @@
+# cargo deny policy (WI-1424, WI-2725). Run: cargo deny check licenses bans
+#
+# Licences: permissive allow-list only. There is NO GPL, LGPL or AGPL
+# exception of any kind, and no per-crate `exceptions` entry may add one. A
+# dependency (vendored snapshot included) that can only be taken under a
+# copyleft licence fails CI rather than being recorded as debt. An `OR`
+# expression passes when one allowed alternative is present.
+
+[graph]
+all-features = false
+
+[licenses]
+confidence-threshold = 0.9
+allow = [
+    "0BSD",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "NCSA",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Unlicense",
+    "Zlib",
+]
+# MPL-2.0 is not on the allow-list. These crates are forced by the gpui tree
+# and are allowed one by one; a new MPL crate fails CI. Status: pending
+# operator confirmation (required before the WI-2727 tag). Never add a GPL/LGPL/AGPL entry here.
+exceptions = [
+    { name = "cbindgen", allow = ["MPL-2.0"] },    # forced by gpui (build dependency)
+    { name = "dwrote", allow = ["MPL-2.0"] },      # forced by gpui (Windows DirectWrite text, via font-kit/gpui)
+    { name = "option-ext", allow = ["MPL-2.0"] },  # forced by dirs-sys, via dirs (gpui/util)
+]
+
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "allow"
+wildcards = "allow"
+# Layering: only the fluent-* crates may depend on gpui. Allowed wrappers:
+#   fluent-core, fluent-primitives, fluent-ribbon, fluent-layout, fluent-app,
+#   fluent-test-utils           -- the library
+#   gallery, demo_app, hello_world, widgets, form, screenshots
+#                               -- BASELINE: examples that predate the rule and
+#                                  still call gpui directly. Shrink this list as
+#                                  they move to fluent-* re-exports; never grow it.
+# The vendored zed closure (vendor/zed) and crates/gpui are gpui itself and
+# are not wrappers. scripts/check-layering.py enforces the same list for
+# `gpui_*` crates and for `gpui::` paths in source.
+deny = [
+    { crate = "gpui", wrappers = [
+        "fluent-core", "fluent-primitives", "fluent-ribbon", "fluent-layout",
+        "fluent-app", "fluent-test-utils",
+        "gallery", "demo_app", "hello_world", "widgets", "form", "screenshots",
+    ] },
+]
