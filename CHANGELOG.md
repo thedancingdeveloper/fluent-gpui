@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Primitives: `TerminalView` monospace cell-grid element over a caller-owned `TerminalGrid` (char, fg/bg, bold/italic/underline/inverse cells; cursor shape/blink; drag selection + Ctrl+Shift+C copy; bounded scrollback viewport; dirty rows; resize-to-fit with a `Resize` event); input via `InputCapture`, rows shaped once and cached by line version; `Terminal` accessibility role with visible text as value. No VT parsing. Gallery demo in the split-pane first panel (WI-2806).
 - Primitives: `InputCapture` element: grabbed raw key press/release (incl. Tab/Alt, synthesised lone modifiers), element-local pointer/wheel, click or Enter to grab, Escape / Ctrl+Alt / blur to release; best-effort W3C key codes, `scan_code` reserved (always None; needs a vendored-gpui patch). Gallery demo in the split-pane detail. Windows and Linux; Windows unverified (WI-2804).
 - Primitives: `Expander`, a collapsible section with a chevron header, Enter/Space keyboard toggle, a visible focus ring and an accessible button role with expanded state; caller-owned `expanded` state, instant toggle; widgets example entry (WI-2805).
 - Vendor: `video-frames-directx` patch: the DirectX renderer draws video frames from a standalone RGBA8 texture per id, with a `video_frame` HLSL pass. Unverified on Windows (WI-1434).
