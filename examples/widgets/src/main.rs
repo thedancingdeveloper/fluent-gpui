@@ -7,7 +7,7 @@ use fluent_layout::{
 };
 use fluent_primitives::{
     Avatar, Badge, Button, ButtonAppearance, ButtonSize, Checkbox, CheckboxState, Chip, Combobox,
-    DateTimePicker, DateTimeValue, Divider, Dropdown, Field, FieldValidationState, Icon,
+    DateTimePicker, DateTimeValue, Divider, Dropdown, Expander, Field, FieldValidationState, Icon,
     IconButton, IconSize, Label, LabelSize, ProgressBar, RadioGroup, RadioGroupOrientation,
     Searchbox, Spinner, Switch, TextInput, Textarea, ToggleButton, TokenInput,
     TokenInputSuggestion, TokenInputToken, Tooltip,
@@ -18,6 +18,7 @@ struct WidgetGallery {
     check: CheckboxState,
     tree_checks: Vec<TreeItem>,
     switch_on: bool,
+    expander_open: bool,
     toggle_bold: bool,
     toggle_italic: bool,
     chip_dismissed: bool,
@@ -59,6 +60,7 @@ impl WidgetGallery {
                     .child(TreeItem::new("photo", "Photo.png").checkable(true)),
             ],
             switch_on: false,
+            expander_open: false,
             toggle_bold: false,
             toggle_italic: false,
             chip_dismissed: false,
@@ -154,6 +156,7 @@ impl Render for WidgetGallery {
         let check_entity = entity.clone();
         let tree_check_entity = entity.clone();
         let switch_entity = entity.clone();
+        let expander_entity = entity.clone();
         let bold_entity = entity.clone();
         let italic_entity = entity.clone();
         let chip_entity = entity.clone();
@@ -495,6 +498,25 @@ impl Render for WidgetGallery {
                             .child(div().w(px(190.0)).child(self.dropdown_empty.clone()))
                             .child(div().w(px(190.0)).child(self.dropdown_selected.clone()))
                             .child(div().w(px(190.0)).child(self.dropdown_disabled.clone())),
+                    )
+                    .child(Divider::horizontal())
+                    // ── EXPANDER ─────────────────────────────────────────
+                    .child(Label::new("EXPANDER").size(LabelSize::Subtitle))
+                    .child(
+                        Expander::new("exp-limits", "Workspace limits")
+                            .expanded(self.expander_open)
+                            .content(Label::new("Max sessions: 8 · Max disk: 20 GB"))
+                            .on_toggle(move |open, _, _, cx| {
+                                expander_entity.update(cx, |this, cx| {
+                                    this.expander_open = open;
+                                    cx.notify();
+                                });
+                            }),
+                    )
+                    .child(
+                        Expander::new("exp-disabled", "Disabled section")
+                            .disabled(true)
+                            .content(Label::new("Hidden")),
                     )
                     .child(Divider::horizontal())
                     // ── FEEDBACK ─────────────────────────────────────────
