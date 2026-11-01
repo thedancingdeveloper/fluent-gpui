@@ -12,6 +12,8 @@ type TreeToggleHandler =
     Arc<dyn Fn(SharedString, bool, &ClickEvent, &mut Window, &mut App) + 'static>;
 type TreeContextHandler =
     Arc<dyn Fn(SharedString, &MouseDownEvent, &mut Window, &mut App) + 'static>;
+type TreeCheckHandler =
+    Arc<dyn Fn(SharedString, bool, &ClickEvent, &mut Window, &mut App) + 'static>;
 
 #[derive(Clone)]
 struct FlatTreeItem {
@@ -28,7 +30,18 @@ struct TreeRenderState {
     on_activate: Option<TreeActivateHandler>,
     on_toggle: Option<TreeToggleHandler>,
     on_context_menu: Option<TreeContextHandler>,
+    on_check: Option<TreeCheckHandler>,
     filter: Option<SharedString>,
+}
+
+/// Tri-state value of a row's checkbox. A folder's value is derived from the
+/// leaf rows beneath it: all checked, none checked, or mixed.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TreeCheckState {
+    #[default]
+    Unchecked,
+    Checked,
+    Mixed,
 }
 
 #[derive(Clone, Debug)]
@@ -40,6 +53,8 @@ pub struct TreeItem {
     pub expanded: bool,
     pub disabled: bool,
     pub children: Vec<TreeItem>,
+    checkable: bool,
+    checked: bool,
 }
 
 impl TreeItem {
@@ -52,6 +67,8 @@ impl TreeItem {
             expanded: true,
             disabled: false,
             children: Vec::new(),
+            checkable: false,
+            checked: false,
         }
     }
 
@@ -79,6 +96,86 @@ impl TreeItem {
         self.children.push(child);
         self
     }
+
+    /// Shows a checkbox slot on this row. Off by default.
+    pub fn checkable(mut self, checkable: bool) -> Self {
+        self.checkable = checkable;
+        self
+    }
+
+    /// Initial checked value of a leaf row. Folders derive their value from
+    /// their leaves and ignore this flag.
+    pub fn checked(mut self, checked: bool) -> Self {
+        self.checked = checked;
+        self
+    }
+
+    /// Whether this row shows a checkbox slot.
+    pub fn is_checkable(&self) -> bool {
+        self.checkable
+    }
+
+    /// Tri-state checkbox value: a leaf reports its own flag, a folder reports
+    /// checked when every leaf beneath it is checked, unchecked when none is,
+    /// and mixed otherwise.
+    pub fn check_state(&self) -> TreeCheckState {
+        if self.children.is_empty() {
+            return if self.checked {
+                TreeCheckState::Checked
+            } else {
+                TreeCheckState::Unchecked
+            };
+        }
+        let mut any_checked = false;
+        let mut any_unchecked = false;
+        for child in &self.children {
+            match child.check_state() {
+                TreeCheckState::Checked => any_checked = true,
+                TreeCheckState::Unchecked => any_unchecked = true,
+                TreeCheckState::Mixed => {
+                    any_checked = true;
+                    any_unchecked = true;
+                }
+            }
+        }
+        match (any_checked, any_unchecked) {
+            (true, true) => TreeCheckState::Mixed,
+            (true, false) => TreeCheckState::Checked,
+            _ => TreeCheckState::Unchecked,
+        }
+    }
+
+    /// Sets this row and every row beneath it to `checked`.
+    fn set_checked_subtree(&mut self, checked: bool) {
+        self.checked = checked;
+        for child in &mut self.children {
+            child.set_checked_subtree(checked);
+        }
+    }
+}
+
+/// Sets the checked value of the row `id` and all of its descendants, wherever
+/// it sits in `items`. Returns `false` when no row has that id.
+///
+/// Use this from an `on_check` handler: it updates the model, and the caller
+/// re-renders the tree with the new items.
+pub fn set_tree_checked(items: &mut [TreeItem], id: &str, checked: bool) -> bool {
+    for item in items {
+        if item.id.as_ref() == id {
+            item.set_checked_subtree(checked);
+            return true;
+        }
+        if set_tree_checked(&mut item.children, id, checked) {
+            return true;
+        }
+    }
+    false
+}
+
+/// The value a click on a checkbox in `state` requests: a checked row becomes
+/// unchecked; an unchecked or mixed row becomes checked.
+fn next_checked(state: TreeCheckState) -> bool {
+    state != TreeCheckState::Checked
 }
 
 /// A generic Fluent-style hierarchical tree.
@@ -92,6 +189,7 @@ pub struct Tree {
     on_activate: Option<TreeActivateHandler>,
     on_toggle: Option<TreeToggleHandler>,
     on_context_menu: Option<TreeContextHandler>,
+    on_check: Option<TreeCheckHandler>,
 }
 
 impl Tree {
@@ -131,6 +229,7 @@ impl Tree {
             on_activate: None,
             on_toggle: None,
             on_context_menu: None,
+            on_check: None,
         }
     }
 
@@ -186,6 +285,17 @@ impl Tree {
         f: impl Fn(SharedString, &MouseDownEvent, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_context_menu = Some(Arc::new(f));
+        self
+    }
+
+    /// Called when a row's checkbox is clicked, with the requested checked
+    /// value (the new state, not the old one). Folders report the value that
+    /// applies to all their leaves. Apply it with [`set_tree_checked`].
+    pub fn on_check(
+        mut self,
+        f: impl Fn(SharedString, bool, &ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_check = Some(Arc::new(f));
         self
     }
 
@@ -314,6 +424,76 @@ impl Tree {
                 .child(chevron),
         );
 
+        if item.checkable {
+            let check_state = item.check_state();
+            let filled = check_state != TreeCheckState::Unchecked;
+            let box_disabled = item.disabled;
+            let box_fill = if filled {
+                if box_disabled {
+                    colors.accent_disabled
+                } else {
+                    colors.accent
+                }
+            } else {
+                colors.surface
+            };
+            let box_border = if filled {
+                colors.accent
+            } else if box_disabled {
+                colors.stroke_neutral_disabled
+            } else {
+                colors.stroke_neutral
+            };
+            let mark_color = if box_disabled {
+                colors.on_accent_disabled
+            } else {
+                colors.on_accent
+            };
+            let radius = theme.radii.sm;
+            let check_id = item.id.clone();
+            let check_handler = state.on_check.clone();
+            let next_value = next_checked(check_state);
+            let mut check_box = div()
+                .id(("tree-check", index as u64))
+                .flex_none()
+                .size(px(16.0))
+                .rounded(px(radius))
+                .border_1()
+                .border_color(box_border)
+                .bg(box_fill)
+                .flex()
+                .items_center()
+                .justify_center();
+            if !box_disabled {
+                check_box = check_box.cursor_pointer().hover({
+                    let hover_border = colors.stroke_accent;
+                    move |s| s.border_color(hover_border)
+                });
+                if let Some(handler) = check_handler {
+                    check_box = check_box.on_click(move |ev, win, app| {
+                        handler(check_id.clone(), next_value, ev, win, app);
+                        // The row itself selects on click; a checkbox press should not.
+                        app.stop_propagation();
+                    });
+                }
+            }
+            let mark = match check_state {
+                TreeCheckState::Checked => svg()
+                    .path("icons/checkmark.svg")
+                    .size(px(12.0))
+                    .text_color(mark_color)
+                    .into_any_element(),
+                TreeCheckState::Mixed => div()
+                    .w(px(8.0))
+                    .h(px(2.0))
+                    .rounded(px(radius))
+                    .bg(mark_color)
+                    .into_any_element(),
+                TreeCheckState::Unchecked => div().into_any_element(),
+            };
+            row = row.child(check_box.child(mark));
+        }
+
         let mut content = div()
             .id(("tree-content", index as u64))
             .flex()
@@ -383,12 +563,14 @@ impl RenderOnce for Tree {
         let on_activate = self.on_activate.clone();
         let on_toggle = self.on_toggle.clone();
         let on_context_menu = self.on_context_menu.clone();
+        let on_check = self.on_check.clone();
         let render_state = TreeRenderState {
             selected_id: self.selected_id.clone(),
             on_select: on_select.clone(),
             on_activate: on_activate.clone(),
             on_toggle: on_toggle.clone(),
             on_context_menu: on_context_menu.clone(),
+            on_check,
             filter: self.filter.clone(),
         };
         let root_select = self.selected_id.clone();
@@ -516,5 +698,115 @@ mod tests {
         Tree::flatten_visible_for_keys(&items, Some("needle"), &mut flat);
 
         assert_eq!(ids(&flat), vec!["parent"]);
+    }
+}
+
+#[cfg(test)]
+mod check_tests {
+    use super::*;
+
+    fn leaf(id: &'static str, checked: bool) -> TreeItem {
+        TreeItem::new(id, id).checkable(true).checked(checked)
+    }
+
+    fn folder(id: &'static str, children: Vec<TreeItem>) -> TreeItem {
+        let mut item = TreeItem::new(id, id).checkable(true);
+        for child in children {
+            item = item.child(child);
+        }
+        item
+    }
+
+    #[test]
+    fn checkable_is_off_by_default() {
+        assert!(!TreeItem::new("a", "A").is_checkable());
+        assert!(TreeItem::new("a", "A").checkable(true).is_checkable());
+    }
+
+    #[test]
+    fn leaf_reports_its_own_flag() {
+        assert_eq!(leaf("a", true).check_state(), TreeCheckState::Checked);
+        assert_eq!(leaf("a", false).check_state(), TreeCheckState::Unchecked);
+    }
+
+    #[test]
+    fn folder_is_checked_when_every_leaf_is_checked() {
+        let f = folder("f", vec![leaf("a", true), leaf("b", true)]);
+        assert_eq!(f.check_state(), TreeCheckState::Checked);
+    }
+
+    #[test]
+    fn folder_is_unchecked_when_no_leaf_is_checked() {
+        let f = folder("f", vec![leaf("a", false), leaf("b", false)]);
+        assert_eq!(f.check_state(), TreeCheckState::Unchecked);
+    }
+
+    #[test]
+    fn folder_is_mixed_when_leaves_disagree() {
+        let f = folder("f", vec![leaf("a", true), leaf("b", false)]);
+        assert_eq!(f.check_state(), TreeCheckState::Mixed);
+    }
+
+    #[test]
+    fn tri_state_rolls_up_through_nested_folders() {
+        // The outer folder mixes a fully-checked subfolder with an unchecked leaf.
+        let inner = folder("inner", vec![leaf("a", true), leaf("b", true)]);
+        let outer = folder("outer", vec![inner, leaf("c", false)]);
+        assert_eq!(outer.check_state(), TreeCheckState::Mixed);
+
+        // A folder with only a mixed child is itself mixed.
+        let mixed_child = folder("m", vec![leaf("x", true), leaf("y", false)]);
+        let wrapper = folder("w", vec![mixed_child]);
+        assert_eq!(wrapper.check_state(), TreeCheckState::Mixed);
+    }
+
+    #[test]
+    fn empty_folder_is_unchecked() {
+        let f = folder("f", vec![]);
+        assert_eq!(f.check_state(), TreeCheckState::Unchecked);
+    }
+
+    #[test]
+    fn click_requests_the_opposite_of_the_derived_state() {
+        assert!(next_checked(TreeCheckState::Unchecked));
+        assert!(next_checked(TreeCheckState::Mixed));
+        assert!(!next_checked(TreeCheckState::Checked));
+    }
+
+    #[test]
+    fn toggling_a_folder_sets_all_descendants() {
+        let mut items = vec![folder(
+            "root",
+            vec![
+                folder("dir", vec![leaf("a", false), leaf("b", false)]),
+                leaf("c", false),
+            ],
+        )];
+
+        assert!(set_tree_checked(&mut items, "dir", true));
+        assert_eq!(items[0].children[0].check_state(), TreeCheckState::Checked);
+        assert_eq!(
+            items[0].children[1].check_state(),
+            TreeCheckState::Unchecked
+        );
+        assert_eq!(items[0].check_state(), TreeCheckState::Mixed);
+
+        assert!(set_tree_checked(&mut items, "root", false));
+        assert_eq!(items[0].check_state(), TreeCheckState::Unchecked);
+    }
+
+    #[test]
+    fn toggling_a_leaf_updates_only_that_leaf() {
+        let mut items = vec![folder("dir", vec![leaf("a", false), leaf("b", false)])];
+
+        assert!(set_tree_checked(&mut items, "a", true));
+        assert_eq!(items[0].check_state(), TreeCheckState::Mixed);
+    }
+
+    #[test]
+    fn toggling_an_unknown_id_changes_nothing() {
+        let mut items = vec![leaf("a", false)];
+        assert!(!set_tree_checked(&mut items, "missing", true));
+        assert_eq!(items[0].check_state(), TreeCheckState::Unchecked);
     }
 }
