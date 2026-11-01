@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Primitives: `InputCapture` element: grabbed raw key press/release (incl. Tab/Alt, synthesised lone modifiers), element-local pointer/wheel, click or Enter to grab, Escape / Ctrl+Alt / blur to release; best-effort W3C key codes, `scan_code` reserved (always None; needs a vendored-gpui patch). Gallery demo in the split-pane detail. Windows and Linux; Windows unverified (WI-2804).
 - Primitives: `Expander`, a collapsible section with a chevron header, Enter/Space keyboard toggle, a visible focus ring and an accessible button role with expanded state; caller-owned `expanded` state, instant toggle; widgets example entry (WI-2805).
 - Vendor: `video-frames-directx` patch: the DirectX renderer draws video frames from a standalone RGBA8 texture per id, with a `video_frame` HLSL pass. Unverified on Windows (WI-1434).
 - Vendor: `video-frames` patch: `Window::alloc_video_texture` / `upload_video_frame` / `paint_video_frame` / `free_video_texture` with packed RGBA8 frames, drawn by the wgpu renderer from a standalone texture per id, plus a `video_frame` example. `upload_video_frame` rejects a zero or over-8192 dimension and the wgpu renderer skips a frame shorter than `w*h*4`. Linux only; Windows is WI-1434 (WI-1348).
