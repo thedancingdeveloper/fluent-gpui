@@ -4,8 +4,9 @@ use fluent_layout::{
     DockPanel, DockPosition, MenuBar, ModalStack, Pane, PaneConstraints, PaneGroup, TabItem,
     TabStrip, Workspace,
 };
+use fluent_primitives::{InputCapture, InputCaptureEvent};
 use fluent_ribbon::RibbonBar;
-use gpui::{div, prelude::*, Context, IntoElement, Render, Window};
+use gpui::{div, prelude::*, Context, Entity, IntoElement, Render, SharedString, Window};
 
 // ---------------------------------------------------------------------------
 // Root gallery view — wires the full shell together
@@ -40,6 +41,46 @@ impl Render for PlaceholderView {
             .bg(colors.surface)
             .text_color(colors.on_subtle)
             .child(self.label.clone())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// InputCapture demo: click (or focus + Enter) to grab, Escape or Ctrl+Alt to release
+// ---------------------------------------------------------------------------
+
+struct InputCaptureDemo {
+    capture: Entity<InputCapture>,
+    last: SharedString,
+}
+
+impl InputCaptureDemo {
+    fn new(cx: &mut Context<Self>) -> Self {
+        let capture = cx.new(InputCapture::new);
+        cx.subscribe(&capture, |this, _, event: &InputCaptureEvent, cx| {
+            this.last = format!("{event:?}").into();
+            cx.notify();
+        })
+        .detach();
+        Self {
+            capture,
+            last: "Click to grab input; Escape or Ctrl+Alt releases".into(),
+        }
+    }
+}
+
+impl Render for InputCaptureDemo {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let colors = cx.theme().colors.clone();
+        div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .p_2()
+            .bg(colors.surface)
+            .text_color(colors.on_subtle)
+            .child(self.last.clone())
+            .child(div().flex_1().child(self.capture.clone()))
     }
 }
 
@@ -111,9 +152,7 @@ fn main() {
         let split_list = cx.new(|_| PlaceholderView {
             label: "Resizable first panel".into(),
         });
-        let split_detail = cx.new(|_| PlaceholderView {
-            label: "Resizable second panel".into(),
-        });
+        let split_detail = cx.new(InputCaptureDemo::new);
         let pane_content = cx.new(|_| {
             PaneGroup::horizontal()
                 .first(split_list.into())

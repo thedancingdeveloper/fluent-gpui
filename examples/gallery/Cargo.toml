@@ -10,3 +10,4 @@ fluent-core   = { workspace = true }
 fluent-ribbon = { workspace = true }
 fluent-layout = { workspace = true }
 fluent-app    = { workspace = true }
+fluent-primitives = { workspace = true }
