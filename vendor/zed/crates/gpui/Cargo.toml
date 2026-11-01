@@ -45,6 +45,8 @@ screen-capture = [
 windows-manifest = ["dep:embed-resource"]
 profiler = ["dep:hdrhistogram"]
 stacker = ["dep:stacksafe"]
+# Estate patch WI-1432: expose `warmup_svg_font_db` to prime the usvg font DB.
+svg-font-warmup = []
 hot-reload = [
     "dep:async-tungstenite",
     "dep:dioxus-cli-config",

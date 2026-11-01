@@ -10,6 +10,14 @@ use std::{
     sync::{Arc, LazyLock, OnceLock},
 };
 
+/// The system font database, loaded once per process. Hoisted to module level
+/// so `warmup_svg_font_db` can prime it before the first `SvgRenderer` use.
+static SYSTEM_FONT_DB: LazyLock<Arc<usvg::fontdb::Database>> = LazyLock::new(|| {
+    let mut db = usvg::fontdb::Database::new();
+    db.load_system_fonts();
+    Arc::new(db)
+});
+
 #[cfg(target_os = "macos")]
 const EMOJI_FONT_FAMILIES: &[&str] = &["Apple Color Emoji", ".AppleColorEmojiUI"];
 
@@ -80,6 +88,17 @@ fn select_emoji_font(
 /// When rendering SVGs, we render them at twice the size to get a higher-quality result.
 pub const SMOOTH_SVG_SCALE_FACTOR: f32 = 2.;
 
+/// Primes the process-wide system font database used by [`SvgRenderer`].
+///
+/// Loading system fonts is slow, so the first SVG render would otherwise block
+/// the UI thread. Call this from a background thread at startup (for example
+/// from `main()`); the database is then ready before the first `SvgRenderer`
+/// use. Idempotent and cheap after the first call. Estate patch (WI-1432).
+#[cfg(feature = "svg-font-warmup")]
+pub fn warmup_svg_font_db() {
+    LazyLock::force(&SYSTEM_FONT_DB);
+}
+
 #[derive(Clone, PartialEq, Hash, Eq)]
 #[expect(missing_docs)]
 pub struct RenderSvgParams {
@@ -122,12 +141,6 @@ impl From<f32> for SvgSize {
 impl SvgRenderer {
     /// Creates a new SVG renderer with the provided asset source.
     pub fn new(asset_source: Arc<dyn AssetSource>) -> Self {
-        static SYSTEM_FONT_DB: LazyLock<Arc<usvg::fontdb::Database>> = LazyLock::new(|| {
-            let mut db = usvg::fontdb::Database::new();
-            db.load_system_fonts();
-            Arc::new(db)
-        });
-
         // Build the enriched font DB lazily on first SVG render rather than
         // eagerly at construction time. This avoids the expensive deep-clone
         // of the system font database for code paths that never render SVGs
