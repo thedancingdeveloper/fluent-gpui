@@ -748,6 +748,14 @@ pub trait Styled: Sized {
         self
     }
 
+    /// Sets the visual scale of this element and its painted descendants.
+    ///
+    /// This does not affect layout or hit testing.
+    fn scale(mut self, scale: f32) -> Self {
+        self.style().scale = Some(scale);
+        self
+    }
+
     /// Sets the grid columns of this element.
     fn grid_cols(mut self, cols: u16) -> Self {
         self.style().grid_cols = Some(GridTemplate {

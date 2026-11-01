@@ -301,6 +301,11 @@ pub struct Style {
     /// The opacity of this element
     pub opacity: Option<f32>,
 
+    /// The visual scale of this element and its painted descendants.
+    ///
+    /// This does not affect layout or hit testing.
+    pub scale: Option<f32>,
+
     /// The grid columns of this element
     /// Roughly equivalent to the Tailwind `grid-cols-<number>`
     pub grid_cols: Option<GridTemplate>,
@@ -809,6 +814,7 @@ impl Default for Style {
             text: TextStyleRefinement::default(),
             mouse_cursor: None,
             opacity: None,
+            scale: None,
             grid_rows: None,
             grid_cols: None,
             grid_location: None,
@@ -1330,7 +1336,7 @@ impl From<Position> for taffy::style::Position {
 
 #[cfg(test)]
 mod tests {
-    use crate::{blue, green, px, red, yellow};
+    use crate::{Styled, blue, green, px, red, yellow};
 
     use super::*;
 
@@ -1508,6 +1514,16 @@ mod tests {
                 )
             ]
         );
+    }
+
+    #[test]
+    fn scale_refinement_is_applied() {
+        let mut style = Style::default();
+        let refinement = StyleRefinement::default().scale(0.98);
+
+        style.refine(&refinement);
+
+        assert_eq!(style.scale, Some(0.98));
     }
 
     #[perf]
