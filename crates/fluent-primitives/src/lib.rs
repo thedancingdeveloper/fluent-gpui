@@ -33,6 +33,7 @@ mod textarea;
 mod toggle_button;
 mod token_input;
 mod tooltip;
+mod video_surface;
 
 pub use app_dot::AppDot;
 pub use avatar::Avatar;
@@ -74,3 +75,7 @@ pub use textarea::Textarea;
 pub use toggle_button::ToggleButton;
 pub use token_input::{TokenInput, TokenInputSuggestion, TokenInputToken};
 pub use tooltip::Tooltip;
+pub use video_surface::{
+    FrameRect, VideoFrameError, VideoLayout, VideoRecord, VideoRecorder, VideoScaling,
+    VideoSurface, VideoSurfaceEvent, MAX_VIDEO_FRAME_DIMENSION,
+};

@@ -6,6 +6,7 @@ use fluent_layout::{
 };
 use fluent_primitives::{
     InputCapture, InputCaptureEvent, TerminalCell, TerminalGrid, TerminalView, TerminalViewEvent,
+    VideoScaling, VideoSurface, VideoSurfaceEvent,
 };
 use fluent_ribbon::RibbonBar;
 use gpui::{div, prelude::*, rgb, Context, Entity, IntoElement, Render, SharedString, Window};
@@ -184,6 +185,104 @@ impl Render for TerminalDemo {
 }
 
 // ---------------------------------------------------------------------------
+// VideoSurface demo: an animated generated RGBA8 frame; click to toggle Fit / Native
+// ---------------------------------------------------------------------------
+
+const VIDEO_W: u32 = 320;
+const VIDEO_H: u32 = 180;
+
+struct VideoDemo {
+    surface: Entity<VideoSurface>,
+    tick: u32,
+    status: SharedString,
+}
+
+impl VideoDemo {
+    fn new(cx: &mut Context<Self>) -> Self {
+        let surface = cx.new(|cx| {
+            let mut surface = VideoSurface::new(cx);
+            surface.label("Generated video", cx);
+            surface
+        });
+        cx.subscribe(&surface, |this, _, event: &VideoSurfaceEvent, cx| {
+            let VideoSurfaceEvent::Resized {
+                device_width,
+                device_height,
+                ..
+            } = event;
+            this.status = format!("Surface {device_width}x{device_height} device px").into();
+            cx.notify();
+        })
+        .detach();
+        cx.spawn(async move |this, cx| loop {
+            cx.background_executor()
+                .timer(std::time::Duration::from_millis(33))
+                .await;
+            if this.update(cx, |this, cx| this.next_frame(cx)).is_err() {
+                break;
+            }
+        })
+        .detach();
+        Self {
+            surface,
+            tick: 0,
+            status: "".into(),
+        }
+    }
+
+    /// A moving gradient with a bouncing square, generated on the CPU.
+    fn next_frame(&mut self, cx: &mut Context<Self>) {
+        self.tick = self.tick.wrapping_add(1);
+        let t = self.tick;
+        let mut pixels = vec![0u8; (VIDEO_W * VIDEO_H * 4) as usize];
+        let sx = (t * 3) % (VIDEO_W - 40);
+        let sy = (t * 2) % (VIDEO_H - 40);
+        for (i, px) in pixels.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+            let (x, y) = (i as u32 % VIDEO_W, i as u32 / VIDEO_W);
+            let square = (sx..sx + 40).contains(&x) && (sy..sy + 40).contains(&y);
+            px.copy_from_slice(&if square {
+                [255, 255, 255, 255]
+            } else {
+                [(x + t) as u8, (y + t / 2) as u8, 128, 255]
+            });
+        }
+        self.surface.update(cx, |surface, cx| {
+            surface.submit_frame(VIDEO_W, VIDEO_H, pixels, cx).ok();
+        });
+    }
+}
+
+impl Render for VideoDemo {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let scaling = self.surface.read(cx).scaling();
+        div()
+            .size_full()
+            .p_2()
+            .flex()
+            .flex_col()
+            .gap_1()
+            .child(format!(
+                "{scaling:?} scaling. {} Click to toggle.",
+                self.status
+            ))
+            .child(
+                div()
+                    .id("video-demo")
+                    .flex_1()
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        let next = match scaling {
+                            VideoScaling::Fit => VideoScaling::Native,
+                            VideoScaling::Native => VideoScaling::Fit,
+                        };
+                        this.surface.update(cx, |s, cx| s.set_scaling(next, cx));
+                        cx.notify();
+                    }))
+                    .child(self.surface.clone()),
+            )
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -249,7 +348,14 @@ fn main() {
             ts
         });
         let split_list = cx.new(TerminalDemo::new);
-        let split_detail = cx.new(InputCaptureDemo::new);
+        let input_demo = cx.new(InputCaptureDemo::new);
+        let video_demo = cx.new(VideoDemo::new);
+        let split_detail = cx.new(|_| {
+            PaneGroup::vertical()
+                .first(input_demo.into())
+                .second(video_demo.into())
+                .ratio(0.4)
+        });
         let pane_content = cx.new(|_| {
             PaneGroup::horizontal()
                 .first(split_list.into())
