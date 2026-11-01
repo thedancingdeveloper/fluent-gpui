@@ -1,4 +1,5 @@
 use std::{
+    ops::Range,
     slice,
     sync::{Arc, OnceLock},
 };
@@ -45,6 +46,7 @@ pub(crate) struct DirectXRenderer {
     pipelines: DirectXRenderPipelines,
     direct_composition: Option<DirectComposition>,
     font_info: &'static FontInfo,
+    video_textures: collections::FxHashMap<VideoTextureId, VideoTextureGpu>,
 
     width: u32,
     height: u32,
@@ -92,6 +94,16 @@ struct DirectXRenderPipelines {
     mono_sprites: PipelineState<MonochromeSprite>,
     subpixel_sprites: PipelineState<SubpixelSprite>,
     poly_sprites: PipelineState<PolychromeSprite>,
+    video_frames: PipelineState<VideoFrame>,
+}
+
+/// A standalone RGBA8 texture holding one video frame, and the generation of
+/// pixels it holds. Recreated whenever the generation or size changes.
+struct VideoTextureGpu {
+    generation: u64,
+    width: u32,
+    height: u32,
+    view: [Option<ID3D11ShaderResourceView>; 1],
 }
 
 struct DirectXGlobalElements {
@@ -191,6 +203,7 @@ impl DirectXRenderer {
             pipelines,
             direct_composition,
             font_info: Self::get_font_info(),
+            video_textures: collections::FxHashMap::default(),
             width: 1,
             height: 1,
             skip_draws: false,
@@ -322,6 +335,8 @@ impl DirectXRenderer {
         self.resources = Some(resources);
         self.globals = globals;
         self.pipelines = pipelines;
+        // Video textures belonged to the lost device; the next frame re-uploads them.
+        self.video_textures.clear();
         self.direct_composition = direct_composition;
         self.skip_draws = true;
         Ok(())
@@ -356,6 +371,7 @@ impl DirectXRenderer {
             _ => [0.0f32; 4],
         })?;
         self.upload_scene_buffers(scene)?;
+        self.sync_video_textures(scene)?;
 
         let annotation = self
             .devices
@@ -385,6 +401,9 @@ impl DirectXRenderer {
                     self.draw_polychrome_sprites(texture_id, range.start, range.len())
                 }
                 PrimitiveBatch::Surfaces(range) => self.draw_surfaces(&scene.surfaces[range]),
+                PrimitiveBatch::VideoFrames(range) => {
+                    self.draw_video_frames(&scene.video_frames, range)
+                }
             }
             .with_context(|| {
                 format!(
@@ -574,6 +593,14 @@ impl DirectXRenderer {
                 &devices.device,
                 &devices.device_context,
                 &scene.polychrome_sprites,
+            )?;
+        }
+
+        if !scene.video_frames.is_empty() {
+            self.pipelines.video_frames.update_buffer(
+                &devices.device,
+                &devices.device_context,
+                &scene.video_frames,
             )?;
         }
 
@@ -813,6 +840,69 @@ impl DirectXRenderer {
         )
     }
 
+    /// Upload video-frame pixels the renderer has not seen yet, and drop
+    /// textures that no painted frame still references.
+    fn sync_video_textures(&mut self, scene: &Scene) -> Result<()> {
+        let devices = self.devices.as_ref().context("devices missing")?;
+        let mut live = collections::FxHashSet::default();
+        for frame in &scene.video_frames {
+            let texture_id = VideoTextureId::new(frame.texture_id);
+            live.insert(texture_id);
+            let Some(pixels) = scene.video_frame_pixels.get(&frame.texture_id) else {
+                continue;
+            };
+            if self.video_textures.get(&texture_id).is_some_and(|texture| {
+                texture.generation == pixels.generation
+                    && texture.width == pixels.width
+                    && texture.height == pixels.height
+            }) {
+                continue;
+            }
+            let expected_len = pixels.width as usize * pixels.height as usize * 4;
+            if pixels.width == 0 || pixels.height == 0 || pixels.pixels.len() < expected_len {
+                continue;
+            }
+            let texture = create_video_texture(&devices.device, pixels)?;
+            self.video_textures.insert(texture_id, texture);
+        }
+        self.video_textures.retain(|id, _| live.contains(id));
+        Ok(())
+    }
+
+    /// Draw video frames, each from its own standalone texture.
+    ///
+    /// Frames whose texture was freed, or that have not had pixels uploaded
+    /// yet, are skipped. Consecutive frames that share one live texture are
+    /// drawn in one instanced call.
+    fn draw_video_frames(&mut self, frames: &[VideoFrame], range: Range<usize>) -> Result<()> {
+        let devices = self.devices.as_ref().context("devices missing")?;
+        let batch_params_buffer = self
+            .globals
+            .batch_params_buffer
+            .as_ref()
+            .context("batch params buffer missing")?;
+        let mut start = range.start;
+        while start < range.end {
+            let texture_id = VideoTextureId::new(frames[start].texture_id);
+            let mut end = start + 1;
+            while end < range.end && frames[end].texture_id == frames[start].texture_id {
+                end += 1;
+            }
+            if let Some(texture) = self.video_textures.get(&texture_id) {
+                self.pipelines.video_frames.draw_range_with_texture(
+                    &devices.device_context,
+                    &texture.view,
+                    batch_params_buffer,
+                    slice::from_ref(&self.globals.sampler),
+                    start as u32,
+                    (end - start) as u32,
+                )?;
+            }
+            start = end;
+        }
+        Ok(())
+    }
+
     fn draw_surfaces(&mut self, surfaces: &[PaintSurface]) -> Result<()> {
         if surfaces.is_empty() {
             return Ok(());
@@ -998,6 +1088,14 @@ impl DirectXRenderPipelines {
             create_blend_state(device)?,
         )?;
 
+        let video_frames = PipelineState::new(
+            device,
+            "video_frame_pipeline",
+            ShaderModule::VideoFrame,
+            4,
+            create_blend_state(device)?,
+        )?;
+
         Ok(Self {
             shadow_pipeline,
             quad_pipeline,
@@ -1007,6 +1105,7 @@ impl DirectXRenderPipelines {
             mono_sprites,
             subpixel_sprites,
             poly_sprites,
+            video_frames,
         })
     }
 }
@@ -1491,6 +1590,46 @@ fn set_rasterizer_state(device: &ID3D11Device, device_context: &ID3D11DeviceCont
 }
 
 // https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ns-d3d11-d3d11_blend_desc
+/// Create an immutable RGBA8 texture from tightly packed RGBA8 pixels. The
+/// packed contract maps straight onto `DXGI_FORMAT_R8G8B8A8_UNORM`, so no
+/// channel conversion is needed.
+fn create_video_texture(
+    device: &ID3D11Device,
+    pixels: &VideoFramePixels,
+) -> Result<VideoTextureGpu> {
+    let desc = D3D11_TEXTURE2D_DESC {
+        Width: pixels.width,
+        Height: pixels.height,
+        MipLevels: 1,
+        ArraySize: 1,
+        Format: DXGI_FORMAT_R8G8B8A8_UNORM,
+        SampleDesc: DXGI_SAMPLE_DESC {
+            Count: 1,
+            Quality: 0,
+        },
+        Usage: D3D11_USAGE_IMMUTABLE,
+        BindFlags: D3D11_BIND_SHADER_RESOURCE.0 as u32,
+        CPUAccessFlags: 0,
+        MiscFlags: 0,
+    };
+    let initial_data = D3D11_SUBRESOURCE_DATA {
+        pSysMem: pixels.pixels.as_ptr() as _,
+        SysMemPitch: pixels.width * 4,
+        SysMemSlicePitch: 0,
+    };
+    let mut texture = None;
+    unsafe { device.CreateTexture2D(&desc, Some(&initial_data), Some(&mut texture))? };
+    let texture = texture.context("video frame texture missing")?;
+    let mut view = None;
+    unsafe { device.CreateShaderResourceView(&texture, None, Some(&mut view))? };
+    Ok(VideoTextureGpu {
+        generation: pixels.generation,
+        width: pixels.width,
+        height: pixels.height,
+        view: [view],
+    })
+}
+
 #[inline]
 fn create_blend_state(device: &ID3D11Device) -> Result<ID3D11BlendState> {
     let mut desc = D3D11_BLEND_DESC::default();
@@ -1716,6 +1855,7 @@ pub(crate) mod shader_resources {
         MonochromeSprite,
         SubpixelSprite,
         PolychromeSprite,
+        VideoFrame,
         EmojiRasterization,
     }
 
@@ -1789,6 +1929,10 @@ pub(crate) mod shader_resources {
                 ShaderModule::PolychromeSprite => match target {
                     ShaderTarget::Vertex => POLYCHROME_SPRITE_VERTEX_BYTES,
                     ShaderTarget::Fragment => POLYCHROME_SPRITE_FRAGMENT_BYTES,
+                },
+                ShaderModule::VideoFrame => match target {
+                    ShaderTarget::Vertex => VIDEO_FRAME_VERTEX_BYTES,
+                    ShaderTarget::Fragment => VIDEO_FRAME_FRAGMENT_BYTES,
                 },
                 ShaderModule::EmojiRasterization => match target {
                     ShaderTarget::Vertex => EMOJI_RASTERIZATION_VERTEX_BYTES,
@@ -1880,6 +2024,7 @@ pub(crate) mod shader_resources {
                 ShaderModule::MonochromeSprite => "monochrome_sprite",
                 ShaderModule::SubpixelSprite => "subpixel_sprite",
                 ShaderModule::PolychromeSprite => "polychrome_sprite",
+                ShaderModule::VideoFrame => "video_frame",
                 ShaderModule::EmojiRasterization => "emoji_rasterization",
             }
         }

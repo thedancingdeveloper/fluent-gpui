@@ -1266,3 +1266,58 @@ float4 polychrome_sprite_fragment(PolychromeSpriteFragmentInput input): SV_Targe
     color.a *= sprite.opacity * saturate(0.5 - distance);
     return color;
 }
+
+/*
+**
+**              Video frames
+**
+*/
+
+// Matches `gpui::VideoFrame` (72 bytes). The texture id is not read here: the
+// renderer binds each frame's standalone RGBA8 texture to `t_sprite`.
+struct VideoFrame {
+    uint order;
+    uint pad;
+    uint2 texture_id;
+    float opacity;
+    uint pad2;
+    Bounds bounds;
+    Bounds content_mask;
+    Corners corner_radii;
+};
+
+struct VideoFrameVertexOutput {
+    nointerpolation uint frame_id: TEXCOORD0;
+    float4 position: SV_Position;
+    float2 texture_position: POSITION;
+    float4 clip_distance: SV_ClipDistance;
+};
+
+struct VideoFrameFragmentInput {
+    nointerpolation uint frame_id: TEXCOORD0;
+    float4 position: SV_Position;
+    float2 texture_position: POSITION;
+};
+
+StructuredBuffer<VideoFrame> video_frames: register(t1);
+
+VideoFrameVertexOutput video_frame_vertex(uint vertex_id: SV_VertexID, uint instance_id: SV_InstanceID) {
+    float2 unit_vertex = float2(float(vertex_id & 1u), 0.5 * float(vertex_id & 2u));
+    uint frame_id = batch_start_index + instance_id;
+    VideoFrame frame = video_frames[frame_id];
+
+    VideoFrameVertexOutput output;
+    output.position = to_device_position(unit_vertex, frame.bounds);
+    output.texture_position = unit_vertex;
+    output.frame_id = frame_id;
+    output.clip_distance = distance_from_clip_rect(unit_vertex, frame.bounds, frame.content_mask);
+    return output;
+}
+
+float4 video_frame_fragment(VideoFrameFragmentInput input): SV_Target {
+    VideoFrame frame = video_frames[input.frame_id];
+    float4 color = t_sprite.Sample(s_sprite, input.texture_position);
+    float distance = quad_sdf(input.position.xy, frame.bounds, frame.corner_radii);
+    color.a *= frame.opacity * saturate(0.5 - distance);
+    return color;
+}
