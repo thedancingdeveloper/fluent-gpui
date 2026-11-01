@@ -9,7 +9,7 @@ keywords = ["gui", "fluent", "gpui", "theme", "design-tokens"]
 categories = ["gui"]
 
 [dependencies]
-gpui = { workspace = true }
+gpui = { workspace = true, features = ["svg-font-warmup"] }
 
 [package.metadata.estate-gpui]
 # Must equal the zed commit in vendor/zed/UPSTREAM.md (scripts/check-zed-rev.sh).
