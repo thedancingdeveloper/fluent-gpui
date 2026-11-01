@@ -35,6 +35,23 @@ EXCLUDED = ("gpui_macos", "gpui_apple", "gpui_ios", "gpui_web")
 # Named, not inferred: a default list can still name a feature whose members
 # were all excluded (`default = ["multithreaded"]`), and that feature must stay.
 DROPPED_FEATURES = ("runtime_shaders",)
+# Font assets the vendored crates `include_bytes!` at compile time (the
+# cfg(test) module in svg_renderer.rs, the gpui examples and the gpui_wgpu
+# benches and tests). Copied verbatim from the zed checkout at the pinned rev,
+# so `cargo test -p gpui` compiles. Named, not globbed: only these files.
+# Licences: both families are SIL OFL 1.1; see vendor/zed/UPSTREAM.md.
+ASSET_FILES = (
+    "assets/fonts/ibm-plex-sans/IBMPlexSans-Regular.ttf",
+    "assets/fonts/ibm-plex-sans/IBMPlexSans-Italic.ttf",
+    "assets/fonts/ibm-plex-sans/IBMPlexSans-SemiBold.ttf",
+    "assets/fonts/ibm-plex-sans/IBMPlexSans-SemiBoldItalic.ttf",
+    "assets/fonts/ibm-plex-sans/license.txt",
+    "assets/fonts/lilex/Lilex-Regular.ttf",
+    "assets/fonts/lilex/Lilex-Bold.ttf",
+    "assets/fonts/lilex/Lilex-Italic.ttf",
+    "assets/fonts/lilex/Lilex-BoldItalic.ttf",
+    "assets/fonts/lilex/OFL.txt",
+)
 _EXCLUDED_ALT = "|".join(EXCLUDED)
 _EXCLUDED_ITEM = rf'"(?:dep:)?(?:{_EXCLUDED_ALT})(?:\??/[^"]*)?"'
 
@@ -531,9 +548,18 @@ def write_tree(repo: Path, sha: str, date: str, names: list[str], workspace: dic
                 if mode == "100755":
                     target.chmod(0o755)
 
+    write_assets(repo, sha, out)
     write_docs(out, sha, date, names, workspace)
     remove_stale(crates_root, names)
     assert_closed(out)
+
+
+def write_assets(repo: Path, sha: str, out: Path) -> None:
+    """Copy the named font assets to vendor/zed/assets, byte for byte."""
+    for rel in ASSET_FILES:
+        dest = out / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(read_blob(repo, sha, rel))
 
 
 def write_docs(out: Path, sha: str, date: str, names: list[str], workspace: dict) -> None:
@@ -548,6 +574,16 @@ def write_docs(out: Path, sha: str, date: str, names: list[str], workspace: dict
         f"- vendored: {date}\n"
         f"- crates: {len(names)}\n\n"
         f"{listing}\n"
+    )
+    upstream += (
+        "\n## Font assets\n\n"
+        "Copied byte for byte from the zed checkout at the commit above, by\n"
+        "`write_assets` (`ASSET_FILES`), for the `include_bytes!` uses in the\n"
+        "vendored crates. Licences are SIL Open Font License 1.1 (both\n"
+        "families ship their own licence text beside the fonts):\n\n"
+        + "".join(f"- `{rel}`\n" for rel in ASSET_FILES)
+        + "\n- IBM Plex Sans: Copyright 2017 IBM Corp. with Reserved Font Name \"Plex\"\n"
+        "- Lilex: Copyright 2019 The Lilex Project Authors\n"
     )
     (out / "UPSTREAM.md").write_text(upstream)
 
@@ -680,6 +716,7 @@ def main() -> None:
     print(f"{sha[:12]} ({date}): {len(names)} crates")
     for name in names:
         print(f"  {name:24} {workspace['path_of'][name]}")
+    print(f"  {len(ASSET_FILES)} font assets -> assets/")
 
     if args.dry_run:
         print(f"dry run: would write {args.out}/" + ", ".join(crate_dest(n) for n in names))
