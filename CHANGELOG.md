@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Vendor: `video-frames` patch: `Window::alloc_video_texture` / `upload_video_frame` / `paint_video_frame` / `free_video_texture` with packed RGBA8 frames, drawn by the wgpu renderer from a standalone texture per id, plus a `video_frame` example. Linux only; Windows is WI-1434 (WI-1348).
 - Vendor: the font assets the vendored zed crates `include_bytes!` (IBM Plex Sans, Lilex; SIL OFL 1.1) are copied to `vendor/zed/assets` by `scripts/vendor-zed.py`, so `cargo test -p gpui` compiles (WI-2786).
 - Tree: optional per-row checkbox slot (`TreeItem::checkable`, `checked`) with tri-state folders derived from leaves, `Tree::on_check`, and `set_tree_checked` for propagating a folder toggle to its descendants. Off by default; Windows and Linux (WI-2782).
 - Vendor: `gpui_ios` and the `runtime_shaders` feature are trimmed from `vendor/zed` (Windows and Linux only; WI-2728).

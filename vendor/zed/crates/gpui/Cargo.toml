@@ -222,6 +222,10 @@ name = "opacity"
 path = "examples/opacity.rs"
 
 [[example]]
+name = "video_frame"
+path = "examples/video_frame.rs"
+
+[[example]]
 name = "scale"
 path = "examples/scale.rs"
 
