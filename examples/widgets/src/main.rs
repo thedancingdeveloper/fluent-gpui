@@ -1,9 +1,9 @@
 use fluent_app::FluentApp;
 use fluent_core::ThemeProvider as _;
 use fluent_layout::{
-    ContextMenuItem, DataCellAlign, DataColumn, DataRow, DataSortDirection, DataTable,
-    DocumentViewer, MenuButton, MessageBar, MessageIntent, SelectableList, SelectableListItem,
-    Toolbar, ToolbarItem, Tree, TreeItem,
+    set_tree_checked, ContextMenuItem, DataCellAlign, DataColumn, DataRow, DataSortDirection,
+    DataTable, DocumentViewer, MenuButton, MessageBar, MessageIntent, SelectableList,
+    SelectableListItem, Toolbar, ToolbarItem, Tree, TreeItem,
 };
 use fluent_primitives::{
     Avatar, Badge, Button, ButtonAppearance, ButtonSize, Checkbox, CheckboxState, Chip, Combobox,
@@ -16,6 +16,7 @@ use gpui::{div, prelude::*, px, App, Context, Entity, IntoElement, Render, Share
 
 struct WidgetGallery {
     check: CheckboxState,
+    tree_checks: Vec<TreeItem>,
     switch_on: bool,
     toggle_bold: bool,
     toggle_italic: bool,
@@ -44,6 +45,19 @@ impl WidgetGallery {
     fn new(cx: &mut App) -> Self {
         Self {
             check: CheckboxState::Unchecked,
+            tree_checks: vec![
+                TreeItem::new("docs", "Documents")
+                    .checkable(true)
+                    .child(
+                        TreeItem::new("report", "Report.pdf")
+                            .checkable(true)
+                            .checked(true),
+                    )
+                    .child(TreeItem::new("notes", "Notes.md").checkable(true)),
+                TreeItem::new("media", "Media")
+                    .checkable(true)
+                    .child(TreeItem::new("photo", "Photo.png").checkable(true)),
+            ],
             switch_on: false,
             toggle_bold: false,
             toggle_italic: false,
@@ -138,6 +152,7 @@ impl Render for WidgetGallery {
         let entity = cx.entity();
 
         let check_entity = entity.clone();
+        let tree_check_entity = entity.clone();
         let switch_entity = entity.clone();
         let bold_entity = entity.clone();
         let italic_entity = entity.clone();
@@ -560,6 +575,20 @@ impl Render for WidgetGallery {
                                                     .expanded(false)
                                                     .child(TreeItem::new("archive", "Archive")),
                                             ),
+                                    )
+                                    .child(
+                                        Tree::new()
+                                            .items(self.tree_checks.clone())
+                                            .on_check(move |id, checked, _, _, cx| {
+                                                tree_check_entity.update(cx, |this, cx| {
+                                                    set_tree_checked(
+                                                        &mut this.tree_checks,
+                                                        id.as_ref(),
+                                                        checked,
+                                                    );
+                                                    cx.notify();
+                                                });
+                                            }),
                                     )
                                     .child(
                                         SelectableList::new("widget-selectable-list")

@@ -45,5 +45,5 @@ pub use settings_nav::{SettingsNav, SettingsNavItem, SettingsNavSection};
 pub use tab_strip::{TabItem, TabStrip};
 pub use toast::{Toast, ToastHost, ToastPlacement, ToastStack};
 pub use toolbar::{Toolbar, ToolbarItem};
-pub use tree::{Tree, TreeItem};
+pub use tree::{set_tree_checked, Tree, TreeCheckState, TreeItem};
 pub use workspace::Workspace;
