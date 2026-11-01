@@ -260,3 +260,18 @@ fn load_poly_sprite(instance_id: u32) -> PolychromeSprite {
         read_corners(&cursor),
     );
 }
+
+fn load_video_frame(instance_id: u32) -> VideoFrame {
+    var cursor = instance_cursor(instance_id * 18u);
+    return VideoFrame(
+        read_word(&cursor),
+        read_word(&cursor),
+        read_word(&cursor),
+        read_word(&cursor),
+        read_f32(&cursor),
+        read_word(&cursor),
+        read_bounds(&cursor),
+        read_bounds(&cursor),
+        read_corners(&cursor),
+    );
+}

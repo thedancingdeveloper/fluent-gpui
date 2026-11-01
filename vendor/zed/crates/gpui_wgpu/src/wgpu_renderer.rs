@@ -4,7 +4,7 @@ use bytemuck::{Pod, Zeroable};
 use collections::FxHashMap;
 use gpui::{
     AtlasTextureId, Background, Bounds, DevicePixels, GpuSpecs, Path, Point, PrimitiveBatch,
-    ScaledPixels, Scene, Size, get_gamma_correction_ratios,
+    ScaledPixels, Scene, Size, VideoTextureId, get_gamma_correction_ratios,
 };
 use log::warn;
 #[cfg(not(target_family = "wasm"))]
@@ -132,6 +132,7 @@ struct WgpuPipelines {
     mono_sprites: wgpu::RenderPipeline,
     subpixel_sprites: Option<wgpu::RenderPipeline>,
     poly_sprites: wgpu::RenderPipeline,
+    video_frames: wgpu::RenderPipeline,
     #[allow(dead_code)]
     surfaces: wgpu::RenderPipeline,
 }
@@ -154,6 +155,7 @@ struct InstanceBindings {
     monochrome_sprites: InstanceBinding,
     subpixel_sprites: InstanceBinding,
     polychrome_sprites: InstanceBinding,
+    video_frames: InstanceBinding,
 }
 
 struct WgpuBindGroupLayouts {
@@ -186,6 +188,7 @@ struct WgpuResources {
     bind_group_layouts: WgpuBindGroupLayouts,
     atlas_sampler: wgpu::Sampler,
     atlas_texture_bind_groups: FxHashMap<AtlasTextureId, CachedTextureBindGroup>,
+    video_textures: FxHashMap<VideoTextureId, VideoTextureGpu>,
     globals_buffer: wgpu::Buffer,
     globals_bind_group: wgpu::BindGroup,
     path_globals_bind_group: wgpu::BindGroup,
@@ -198,6 +201,14 @@ struct WgpuResources {
 
 struct CachedTextureBindGroup {
     texture_generation: u64,
+    bind_group: wgpu::BindGroup,
+}
+
+/// A standalone video-frame texture and the generation of pixels it holds.
+struct VideoTextureGpu {
+    generation: u64,
+    width: u32,
+    height: u32,
     bind_group: wgpu::BindGroup,
 }
 
@@ -941,6 +952,19 @@ impl WgpuRendererCore {
             &shader_module,
         );
 
+        let video_frames = create_pipeline(
+            "video_frames",
+            "vs_video_frame",
+            "fs_video_frame",
+            &layouts.globals,
+            &layouts.instances,
+            Some(&layouts.texture),
+            wgpu::PrimitiveTopology::TriangleStrip,
+            &[Some(color_target.clone())],
+            1,
+            &shader_module,
+        );
+
         let surfaces = create_pipeline(
             "surfaces",
             "vs_surface",
@@ -963,6 +987,7 @@ impl WgpuRendererCore {
             mono_sprites,
             subpixel_sprites,
             poly_sprites,
+            video_frames,
             surfaces,
         }
     }
@@ -1369,6 +1394,7 @@ impl WgpuRendererCore {
                 bind_group_layouts,
                 atlas_sampler,
                 atlas_texture_bind_groups: FxHashMap::default(),
+                video_textures: FxHashMap::default(),
                 globals_buffer,
                 globals_bind_group,
                 path_globals_bind_group,
@@ -1633,6 +1659,14 @@ impl WgpuRendererCore {
                             &mut pass,
                         )?;
                     }
+                    PrimitiveBatch::VideoFrames(range) => {
+                        self.draw_video_frames(
+                            &instance_bindings.video_frames,
+                            scene,
+                            range,
+                            &mut pass,
+                        )?;
+                    }
                     // Surfaces are macOS-only for video playback and are not
                     // implemented by the WGPU renderer.
                     PrimitiveBatch::Surfaces(_surfaces) => {}
@@ -1682,6 +1716,11 @@ impl WgpuRendererCore {
                 "polychrome_sprites_bind_group",
                 instance_offset,
                 &scene.polychrome_sprites,
+            )?,
+            video_frames: self.write_instance_binding(
+                "video_frames_bind_group",
+                instance_offset,
+                &scene.video_frames,
             )?,
         })
     }
@@ -1802,6 +1841,153 @@ impl WgpuRendererCore {
                 ..sprite_instances.first_instance + range.end,
         );
         Ok(())
+    }
+
+    /// Draw video frames, each from its own standalone texture.
+    ///
+    /// Frames whose texture was freed, or that have not had pixels uploaded
+    /// yet, are skipped. The instance data is still written for the whole
+    /// batch, so a draw covers only the contiguous run of frames that share
+    /// one live texture.
+    fn draw_video_frames(
+        &mut self,
+        instances: &InstanceBinding,
+        scene: &Scene,
+        range: Range<usize>,
+        pass: &mut wgpu::RenderPass<'_>,
+    ) -> Result<()> {
+        self.sync_video_textures(scene);
+        let frames = &scene.video_frames[range.clone()];
+        let mut run_start = None;
+        let mut run_texture = None;
+        for (offset, frame) in frames.iter().enumerate() {
+            let texture_id = VideoTextureId::new(frame.texture_id);
+            let live = self.resources().video_textures.contains_key(&texture_id);
+            match (run_start, live) {
+                (None, true) => {
+                    run_start = Some(offset);
+                    run_texture = Some(texture_id);
+                }
+                (Some(start), true) if run_texture == Some(texture_id) => {
+                    let _ = start;
+                }
+                (Some(start), _) => {
+                    self.draw_video_frame_run(
+                        instances,
+                        run_texture.unwrap(),
+                        range.start + start..range.start + offset,
+                        pass,
+                    );
+                    run_start = live.then_some(offset);
+                    run_texture = live.then_some(texture_id);
+                }
+                (None, false) => {}
+            }
+        }
+        if let Some(start) = run_start {
+            self.draw_video_frame_run(
+                instances,
+                run_texture.unwrap(),
+                range.start + start..range.end,
+                pass,
+            );
+        }
+        Ok(())
+    }
+
+    /// Upload video-frame pixels that the renderer has not seen yet, and drop
+    /// textures that no painted frame still references.
+    fn sync_video_textures(&mut self, scene: &Scene) {
+        let mut live = FxHashMap::default();
+        for frame in &scene.video_frames {
+            live.insert(frame.texture_id, ());
+            let Some(pixels) = scene.video_frame_pixels.get(&frame.texture_id) else {
+                continue;
+            };
+            let texture_id = VideoTextureId::new(frame.texture_id);
+            let current = self.resources().video_textures.get(&texture_id);
+            if current.is_some_and(|texture| {
+                texture.generation == pixels.generation
+                    && texture.width == pixels.width
+                    && texture.height == pixels.height
+            }) {
+                continue;
+            }
+            if pixels.width == 0 || pixels.height == 0 || pixels.pixels.is_empty() {
+                continue;
+            }
+            let texture = self.create_video_texture(pixels);
+            self.resources_mut()
+                .video_textures
+                .insert(texture_id, texture);
+        }
+        self.resources_mut()
+            .video_textures
+            .retain(|id, _| live.contains_key(&id.as_u64()));
+    }
+
+    fn create_video_texture(&self, pixels: &gpui::VideoFramePixels) -> VideoTextureGpu {
+        let resources = self.resources();
+        let texture = resources.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("video_frame"),
+            size: wgpu::Extent3d {
+                width: pixels.width,
+                height: pixels.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        resources.queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &pixels.pixels,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(pixels.width * 4),
+                rows_per_image: Some(pixels.height),
+            },
+            wgpu::Extent3d {
+                width: pixels.width,
+                height: pixels.height,
+                depth_or_array_layers: 1,
+            },
+        );
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        VideoTextureGpu {
+            generation: pixels.generation,
+            width: pixels.width,
+            height: pixels.height,
+            bind_group: self.create_texture_bind_group("video_frame_texture_bind_group", &view),
+        }
+    }
+
+    fn draw_video_frame_run(
+        &self,
+        instances: &InstanceBinding,
+        texture_id: VideoTextureId,
+        range: Range<usize>,
+        pass: &mut wgpu::RenderPass<'_>,
+    ) {
+        let resources = self.resources();
+        let Some(texture) = resources.video_textures.get(&texture_id) else {
+            return;
+        };
+        pass.set_pipeline(&resources.pipelines.video_frames);
+        pass.set_bind_group(0, &resources.globals_bind_group, &[]);
+        pass.set_bind_group(1, &instances.bind_group, &[]);
+        pass.set_bind_group(2, &texture.bind_group, &[]);
+        let start = instances.first_instance + range.start as u32;
+        let end = instances.first_instance + range.end as u32;
+        pass.draw(0..4, start..end);
     }
 
     unsafe fn instance_bytes<T>(instances: &[T]) -> &[u8] {
@@ -2837,6 +3023,7 @@ mod tests {
         assert_eq!(std::mem::size_of::<MonochromeSprite>(), 28 * 4);
         assert_eq!(std::mem::size_of::<SubpixelSprite>(), 28 * 4);
         assert_eq!(std::mem::size_of::<PolychromeSprite>(), 24 * 4);
+        assert_eq!(std::mem::size_of::<gpui::VideoFrame>(), 18 * 4);
     }
 
     #[test]

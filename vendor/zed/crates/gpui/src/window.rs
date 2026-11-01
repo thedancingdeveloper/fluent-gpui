@@ -22,9 +22,9 @@ use crate::{
     StrikethroughStyle, Style, SubpixelSprite, Subscription, SystemWindowTab,
     SystemWindowTabController, TabStopMap, Task, TextInputConfiguration, TextInputStateChange,
     TextRenderingMode, TextStyle, TextStyleRefinement, ThermalState, TransformationMatrix,
-    Underline, UnderlineStyle, WindowAppearance, WindowBackgroundAppearance, WindowBounds,
-    WindowControls, WindowDecorations, WindowInsets, WindowOptions, WindowParams, WindowTextSystem,
-    WindowVisibility, point, prelude::*, px, rems, size, transparent_black,
+    Underline, UnderlineStyle, VideoTextureId, WindowAppearance, WindowBackgroundAppearance,
+    WindowBounds, WindowControls, WindowDecorations, WindowInsets, WindowOptions, WindowParams,
+    WindowTextSystem, WindowVisibility, point, prelude::*, px, rems, size, transparent_black,
 };
 
 use crate::gestures::{GestureTuning, RecognizedTouchGesture, TouchGestureRecognizer};
@@ -1224,6 +1224,13 @@ pub struct Window {
     is_resizable: bool,
     is_minimizable: bool,
     sprite_atlas: Arc<dyn PlatformAtlas>,
+    /// Standalone GPU textures for video frames, keyed by [`VideoTextureId`].
+    ///
+    /// Each entry is the latest RGBA8 frame the renderer should upload. Entries
+    /// are removed only by [`Self::free_video_texture`], so a texture that is
+    /// not painted this frame keeps its pixels for the next one.
+    video_textures: Rc<RefCell<FxHashMap<VideoTextureId, VideoTexture>>>,
+    next_video_texture_id: Rc<Cell<u64>>,
     text_system: Rc<WindowTextSystem>,
     text_rendering_mode: Rc<Cell<TextRenderingMode>>,
     rem_size: Pixels,
@@ -1447,6 +1454,14 @@ impl<'a> PendingInputStatus<'a> {
     pub fn timeout(&self) -> Option<PendingInputTimeoutStatus> {
         self.timeout
     }
+}
+
+/// One video frame held until the renderer uploads it.
+struct VideoTexture {
+    width: u32,
+    height: u32,
+    pixels: std::sync::Arc<[u8]>,
+    generation: u64,
 }
 
 /// The timeout state for pending input.
@@ -2215,6 +2230,8 @@ impl Window {
             is_resizable,
             is_minimizable,
             sprite_atlas,
+            video_textures: Rc::new(RefCell::new(FxHashMap::default())),
+            next_video_texture_id: Rc::new(Cell::new(1)),
             text_system,
             text_rendering_mode: cx.text_rendering_mode.clone(),
             rem_size: px(16.),
@@ -5349,6 +5366,120 @@ impl Window {
         });
     }
 
+    /// Allocate a standalone GPU texture for a video frame.
+    ///
+    /// The texture is not part of the sprite atlas: video frames are full-frame
+    /// images replaced every frame, and packing them into the atlas would evict
+    /// glyphs and images on every frame. Call [`Self::upload_video_frame`] to
+    /// replace its pixels and [`Self::paint_video_frame`] to draw it. Free it
+    /// with [`Self::free_video_texture`] when the frame is no longer shown.
+    pub fn alloc_video_texture(&mut self, width: u32, height: u32) -> VideoTextureId {
+        // Ids are never reused, so an id kept after `free_video_texture` stays
+        // stale and is rejected instead of reaching a later texture.
+        let next = self.next_video_texture_id.get();
+        self.next_video_texture_id.set(next + 1);
+        let id = VideoTextureId(next);
+        self.video_textures.borrow_mut().insert(
+            id,
+            VideoTexture {
+                width,
+                height,
+                pixels: std::sync::Arc::from([]),
+                generation: 0,
+            },
+        );
+        id
+    }
+
+    /// Replace the pixels of a video texture.
+    ///
+    /// `pixels` is tightly packed RGBA8 (bytes `R, G, B, A` per pixel, rows top
+    /// to bottom, no row padding, straight alpha), so its length must be
+    /// `width * height * 4` of the size passed to [`Self::alloc_video_texture`].
+    /// The renderer uploads it as an `Rgba8Unorm` texture, so no conversion is
+    /// needed on the caller's side. The upload is applied on the next frame;
+    /// this does not paint anything by itself.
+    ///
+    /// Returns an error, and keeps the previous frame, when `id` was freed or
+    /// never allocated by this window, or when the length does not match.
+    pub fn upload_video_frame(&mut self, id: VideoTextureId, pixels: Vec<u8>) -> Result<()> {
+        let mut textures = self.video_textures.borrow_mut();
+        let Some(texture) = textures.get_mut(&id) else {
+            anyhow::bail!("video texture {} is not allocated", id.0);
+        };
+        let expected = texture.width as usize * texture.height as usize * 4;
+        if pixels.len() != expected {
+            anyhow::bail!(
+                "video frame upload of {} bytes does not match texture {}x{} ({} bytes)",
+                pixels.len(),
+                texture.width,
+                texture.height,
+                expected,
+            );
+        }
+        texture.pixels = pixels.into();
+        texture.generation += 1;
+        Ok(())
+    }
+
+    /// Paint a video texture into the current frame.
+    ///
+    /// The whole texture is sampled into `bounds`, clipped by the current
+    /// content mask and rounded by `corner_radii`. A texture that was freed,
+    /// or that has not had a frame uploaded yet, paints nothing.
+    pub fn paint_video_frame(
+        &mut self,
+        bounds: Bounds<Pixels>,
+        corner_radii: Corners<Pixels>,
+        id: VideoTextureId,
+    ) {
+        use crate::VideoFrame;
+
+        self.invalidator.debug_assert_paint();
+
+        if !self
+            .video_textures
+            .borrow()
+            .get(&id)
+            .is_some_and(|texture| !texture.pixels.is_empty())
+        {
+            return;
+        }
+
+        self.next_frame.scene.insert_primitive(VideoFrame {
+            order: 0,
+            pad: 0,
+            bounds: self.snap_bounds(bounds),
+            content_mask: self.snapped_content_mask(),
+            corner_radii: corner_radii.scale(self.scale_factor()),
+            texture_id: id.0,
+            opacity: self.element_opacity(),
+            pad2: 0,
+        });
+        if let Some(texture) = self.video_textures.borrow().get(&id) {
+            use crate::VideoFramePixels;
+
+            self.next_frame.scene.video_frame_pixels.insert(
+                id.0,
+                VideoFramePixels {
+                    width: texture.width,
+                    height: texture.height,
+                    pixels: texture.pixels.clone(),
+                    generation: texture.generation,
+                },
+            );
+        }
+        self.request_animation_frame();
+    }
+
+    /// Drop a video texture allocated with [`Self::alloc_video_texture`].
+    ///
+    /// The renderer releases the GPU texture on its next frame. Painting the id
+    /// afterwards does nothing.
+    pub fn free_video_texture(&mut self, id: VideoTextureId) {
+        self.video_textures.borrow_mut().remove(&id);
+    }
+
     /// Removes an image from the sprite atlas.
     pub fn drop_image(&mut self, data: Arc<RenderImage>) -> Result<()> {
         for frame_index in 0..data.frame_count() {
@@ -8195,6 +8326,26 @@ mod tests {
         }
         cx.run_until_parked();
         assert!(!cx.app.borrow().windows.contains_key(window.window_id()));
+    }
+
+    #[gpui::test]
+    fn test_video_frame_upload_checks_id_and_size(cx: &mut TestAppContext) {
+        let window = cx.add_window(|_, _| EmptyView);
+        window
+            .update(cx, |_, window, _| {
+                let id = window.alloc_video_texture(2, 2);
+                assert!(window.upload_video_frame(id, vec![0; 16]).is_ok());
+                assert!(window.upload_video_frame(id, vec![0; 12]).is_err());
+
+                window.free_video_texture(id);
+                assert!(window.upload_video_frame(id, vec![0; 16]).is_err());
+
+                // A freed id is never handed out again.
+                let next = window.alloc_video_texture(2, 2);
+                assert_ne!(next, id);
+                assert!(window.upload_video_frame(id, vec![0; 16]).is_err());
+            })
+            .unwrap();
     }
 
     #[cfg(feature = "profiler")]
