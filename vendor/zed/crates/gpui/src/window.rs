@@ -1456,6 +1456,11 @@ impl<'a> PendingInputStatus<'a> {
     }
 }
 
+/// Largest width or height, in pixels, accepted for a video texture. A
+/// conservative cross-backend limit: it is below the texture dimension limit
+/// of the wgpu and DirectX backends, so an accepted frame always fits.
+const MAX_VIDEO_TEXTURE_DIMENSION: u32 = 8192;
+
 /// One video frame held until the renderer uploads it.
 struct VideoTexture {
     width: u32,
@@ -5407,6 +5412,18 @@ impl Window {
         let Some(texture) = textures.get_mut(&id) else {
             anyhow::bail!("video texture {} is not allocated", id.0);
         };
+        if texture.width == 0
+            || texture.height == 0
+            || texture.width > MAX_VIDEO_TEXTURE_DIMENSION
+            || texture.height > MAX_VIDEO_TEXTURE_DIMENSION
+        {
+            anyhow::bail!(
+                "video texture {}x{} is outside 1..={} in either dimension",
+                texture.width,
+                texture.height,
+                MAX_VIDEO_TEXTURE_DIMENSION,
+            );
+        }
         let expected = texture.width as usize * texture.height as usize * 4;
         if pixels.len() != expected {
             anyhow::bail!(
@@ -8344,6 +8361,53 @@ mod tests {
                 let next = window.alloc_video_texture(2, 2);
                 assert_ne!(next, id);
                 assert!(window.upload_video_frame(id, vec![0; 16]).is_err());
+            })
+            .unwrap();
+    }
+
+    #[gpui::test]
+    fn test_video_frame_upload_rejects_out_of_range_dimensions(cx: &mut TestAppContext) {
+        use super::MAX_VIDEO_TEXTURE_DIMENSION;
+
+        let window = cx.add_window(|_, _| EmptyView);
+        window
+            .update(cx, |_, window, _| {
+                // Zero in either dimension is rejected, even with a matching length.
+                let zero_width = window.alloc_video_texture(0, 2);
+                assert!(window.upload_video_frame(zero_width, Vec::new()).is_err());
+                let zero_height = window.alloc_video_texture(2, 0);
+                assert!(window.upload_video_frame(zero_height, Vec::new()).is_err());
+
+                // Over the cap is rejected before the length check runs.
+                let too_wide = window.alloc_video_texture(MAX_VIDEO_TEXTURE_DIMENSION + 1, 1);
+                assert!(
+                    window
+                        .upload_video_frame(
+                            too_wide,
+                            vec![0; (MAX_VIDEO_TEXTURE_DIMENSION as usize + 1) * 4]
+                        )
+                        .is_err()
+                );
+                let too_tall = window.alloc_video_texture(1, MAX_VIDEO_TEXTURE_DIMENSION + 1);
+                assert!(
+                    window
+                        .upload_video_frame(
+                            too_tall,
+                            vec![0; (MAX_VIDEO_TEXTURE_DIMENSION as usize + 1) * 4]
+                        )
+                        .is_err()
+                );
+
+                // The cap itself is accepted.
+                let at_cap = window.alloc_video_texture(MAX_VIDEO_TEXTURE_DIMENSION, 1);
+                assert!(
+                    window
+                        .upload_video_frame(
+                            at_cap,
+                            vec![0; MAX_VIDEO_TEXTURE_DIMENSION as usize * 4]
+                        )
+                        .is_ok()
+                );
             })
             .unwrap();
     }

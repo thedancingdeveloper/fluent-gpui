@@ -1913,7 +1913,8 @@ impl WgpuRendererCore {
             }) {
                 continue;
             }
-            if pixels.width == 0 || pixels.height == 0 || pixels.pixels.is_empty() {
+            let expected_len = pixels.width as usize * pixels.height as usize * 4;
+            if pixels.width == 0 || pixels.height == 0 || pixels.pixels.len() < expected_len {
                 continue;
             }
             let texture = self.create_video_texture(pixels);
