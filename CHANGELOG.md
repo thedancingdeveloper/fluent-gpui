@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Vendor: the font assets the vendored zed crates `include_bytes!` (IBM Plex Sans, Lilex; SIL OFL 1.1) are copied to `vendor/zed/assets` by `scripts/vendor-zed.py`, so `cargo test -p gpui` compiles (WI-2786).
 - Tree: optional per-row checkbox slot (`TreeItem::checkable`, `checked`) with tri-state folders derived from leaves, `Tree::on_check`, and `set_tree_checked` for propagating a folder toggle to its descendants. Off by default; Windows and Linux (WI-2782).
 - Vendor: `gpui_ios` and the `runtime_shaders` feature are trimmed from `vendor/zed` (Windows and Linux only; WI-2728).
 - Vendor: `gpui` gets an opt-in `svg-font-warmup` feature (enabled by `fluent-core`) with `warmup_svg_font_db()`, which primes the usvg system font database on a background thread so the first SVG render does not block the UI (WI-1432).
