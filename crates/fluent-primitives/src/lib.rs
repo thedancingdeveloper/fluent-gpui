@@ -25,6 +25,8 @@ mod skeleton;
 mod spinner;
 mod suggestion_popover;
 mod switch;
+mod terminal_grid;
+mod terminal_view;
 mod text_ext;
 mod text_input;
 mod textarea;
@@ -61,6 +63,11 @@ pub use suggestion_popover::{
     SuggestionItem, SuggestionKeyAction, SuggestionListState, SuggestionPopover,
 };
 pub use switch::Switch;
+pub use terminal_grid::{
+    CursorShape, GridPoint, TerminalCell, TerminalCursor, TerminalGrid, TerminalSelection,
+    DEFAULT_SCROLLBACK,
+};
+pub use terminal_view::{CellMetrics, TerminalView, TerminalViewEvent, DEFAULT_TERMINAL_FONT};
 pub use text_ext::FluentTextExt;
 pub use text_input::TextInput;
 pub use textarea::Textarea;

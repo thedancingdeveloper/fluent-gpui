@@ -4,9 +4,11 @@ use fluent_layout::{
     DockPanel, DockPosition, MenuBar, ModalStack, Pane, PaneConstraints, PaneGroup, TabItem,
     TabStrip, Workspace,
 };
-use fluent_primitives::{InputCapture, InputCaptureEvent};
+use fluent_primitives::{
+    InputCapture, InputCaptureEvent, TerminalCell, TerminalGrid, TerminalView, TerminalViewEvent,
+};
 use fluent_ribbon::RibbonBar;
-use gpui::{div, prelude::*, Context, Entity, IntoElement, Render, SharedString, Window};
+use gpui::{div, prelude::*, rgb, Context, Entity, IntoElement, Render, SharedString, Window};
 
 // ---------------------------------------------------------------------------
 // Root gallery view — wires the full shell together
@@ -85,6 +87,103 @@ impl Render for InputCaptureDemo {
 }
 
 // ---------------------------------------------------------------------------
+// TerminalView demo: a local echo "shell" over a caller-owned TerminalGrid (no VT parsing)
+// ---------------------------------------------------------------------------
+
+struct TerminalDemo {
+    grid: Entity<TerminalGrid>,
+    view: Entity<TerminalView>,
+}
+
+const PROMPT: &str = "gallery$ ";
+
+impl TerminalDemo {
+    fn new(cx: &mut Context<Self>) -> Self {
+        let grid = cx.new(|_| {
+            let mut grid = TerminalGrid::new(80, 24);
+            let bold = TerminalCell {
+                bold: true,
+                ..TerminalCell::default()
+            };
+            grid.write_str(0, 0, "TerminalView demo", bold);
+            let green = TerminalCell {
+                fg: Some(rgb(0x6ccb5f).into()),
+                ..TerminalCell::default()
+            };
+            grid.write_str(
+                1,
+                0,
+                "Click to type. Drag to select, Ctrl+Shift+C copies.",
+                green,
+            );
+            let inverse = TerminalCell {
+                inverse: true,
+                underline: true,
+                ..TerminalCell::default()
+            };
+            grid.write_str(2, 0, "Escape releases input.", inverse);
+            let end = grid.write_str(3, 0, PROMPT, TerminalCell::default());
+            grid.move_cursor(3, end);
+            grid
+        });
+        let view = cx.new(|cx| TerminalView::new(grid.clone(), cx).label("Gallery terminal"));
+        cx.subscribe(&view, |this, _, event: &TerminalViewEvent, cx| {
+            if let TerminalViewEvent::Key {
+                key,
+                pressed: true,
+                modifiers,
+                ..
+            } = event
+            {
+                this.on_key(key, modifiers.shift, cx);
+            }
+        })
+        .detach();
+        Self { grid, view }
+    }
+
+    /// A tiny local line editor: printable keys echo, Enter starts a new prompt.
+    fn on_key(&mut self, key: &str, shift: bool, cx: &mut Context<Self>) {
+        self.grid.update(cx, |grid, cx| {
+            let cursor = grid.cursor();
+            match key {
+                "enter" => {
+                    let mut row = cursor.row + 1;
+                    if row >= grid.rows() {
+                        grid.scroll_up(1);
+                        row = grid.rows() - 1;
+                    }
+                    let end = grid.write_str(row, 0, PROMPT, TerminalCell::default());
+                    grid.move_cursor(row, end);
+                }
+                "backspace" if cursor.col > PROMPT.len() => {
+                    grid.set_cell(cursor.row, cursor.col - 1, TerminalCell::default());
+                    grid.move_cursor(cursor.row, cursor.col - 1);
+                }
+                "space" => {
+                    grid.move_cursor(cursor.row, cursor.col + 1);
+                }
+                _ => {
+                    let mut chars = key.chars();
+                    if let (Some(ch), None) = (chars.next(), chars.next()) {
+                        let ch = if shift { ch.to_ascii_uppercase() } else { ch };
+                        grid.set_cell(cursor.row, cursor.col, TerminalCell::new(ch));
+                        grid.move_cursor(cursor.row, cursor.col + 1);
+                    }
+                }
+            }
+            cx.notify();
+        });
+    }
+}
+
+impl Render for TerminalDemo {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        div().size_full().p_2().child(self.view.clone())
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -149,9 +248,7 @@ fn main() {
             ts.add_tab(TabItem::new("settings").label("Settings").closable(true));
             ts
         });
-        let split_list = cx.new(|_| PlaceholderView {
-            label: "Resizable first panel".into(),
-        });
+        let split_list = cx.new(TerminalDemo::new);
         let split_detail = cx.new(InputCaptureDemo::new);
         let pane_content = cx.new(|_| {
             PaneGroup::horizontal()
