@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Docs: `outstanding.md` and `docs/VISUAL_TARGETS.md` now describe the vendored `vendor/zed` tree (`gpui_wgpu` on Linux, `gpui_windows` on Windows); video-frame and backdrop-blur are marked not yet re-applied (WI-1348, WI-1349, WI-1434), and the macOS/Metal rows are removed (WI-1437).
 - Tree: optional per-row checkbox slot (`TreeItem::checkable`, `checked`) with tri-state folders derived from leaves, `Tree::on_check`, and `set_tree_checked` for propagating a folder toggle to its descendants. Off by default; Windows and Linux (WI-2782).
 - Vendor: `gpui_ios` and the `runtime_shaders` feature are trimmed from `vendor/zed` (Windows and Linux only; WI-2728).
 - CI: layering guard, `cargo deny` (no GPL exception), zed-rev check, Windows test job and a `ci` summary check (WI-2725).

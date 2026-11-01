@@ -148,9 +148,9 @@ Target:
 Current implementation:
 
 - `surface_blur_layer` exists as a theme token.
-- `gpui::backdrop_blur(radius, tint)` exists in the vendored GPUI fork.
-- Blade/WGSL implements the current backdrop blur path.
-- Cross-backend support is not complete; do not rely on it as a universal visual primitive yet.
+- `gpui::backdrop_blur(radius, tint)` is not yet re-applied to the vendored `gpui` (WI-1349).
+- Linux renders through `gpui_wgpu` and Windows through `gpui_windows` (DirectX); neither has a backdrop blur path yet.
+- Do not rely on blur as a visual primitive until WI-1349 lands.
 
 ### Remote display / video surfaces
 
@@ -161,10 +161,8 @@ Target:
 
 Current implementation:
 
-- Vendored GPUI exposes `Window::alloc_video_texture`, `Window::paint_video_frame`, and `Window::free_video_texture`.
-- Blade and Windows/DirectX paths exist.
-- macOS/Metal video-frame support is still outstanding.
-- `crates/gpui/examples/video_frame.rs` is the validation example.
+- `Window::alloc_video_texture`, `Window::paint_video_frame`, and `Window::free_video_texture` are not yet re-applied to the vendored `gpui` (WI-1348 for Linux `gpui_wgpu`, WI-1434 for Windows DirectX).
+- The validation example is to be recreated with WI-1348.
 
 ---
 
@@ -187,9 +185,8 @@ Current implementation:
 | Connection/status pill | `ConnectionBadge` | Implemented |
 | Loading skeletons | `Skeleton`, `SkeletonRow`, `Skeleton::wrap` | Implemented |
 | Tabular numbers | `FluentTextExt::tabular_nums()` | Implemented |
-| Backdrop blur | GPUI fork `backdrop_blur` | Blade implemented; cross-backend incomplete |
-| Video-frame surfaces | GPUI fork `VideoTextureId` APIs | Blade/DirectX implemented; runtime validation pending |
-| macOS video-frame renderer | Metal backend | Not implemented |
+| Backdrop blur | `gpui::backdrop_blur` | Not yet re-applied (WI-1349) |
+| Video-frame surfaces | `VideoTextureId` APIs | Not yet re-applied (WI-1348, WI-1434) |
 | Web visual parity | Web backend | Future |
 
 ---
