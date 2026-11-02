@@ -63,3 +63,21 @@ a follow-up work item rather than silently substituted.
 The audit intentionally distinguishes a semantic approximation from a complete
 alias family. Existing names are useful compatibility points, but callers
 should not infer missing state-specific aliases from them.
+
+## Icons and icon-only controls
+
+- Icons are SVG assets named `icons/<name>.svg`, resolved by
+  `fluent_app::FluentAssets` (builtin set, then the app fallback, then a
+  generic square). A generic square means the icon is missing: add it to the
+  builtin set or the app's asset source; do not ship ad hoc SVG files.
+- Sizes: `IconSize::{Sm 16, Md 20, Lg 24, Xl 32}` px. `IconButton` draws 16 px
+  (Normal, 32 px hit area) or 12 px (Compact, 24 px hit area).
+- Colour: icons default to `on_neutral`; inside controls use the control's
+  foreground token (`on_subtle`, `on_accent`, and their `_disabled` forms) so
+  contrast follows the theme. Meaning must not rest on icon colour alone.
+- Every icon-only control needs an accessible name: call `IconButton::label`.
+  The icon-stem fallback (`search`) is a last resort, not a name to ship.
+- Pair an icon-only control with a tooltip carrying the same text (plus the
+  shortcut, if any); the tooltip is for sighted pointer users and does not
+  replace the accessible name.
+- Directional icons (`chevron_*`, `arrow_*`, `back`, `forward`) mirror in RTL.
