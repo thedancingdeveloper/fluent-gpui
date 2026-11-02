@@ -30,6 +30,7 @@ pub struct Combobox {
     query: String,
     placeholder: SharedString,
     disabled: bool,
+    field_validation: crate::FieldValidationState,
     freeform: bool,
     open: bool,
     closing: bool,
@@ -52,6 +53,7 @@ impl Default for Combobox {
             query: String::new(),
             placeholder: "Select or type".into(),
             disabled: false,
+            field_validation: crate::FieldValidationState::None,
             freeform: false,
             open: false,
             closing: false,
@@ -363,10 +365,12 @@ impl Render for Combobox {
                 colors.neutral
             })
             .border_1()
-            .border_color(if focused {
-                colors.accent
-            } else {
-                colors.stroke_neutral
+            .border_color(match self.field_validation {
+                crate::FieldValidationState::Error => colors.status_error,
+                crate::FieldValidationState::Warning => colors.status_warning,
+                crate::FieldValidationState::Success => colors.status_success,
+                crate::FieldValidationState::None if focused => colors.accent,
+                crate::FieldValidationState::None => colors.stroke_neutral,
             })
             .cursor(if self.disabled {
                 CursorStyle::Arrow
@@ -524,6 +528,10 @@ impl crate::FieldControl for Combobox {
     ) {
         self.a11y_name = name;
         self.a11y_description = description;
+    }
+
+    fn set_field_validation(&mut self, state: crate::FieldValidationState) {
+        self.field_validation = state;
     }
 }
 

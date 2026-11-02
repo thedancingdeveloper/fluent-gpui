@@ -65,6 +65,7 @@ pub struct TokenInput {
     query: String,
     placeholder: SharedString,
     disabled: bool,
+    field_validation: crate::FieldValidationState,
     error: bool,
     allow_freeform: bool,
     open: bool,
@@ -88,6 +89,7 @@ impl Default for TokenInput {
             query: String::new(),
             placeholder: "Add item".into(),
             disabled: false,
+            field_validation: crate::FieldValidationState::None,
             error: false,
             allow_freeform: true,
             open: false,
@@ -537,12 +539,13 @@ impl Render for TokenInput {
                 colors.neutral
             })
             .border_1()
-            .border_color(if invalid {
-                colors.status_error
-            } else if focused {
-                colors.accent
-            } else {
-                colors.stroke_neutral
+            .border_color(match self.field_validation {
+                crate::FieldValidationState::Error => colors.status_error,
+                crate::FieldValidationState::Warning => colors.status_warning,
+                crate::FieldValidationState::Success => colors.status_success,
+                crate::FieldValidationState::None if invalid => colors.status_error,
+                crate::FieldValidationState::None if focused => colors.accent,
+                crate::FieldValidationState::None => colors.stroke_neutral,
             })
             .cursor(if self.disabled {
                 CursorStyle::Arrow
@@ -645,6 +648,10 @@ impl crate::FieldControl for TokenInput {
     ) {
         self.a11y_name = name;
         self.a11y_description = description;
+    }
+
+    fn set_field_validation(&mut self, state: crate::FieldValidationState) {
+        self.field_validation = state;
     }
 }
 
