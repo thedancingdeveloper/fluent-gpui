@@ -325,6 +325,7 @@ impl Render for Combobox {
         .inset_0();
 
         let mut root = div()
+            .debug_selector(|| "combobox-trigger".into())
             .key_context("Combobox")
             .track_focus(&focus_handle)
             .on_key_down(
@@ -417,6 +418,7 @@ impl Render for Combobox {
                 };
                 let mut row = div()
                     .id(("combobox-option", idx as u64))
+                    .debug_selector(move || format!("combobox-option-{idx}"))
                     .flex()
                     .items_center()
                     .h(px(components.dropdown_option_height))
@@ -502,11 +504,71 @@ impl Focusable for Combobox {
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
+    use std::{cell::Cell, rc::Rc};
 
-    use fluent_test_utils::init_fluent_test;
+    use fluent_test_utils::{init_fluent_test, open_fluent_test_window, FluentInteractionExt as _};
     use gpui::TestAppContext;
 
     use super::*;
+
+    fn open(
+        cx: &mut TestAppContext,
+        changes: Rc<Cell<usize>>,
+    ) -> (gpui::Entity<Combobox>, &mut gpui::VisualTestContext) {
+        open_fluent_test_window(cx, move |_, _| {
+            Combobox::new()
+                .option("apple", "Apple")
+                .option("banana", "Banana")
+                .option("pear", "Pear")
+                .on_select(move |_, _| changes.set(changes.get() + 1))
+        })
+    }
+
+    #[gpui::test]
+    fn click_and_keyboard_selection_fire_once(cx: &mut TestAppContext) {
+        let changes = Rc::new(Cell::new(0));
+        let (combobox, cx) = open(cx, changes.clone());
+        cx.click_selector("combobox-trigger");
+        cx.click_selector("combobox-option-1");
+        assert_eq!(
+            combobox.read_with(cx, |combo, _| combo.selected_value().cloned()),
+            Some("banana".into())
+        );
+        assert_eq!(changes.get(), 1);
+
+        cx.executor().advance_clock(Duration::from_millis(160));
+        cx.update(|window, app| window.draw(app).clear(app));
+        combobox.update(cx, |combo, cx| {
+            combo.query.clear();
+            combo.value = None;
+            cx.notify();
+        });
+        cx.click_selector("combobox-trigger");
+        cx.type_keys("down enter");
+        assert_eq!(
+            combobox.read_with(cx, |combo, _| combo.selected_value().cloned()),
+            Some("banana".into())
+        );
+        assert_eq!(changes.get(), 2);
+    }
+
+    #[gpui::test]
+    fn escape_closes_and_filter_text_narrows_options(cx: &mut TestAppContext) {
+        let (combobox, cx) = open(cx, Rc::new(Cell::new(0)));
+        cx.click_selector("combobox-trigger");
+        cx.type_text("pea");
+        combobox.read_with(cx, |combo, _| {
+            let labels: Vec<_> = combo
+                .filtered_options()
+                .into_iter()
+                .map(|option| option.label)
+                .collect();
+            assert_eq!(labels, [SharedString::from("Pear")]);
+            assert!(combo.open);
+        });
+        cx.type_keys("escape");
+        assert!(combobox.read_with(cx, |combo, _| combo.closing));
+    }
 
     #[gpui::test]
     fn close_popup_keeps_combobox_mounted_until_exit_duration(cx: &mut TestAppContext) {
