@@ -12,10 +12,10 @@ per crate.
 
 ## Unreleased
 
+- fluent-primitives: add configurable `CounterBadge` counts, overflow labels, zero visibility, dot mode and filled/ghost appearance (WI-2935).
 - Add Field validation states, status messages, required markers, hints, and input borders.
 - fluent-app: add async native file/folder/save picker helpers and a read-only `FilePickerField` with Browse action (WI-2940).
 - fluent-primitives: add inline and standalone `Link` with default/subtle and disabled styles, hover underline, keyboard activation, accessible link semantics, and URL-opening support (WI-2930).
-
 - fluent-core: add complete Fluent 2 neutral foreground, background and stroke state aliases for light, dark, Midnight, Ember and high-contrast themes (WI-2981).
 - fluent-core: add public Fluent 2 `StrokeWidthTokens` for 1px thin, 2px thick and 3px thickest logical-pixel strokes (WI-2983).
 - fluent-core: add Fluent 2 motion curves and duration tokens while preserving popup motion defaults (WI-2984).
