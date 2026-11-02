@@ -219,11 +219,19 @@ mod tests {
                     keystroke: keystroke.clone(),
                     is_held: false,
                     prefer_character_input: false,
+                    scan_code: None,
                 }
                 .to_platform_input(),
                 cx,
             );
-            window.dispatch_event(KeyUpEvent { keystroke }.to_platform_input(), cx);
+            window.dispatch_event(
+                KeyUpEvent {
+                    keystroke,
+                    scan_code: None,
+                }
+                .to_platform_input(),
+                cx,
+            );
         });
         vcx.run_until_parked();
         vcx.update(|window, cx| window.draw(cx).clear(cx));

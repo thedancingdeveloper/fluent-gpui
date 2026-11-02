@@ -2661,6 +2661,7 @@ impl Window {
         input_preference: InputPreference,
         action: Option<&dyn Action>,
         context_stack: Vec<KeyContext>,
+        scan_code: Option<u32>,
         cx: &mut App,
     ) {
         cx.keystroke_observers.clone().retain(move |callback| {
@@ -2670,6 +2671,7 @@ impl Window {
                     input_preference,
                     action: action.map(|action| action.boxed_clone()),
                     context_stack: context_stack.clone(),
+                    scan_code,
                 },
                 self,
                 cx,
@@ -2682,6 +2684,7 @@ impl Window {
         keystroke: &Keystroke,
         input_preference: InputPreference,
         context_stack: Vec<KeyContext>,
+        scan_code: Option<u32>,
         cx: &mut App,
     ) {
         cx.keystroke_interceptors.clone().retain(move |callback| {
@@ -2691,6 +2694,7 @@ impl Window {
                     input_preference,
                     action: None,
                     context_stack: context_stack.clone(),
+                    scan_code,
                 },
                 self,
                 cx,
@@ -5919,6 +5923,7 @@ impl Window {
                 keystroke: keystroke.clone(),
                 is_held: false,
                 prefer_character_input: false,
+                scan_code: None,
             }),
             cx,
         );
@@ -6446,6 +6451,7 @@ impl Window {
             &keystroke,
             input_preference,
             self.context_stack(),
+            key_down_scan_code(event),
             cx,
         );
         if !cx.propagate_event {
@@ -6527,6 +6533,7 @@ impl Window {
                         input_preference,
                         Some(binding.action.as_ref()),
                         match_result.context_stack,
+                        key_down_scan_code(event),
                         cx,
                     );
                     self.pending_input_changed(cx);
@@ -6604,7 +6611,14 @@ impl Window {
         }
 
         if let Some(keystroke) = recognized_keystroke {
-            self.dispatch_keystroke_observers(keystroke, input_preference, None, context_stack, cx);
+            self.dispatch_keystroke_observers(
+                keystroke,
+                input_preference,
+                None,
+                context_stack,
+                key_down_scan_code(event),
+                cx,
+            );
         }
     }
 
@@ -6800,6 +6814,7 @@ impl Window {
                 keystroke: replay.keystroke.clone(),
                 is_held: false,
                 prefer_character_input: true,
+                scan_code: None,
             };
 
             cx.propagate_event = true;
@@ -6811,6 +6826,7 @@ impl Window {
                         InputPreference::KeyBindings,
                         Some(binding.action.as_ref()),
                         Vec::default(),
+                        None,
                         cx,
                     );
                     continue 'replay;
@@ -9522,6 +9538,7 @@ mod tests {
                     keystroke: Keystroke::parse("down").expect("valid keystroke"),
                     is_held: false,
                     prefer_character_input: false,
+                    scan_code: None,
                 }),
                 cx,
             );
@@ -10738,4 +10755,12 @@ mod inspector_tests {
         })
         .expect("closed inspector has no bookkeeping and no style overrides");
     }
+}
+
+/// The scancode of a platform key-down event, for [`KeystrokeEvent::scan_code`] (estate patch
+/// `key-scan-code`).
+fn key_down_scan_code(event: &dyn Any) -> Option<u32> {
+    event
+        .downcast_ref::<KeyDownEvent>()
+        .and_then(|event| event.scan_code)
 }

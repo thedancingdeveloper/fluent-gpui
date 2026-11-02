@@ -33,23 +33,28 @@
 //! Every release path except the pointer one works from the keyboard, and blur and window
 //! deactivation work with neither, so a user can always get out.
 //!
-//! # Key codes and the scancode limitation
+//! # Key codes and scancodes
 //!
-//! gpui's `Keystroke` carries the logical key and the produced text, not the physical key. The
-//! [`InputCaptureEvent::Key`] `code` field is therefore a **best-effort** code in the W3C
-//! `KeyboardEvent.code` vocabulary (`"KeyA"`, `"Digit1"`, `"Tab"`, `"AltLeft"`, ...), derived
-//! from the logical key as if the layout were US QWERTY. It is right for US layouts and for
-//! layout-independent keys (function, navigation, editing keys), and wrong for letters and
-//! punctuation on other layouts. Left and right modifiers cannot be told apart; the left code
-//! is reported.
+//! [`InputCaptureEvent::Key`] `scan_code` is the platform's physical scancode, carried by the
+//! vendored gpui patch `key-scan-code`:
 //!
-//! `scan_code` is reserved for the platform scancode (Windows `WM_KEYDOWN` scan code, Linux
-//! evdev code). It is always `None` today: the vendored gpui platform layers read the scancode
-//! and discard it, and carrying it through needs a vendored-gpui patch (WI-2804).
+//! - **Windows:** the PS/2 set-1 make code from the key message, with `0xE000` added for
+//!   extended keys (`0xE048` is ArrowUp, `0xE01D` is ControlRight). This is the form RDP's
+//!   scancode input events use.
+//! - **Linux (X11 and Wayland):** the evdev key code (`KEY_A` is 30), the XKB keycode minus 8.
+//!
+//! The `code` field is in the W3C `KeyboardEvent.code` vocabulary (`"KeyA"`, `"Digit1"`,
+//! `"Tab"`, `"AltLeft"`, ...). When the event carries a scancode, `code` comes from it (see
+//! [`code_for_scan_code`]) and names the physical key whatever the layout. Otherwise (simulated
+//! input, IME-committed text, an unmapped scancode) it is a best-effort code from the logical
+//! key as if the layout were US QWERTY ([`key_code_for`]).
+//!
+//! Lone modifier presses and releases are reported from gpui's modifier state, which has no
+//! scancode: their `scan_code` is `None` and the left-hand code is reported.
 //!
 //! Windows and Linux only.
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use fluent_core::ThemeProvider as _;
 use gpui::{
@@ -66,10 +71,11 @@ pub enum InputCaptureEvent {
     Key {
         /// gpui's logical key name (`"a"`, `"tab"`, `"alt"`, `"f5"`, ...).
         key: String,
-        /// Best-effort W3C `KeyboardEvent.code` (`"KeyA"`, `"Tab"`, `"AltLeft"`); `None` for a
-        /// key with no mapping. Derived from the logical key, see the module docs.
+        /// W3C `KeyboardEvent.code` (`"KeyA"`, `"Tab"`, `"AltLeft"`); `None` for a key with no
+        /// mapping. From the scancode when there is one, see the module docs.
         code: Option<String>,
-        /// Physical scancode. Always `None` until the vendored gpui platform layers carry it.
+        /// Physical scancode: set-1 (plus `0xE000` if extended) on Windows, evdev on Linux.
+        /// `None` for simulated input and lone modifier changes.
         scan_code: Option<u32>,
         /// `true` for a press, `false` for a release.
         pressed: bool,
@@ -187,6 +193,173 @@ pub fn key_code_for(key: &str) -> Option<String> {
     Some(code.to_string())
 }
 
+/// W3C `KeyboardEvent.code` for this platform's [`InputCaptureEvent::Key`] `scan_code`:
+/// [`code_for_set1_scan_code`] on Windows, [`code_for_evdev_code`] elsewhere.
+pub fn code_for_scan_code(scan_code: u32) -> Option<&'static str> {
+    if cfg!(target_os = "windows") {
+        code_for_set1_scan_code(scan_code)
+    } else {
+        code_for_evdev_code(scan_code)
+    }
+}
+
+/// Codes 1..=0x58, where PS/2 set-1 make codes and evdev key codes agree.
+fn code_for_shared_code(code: u32) -> Option<&'static str> {
+    const CODES: [&str; 0x58] = [
+        "Escape",
+        "Digit1",
+        "Digit2",
+        "Digit3",
+        "Digit4",
+        "Digit5",
+        "Digit6",
+        "Digit7",
+        "Digit8",
+        "Digit9",
+        "Digit0",
+        "Minus",
+        "Equal",
+        "Backspace",
+        "Tab",
+        "KeyQ",
+        "KeyW",
+        "KeyE",
+        "KeyR",
+        "KeyT",
+        "KeyY",
+        "KeyU",
+        "KeyI",
+        "KeyO",
+        "KeyP",
+        "BracketLeft",
+        "BracketRight",
+        "Enter",
+        "ControlLeft",
+        "KeyA",
+        "KeyS",
+        "KeyD",
+        "KeyF",
+        "KeyG",
+        "KeyH",
+        "KeyJ",
+        "KeyK",
+        "KeyL",
+        "Semicolon",
+        "Quote",
+        "Backquote",
+        "ShiftLeft",
+        "Backslash",
+        "KeyZ",
+        "KeyX",
+        "KeyC",
+        "KeyV",
+        "KeyB",
+        "KeyN",
+        "KeyM",
+        "Comma",
+        "Period",
+        "Slash",
+        "ShiftRight",
+        "NumpadMultiply",
+        "AltLeft",
+        "Space",
+        "CapsLock",
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "F6",
+        "F7",
+        "F8",
+        "F9",
+        "F10",
+        "NumLock",
+        "ScrollLock",
+        "Numpad7",
+        "Numpad8",
+        "Numpad9",
+        "NumpadSubtract",
+        "Numpad4",
+        "Numpad5",
+        "Numpad6",
+        "NumpadAdd",
+        "Numpad1",
+        "Numpad2",
+        "Numpad3",
+        "Numpad0",
+        "NumpadDecimal",
+        "",
+        "",
+        "IntlBackslash",
+        "F11",
+        "F12",
+    ];
+    let index = usize::try_from(code).ok()?.checked_sub(1)?;
+    CODES.get(index).copied().filter(|code| !code.is_empty())
+}
+
+/// W3C `KeyboardEvent.code` for a Windows scancode: a PS/2 set-1 make code, plus `0xE000` for
+/// an extended key.
+pub fn code_for_set1_scan_code(scan_code: u32) -> Option<&'static str> {
+    if scan_code & 0xFF00 == 0xE000 {
+        return Some(match scan_code & 0xFF {
+            0x1C => "NumpadEnter",
+            0x1D => "ControlRight",
+            0x35 => "NumpadDivide",
+            0x37 => "PrintScreen",
+            0x38 => "AltRight",
+            // Windows reports Num Lock as extended 0x45 and Pause as plain 0x45.
+            0x45 => "NumLock",
+            0x47 => "Home",
+            0x48 => "ArrowUp",
+            0x49 => "PageUp",
+            0x4B => "ArrowLeft",
+            0x4D => "ArrowRight",
+            0x4F => "End",
+            0x50 => "ArrowDown",
+            0x51 => "PageDown",
+            0x52 => "Insert",
+            0x53 => "Delete",
+            0x5B => "MetaLeft",
+            0x5C => "MetaRight",
+            0x5D => "ContextMenu",
+            _ => return None,
+        });
+    }
+    match scan_code {
+        0x45 => Some("Pause"),
+        0x01..=0x58 => code_for_shared_code(scan_code),
+        _ => None,
+    }
+}
+
+/// W3C `KeyboardEvent.code` for a Linux evdev key code (`linux/input-event-codes.h`).
+pub fn code_for_evdev_code(code: u32) -> Option<&'static str> {
+    Some(match code {
+        96 => "NumpadEnter",
+        97 => "ControlRight",
+        98 => "NumpadDivide",
+        99 => "PrintScreen",
+        100 => "AltRight",
+        102 => "Home",
+        103 => "ArrowUp",
+        104 => "PageUp",
+        105 => "ArrowLeft",
+        106 => "ArrowRight",
+        107 => "End",
+        108 => "ArrowDown",
+        109 => "PageDown",
+        110 => "Insert",
+        111 => "Delete",
+        119 => "Pause",
+        125 => "MetaLeft",
+        126 => "MetaRight",
+        127 => "ContextMenu",
+        _ => return code_for_shared_code(code),
+    })
+}
+
 /// A focusable surface that captures raw key, pointer and wheel input while grabbed.
 ///
 /// Create it with `cx.new(InputCapture::new)` and subscribe to its
@@ -197,8 +370,9 @@ pub struct InputCapture {
     release_on_escape: bool,
     /// Modifier state last reported, for synthesising lone modifier presses and releases.
     modifiers: Modifiers,
-    /// Non-modifier keys reported as pressed and not yet released.
-    pressed_keys: HashSet<String>,
+    /// Non-modifier keys reported as pressed and not yet released, with the scancode of the
+    /// press so a release-all on ungrab reports it too.
+    pressed_keys: HashMap<String, Option<u32>>,
     /// Swallow the mouse-up of the click that started the grab.
     swallow_mouse_up: bool,
     content: Option<AnyView>,
@@ -231,7 +405,7 @@ impl InputCapture {
             grabbed: false,
             release_on_escape: true,
             modifiers: Modifiers::default(),
-            pressed_keys: HashSet::new(),
+            pressed_keys: HashMap::new(),
             swallow_mouse_up: false,
             content: None,
             window_watched: false,
@@ -297,15 +471,22 @@ impl InputCapture {
         if !self.grabbed {
             return;
         }
-        let mut keys: Vec<String> = self.pressed_keys.drain().collect();
+        let mut keys: Vec<(String, Option<u32>)> = self.pressed_keys.drain().collect();
         keys.sort();
-        for key in keys {
-            self.emit_key(key, false, false, self.modifiers, cx);
+        for (key, scan_code) in keys {
+            self.emit_key(key, scan_code, false, false, self.modifiers, cx);
         }
         let held = self.modifiers;
         for (name, _) in MODIFIER_KEYS {
             if modifier_held(&held, name) {
-                self.emit_key(name.to_string(), false, false, Modifiers::default(), cx);
+                self.emit_key(
+                    name.to_string(),
+                    None,
+                    false,
+                    false,
+                    Modifiers::default(),
+                    cx,
+                );
             }
         }
         self.modifiers = Modifiers::default();
@@ -319,15 +500,19 @@ impl InputCapture {
     fn emit_key(
         &self,
         key: String,
+        scan_code: Option<u32>,
         pressed: bool,
         is_held: bool,
         modifiers: Modifiers,
         cx: &mut Context<Self>,
     ) {
         cx.emit(InputCaptureEvent::Key {
-            code: key_code_for(&key),
+            code: scan_code
+                .and_then(code_for_scan_code)
+                .map(str::to_string)
+                .or_else(|| key_code_for(&key)),
             key,
-            scan_code: None,
+            scan_code,
             pressed,
             is_held,
             modifiers,
@@ -351,7 +536,7 @@ impl InputCapture {
             let was = modifier_held(&before, name);
             let is = modifier_held(&now, name);
             if was != is {
-                self.emit_key(name.to_string(), is, false, now, cx);
+                self.emit_key(name.to_string(), None, is, false, now, cx);
             }
         }
         false
@@ -401,9 +586,13 @@ impl InputCapture {
                 this.release(window, cx);
                 return;
             }
-            let is_held = !this.pressed_keys.insert(keystroke.key.clone());
+            let is_held = this
+                .pressed_keys
+                .insert(keystroke.key.clone(), event.scan_code)
+                .is_some();
             this.emit_key(
                 keystroke.key.clone(),
+                event.scan_code,
                 true,
                 is_held,
                 keystroke.modifiers,
@@ -418,9 +607,10 @@ impl InputCapture {
             return;
         }
         cx.stop_propagation();
-        if self.pressed_keys.remove(&event.keystroke.key) {
+        if self.pressed_keys.remove(&event.keystroke.key).is_some() {
             self.emit_key(
                 event.keystroke.key.clone(),
+                event.scan_code,
                 false,
                 false,
                 event.keystroke.modifiers,
@@ -599,8 +789,8 @@ mod tests {
 
     use fluent_test_utils::{open_fluent_test_window, Entity, VisualTestContext};
     use gpui::{
-        actions, point, Capslock, KeyBinding, Keystroke, ModifiersChangedEvent, TestAppContext,
-        TouchPhase,
+        actions, point, Capslock, KeyBinding, KeyDownEvent, Keystroke, ModifiersChangedEvent,
+        TestAppContext, TouchPhase,
     };
 
     use super::*;
@@ -688,7 +878,10 @@ mod tests {
             key: source.into(),
             key_char: None,
         };
-        vcx.simulate_event(KeyUpEvent { keystroke });
+        vcx.simulate_event(KeyUpEvent {
+            keystroke,
+            scan_code: None,
+        });
     }
 
     #[gpui::test]
@@ -915,5 +1108,109 @@ mod tests {
         assert_eq!(key_code_for("/").as_deref(), Some("Slash"));
         assert_eq!(key_code_for("f99"), None);
         assert_eq!(key_code_for("unknownkey"), None);
+    }
+
+    fn scan_keys(log: &Log) -> Vec<(String, Option<String>, Option<u32>, bool)> {
+        log.borrow()
+            .iter()
+            .filter_map(|e| match e {
+                InputCaptureEvent::Key {
+                    key,
+                    code,
+                    scan_code,
+                    pressed,
+                    ..
+                } => Some((key.clone(), code.clone(), *scan_code, *pressed)),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn plain(key: &str) -> Keystroke {
+        Keystroke {
+            modifiers: Modifiers::default(),
+            key: key.into(),
+            key_char: None,
+        }
+    }
+
+    /// A platform key event's scancode reaches the event, and `code` follows the physical key
+    /// rather than the logical one (here "q" on the A key, as on AZERTY).
+    #[gpui::test]
+    fn scan_code_is_carried_and_names_the_physical_key(cx: &mut TestAppContext) {
+        let (capture, log, vcx) = setup(cx);
+        vcx.simulate_click(at(10.0, 10.0), Modifiers::default());
+        log.borrow_mut().clear();
+
+        // 0x1E is the A key in both PS/2 set 1 and evdev.
+        vcx.simulate_event(KeyDownEvent {
+            keystroke: plain("q"),
+            is_held: false,
+            prefer_character_input: false,
+            scan_code: Some(0x1E),
+        });
+        vcx.simulate_event(KeyUpEvent {
+            keystroke: plain("q"),
+            scan_code: Some(0x1E),
+        });
+        // A key still down at ungrab is released with its press's scancode.
+        vcx.simulate_event(KeyDownEvent {
+            keystroke: plain("q"),
+            is_held: false,
+            prefer_character_input: false,
+            scan_code: Some(0x1E),
+        });
+        vcx.simulate_keystrokes("escape");
+
+        let a = Some("KeyA".to_string());
+        assert_eq!(
+            scan_keys(&log),
+            vec![
+                ("q".into(), a.clone(), Some(0x1E), true),
+                ("q".into(), a.clone(), Some(0x1E), false),
+                ("q".into(), a.clone(), Some(0x1E), true),
+                ("q".into(), a, Some(0x1E), false),
+            ]
+        );
+        assert!(!grabbed(&capture, vcx));
+    }
+
+    #[test]
+    fn set1_scan_codes_map_to_w3c_codes() {
+        assert_eq!(code_for_set1_scan_code(0x01), Some("Escape"));
+        assert_eq!(code_for_set1_scan_code(0x10), Some("KeyQ"));
+        assert_eq!(code_for_set1_scan_code(0x1D), Some("ControlLeft"));
+        assert_eq!(code_for_set1_scan_code(0xE01D), Some("ControlRight"));
+        assert_eq!(code_for_set1_scan_code(0x38), Some("AltLeft"));
+        assert_eq!(code_for_set1_scan_code(0xE038), Some("AltRight"));
+        assert_eq!(code_for_set1_scan_code(0x48), Some("Numpad8"));
+        assert_eq!(code_for_set1_scan_code(0xE048), Some("ArrowUp"));
+        assert_eq!(code_for_set1_scan_code(0x1C), Some("Enter"));
+        assert_eq!(code_for_set1_scan_code(0xE01C), Some("NumpadEnter"));
+        assert_eq!(code_for_set1_scan_code(0x45), Some("Pause"));
+        assert_eq!(code_for_set1_scan_code(0xE045), Some("NumLock"));
+        assert_eq!(code_for_set1_scan_code(0x56), Some("IntlBackslash"));
+        assert_eq!(code_for_set1_scan_code(0x58), Some("F12"));
+        assert_eq!(code_for_set1_scan_code(0xE05B), Some("MetaLeft"));
+        assert_eq!(code_for_set1_scan_code(0x54), None);
+        assert_eq!(code_for_set1_scan_code(0), None);
+        assert_eq!(code_for_set1_scan_code(0xE0FF), None);
+    }
+
+    #[test]
+    fn evdev_codes_map_to_w3c_codes() {
+        assert_eq!(code_for_evdev_code(1), Some("Escape"));
+        assert_eq!(code_for_evdev_code(30), Some("KeyA"));
+        assert_eq!(code_for_evdev_code(29), Some("ControlLeft"));
+        assert_eq!(code_for_evdev_code(97), Some("ControlRight"));
+        assert_eq!(code_for_evdev_code(69), Some("NumLock"));
+        assert_eq!(code_for_evdev_code(119), Some("Pause"));
+        assert_eq!(code_for_evdev_code(103), Some("ArrowUp"));
+        assert_eq!(code_for_evdev_code(72), Some("Numpad8"));
+        assert_eq!(code_for_evdev_code(125), Some("MetaLeft"));
+        assert_eq!(code_for_evdev_code(88), Some("F12"));
+        assert_eq!(code_for_evdev_code(84), None);
+        assert_eq!(code_for_evdev_code(0), None);
+        assert_eq!(code_for_evdev_code(500), None);
     }
 }

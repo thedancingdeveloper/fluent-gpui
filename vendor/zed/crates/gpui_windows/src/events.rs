@@ -410,7 +410,10 @@ impl WindowsWindowInner {
 
     fn handle_syskeyup_msg(&self, wparam: WPARAM, lparam: LPARAM) -> Option<isize> {
         let input = handle_key_event(wparam, lparam, &self.state, |keystroke, _| {
-            PlatformInput::KeyUp(KeyUpEvent { keystroke })
+            PlatformInput::KeyUp(KeyUpEvent {
+                keystroke,
+                scan_code: key_scan_code(lparam),
+            })
         })?;
         let mut func = self.state.callbacks.input.take()?;
 
@@ -433,6 +436,7 @@ impl WindowsWindowInner {
                     keystroke,
                     is_held: lparam.0 & (0x1 << 30) > 0,
                     prefer_character_input,
+                    scan_code: key_scan_code(lparam),
                 })
             },
         ) else {
@@ -452,7 +456,10 @@ impl WindowsWindowInner {
 
     fn handle_keyup_msg(&self, wparam: WPARAM, lparam: LPARAM) -> Option<isize> {
         let Some(input) = handle_key_event(wparam, lparam, &self.state, |keystroke, _| {
-            PlatformInput::KeyUp(KeyUpEvent { keystroke })
+            PlatformInput::KeyUp(KeyUpEvent {
+                keystroke,
+                scan_code: key_scan_code(lparam),
+            })
         }) else {
             return Some(1);
         };
@@ -1618,6 +1625,19 @@ fn parse_immutable(vkey: VIRTUAL_KEY) -> Option<String> {
         }
         .to_string(),
     )
+}
+
+/// The physical scancode of a key message (estate patch `key-scan-code`): the set-1 make code
+/// in `lParam` bits 16-23, plus `0xE000` when bit 24 (extended key) is set. `None` when the
+/// message carries no scancode (some synthesized input).
+fn key_scan_code(lparam: LPARAM) -> Option<u32> {
+    let flags = (lparam.0 as usize >> 16) & 0x1FF;
+    let code = (flags & 0xFF) as u32;
+    if code == 0 {
+        return None;
+    }
+    let extended = flags & 0x100 != 0;
+    Some(if extended { 0xE000 | code } else { code })
 }
 
 fn parse_normal_key(
