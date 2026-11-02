@@ -110,6 +110,8 @@ impl SuggestionListState {
             "up" => SuggestionKeyAction::Move(self.move_highlight(items, -1)),
             "home" => SuggestionKeyAction::Move(self.first(items)),
             "end" => SuggestionKeyAction::Move(self.last(items)),
+            "pageup" => SuggestionKeyAction::Move(self.move_highlight(items, -5)),
+            "pagedown" => SuggestionKeyAction::Move(self.move_highlight(items, 5)),
             "escape" => SuggestionKeyAction::Close,
             "enter" | "return" | "tab" => self
                 .highlighted_item(items)

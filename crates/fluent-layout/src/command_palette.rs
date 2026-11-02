@@ -236,6 +236,18 @@ impl CommandPalette {
         cx.notify();
     }
 
+    fn move_to(&mut self, target: usize, cx: &mut Context<Self>) {
+        let target = target.min(self.filtered.len().saturating_sub(1));
+        if self.is_row_enabled(target) {
+            self.selected = target;
+        } else if let Some(row) =
+            (target..self.filtered.len()).find(|&row| self.is_row_enabled(row))
+        {
+            self.selected = row;
+        }
+        cx.notify();
+    }
+
     fn is_row_enabled(&self, row: usize) -> bool {
         self.filtered
             .get(row)
@@ -264,9 +276,17 @@ impl CommandPalette {
     fn handle_key(&mut self, ev: &KeyDownEvent, cx: &mut Context<Self>) {
         match ev.keystroke.key.as_str() {
             "escape" => self.hide(cx),
-            "return" => self.confirm(cx),
+            "return" | "enter" => self.confirm(cx),
+            "down" if ev.keystroke.modifiers.alt => {
+                self.open = true;
+                cx.notify();
+            }
             "up" => self.move_up(cx),
             "down" => self.move_down(cx),
+            "home" => self.move_to(0, cx),
+            "end" => self.move_to(self.filtered.len().saturating_sub(1), cx),
+            "pageup" => self.move_to(self.selected.saturating_sub(5), cx),
+            "pagedown" => self.move_to(self.selected.saturating_add(5), cx),
             "backspace" => {
                 self.query.pop();
                 self.refilter();

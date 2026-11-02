@@ -11,6 +11,7 @@ per crate.
 ---
 
 ## Unreleased
+- fluent-primitives, fluent-layout: complete list and picker keyboard contracts for Home/End, paging, Alt+Down, selection, dismissal, and focus-preserving navigation (WI-3008).
 - Primitives: add `Accordion`, grouping `Expander` items with single/multiple open modes, collapsible control and arrow-key header navigation (WI-2933).
 
 - fluent-primitives: add presence badges over avatars and sized persona rows with primary and secondary text (WI-2934).
