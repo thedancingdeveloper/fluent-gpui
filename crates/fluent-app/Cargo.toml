@@ -13,6 +13,10 @@ gpui            = { workspace = true }
 gpui_platform   = { workspace = true }
 fluent-core     = { workspace = true }
 fluent-layout   = { workspace = true }
+fluent-primitives = { workspace = true }
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
 
 [package.metadata.estate-gpui]
 # Must equal the zed commit in vendor/zed/UPSTREAM.md (scripts/check-zed-rev.sh).
