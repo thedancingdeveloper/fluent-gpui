@@ -74,9 +74,9 @@ a follow-up work item rather than silently substituted.
 | Shadow | shadow16 | `ShadowTokens::shadow16` |
 | Shadow | shadow28 | `ShadowTokens::shadow28` |
 | Shadow | shadow64 | `ShadowTokens::shadow64` |
-| Stroke width | thin | `missing` |
-| Stroke width | thick | `missing` |
-| Stroke width | thickest | `missing` |
+| Stroke width | thin | `StrokeWidthTokens::thin` |
+| Stroke width | thick | `StrokeWidthTokens::thick` |
+| Stroke width | thickest | `StrokeWidthTokens::thickest` |
 | Corner radius | small/medium/large/pill | `RadiiTokens::sm`, `md`, `lg`, `pill` |
 
 ## Motion aliases

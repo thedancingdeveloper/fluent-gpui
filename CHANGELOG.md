@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- fluent-core: add public Fluent 2 `StrokeWidthTokens` for 1px thin, 2px thick and 3px thickest logical-pixel strokes (WI-2983).
 - fluent-core: add Fluent 2 motion curves and duration tokens while preserving popup motion defaults (WI-2984).
 - fluent-core: add public Fluent 2 `shadow2`, `shadow4`, `shadow8`, `shadow16`, `shadow28` and `shadow64` two-layer elevation tokens (WI-2982).
 - fluent-core: audit Fluent 2 alias token coverage in `docs/tokens.md`, mapping existing neutral, brand, status, radius and popup-motion names and recording missing state, shadow, stroke-width and motion families (WI-2925).
