@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, prelude::*, px, App, ClickEvent, ElementId, Hsla, IntoElement, RenderOnce, SharedString,
-    Window,
+    div, prelude::*, px, App, ClickEvent, ElementId, Hsla, IntoElement, KeyDownEvent, RenderOnce,
+    SharedString, Window,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -133,6 +133,7 @@ impl RenderOnce for RadioGroup {
 
             let mut row = div()
                 .id(("radio-option", idx as u64))
+                .debug_selector(move || format!("radio-option-{idx}"))
                 .flex()
                 .flex_row()
                 .items_center()
@@ -142,12 +143,20 @@ impl RenderOnce for RadioGroup {
                 .text_color(fg);
 
             if !disabled {
-                row = row.cursor_pointer().hover({
+                row = row.focusable().tab_stop(true).cursor_pointer().hover({
                     let hover = colors.subtle_hover;
                     move |s| s.bg(hover)
                 });
                 if let Some(handler) = on_select {
-                    row = row.on_click(move |ev, win, app| handler(value.clone(), ev, win, app));
+                    let key_handler = handler.clone();
+                    let key_value = value.clone();
+                    row = row
+                        .on_key_down(move |ev: &KeyDownEvent, win, app| {
+                            if matches!(ev.keystroke.key.as_str(), "enter" | "space") {
+                                key_handler(key_value.clone(), &ClickEvent::default(), win, app);
+                            }
+                        })
+                        .on_click(move |ev, win, app| handler(value.clone(), ev, win, app));
                 }
             }
 
@@ -174,5 +183,70 @@ impl RenderOnce for RadioGroup {
         }
 
         root
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Context, Entity, Render, TestAppContext};
+
+    use super::*;
+
+    struct Host {
+        selected: SharedString,
+        changes: usize,
+    }
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let entity = cx.entity();
+            RadioGroup::new("radio-group")
+                .option("one", "One")
+                .option("two", "Two")
+                .selected(self.selected.clone())
+                .on_select(move |value, _, _, cx| {
+                    entity.update(cx, |host, cx| {
+                        host.selected = value;
+                        host.changes += 1;
+                        cx.notify();
+                    });
+                })
+        }
+    }
+
+    fn open(cx: &mut TestAppContext) -> (Entity<Host>, &mut gpui::VisualTestContext) {
+        open_fluent_test_window(cx, |_, _| Host {
+            selected: "one".into(),
+            changes: 0,
+        })
+    }
+
+    #[gpui::test]
+    fn click_selects_once(cx: &mut TestAppContext) {
+        let (host, cx) = open(cx);
+        cx.click_selector("radio-option-1");
+
+        host.read_with(cx, |host, _| {
+            assert_eq!(host.selected.as_ref(), "two");
+            assert_eq!(host.changes, 1);
+        });
+    }
+
+    #[gpui::test]
+    fn keyboard_selects_once(cx: &mut TestAppContext) {
+        let (host, cx) = open(cx);
+        cx.click_selector("radio-option-1");
+        host.update(cx, |host, cx| {
+            host.selected = "one".into();
+            host.changes = 0;
+            cx.notify();
+        });
+        cx.type_keys("space");
+
+        host.read_with(cx, |host, _| {
+            assert_eq!(host.selected.as_ref(), "two");
+            assert_eq!(host.changes, 1);
+        });
     }
 }

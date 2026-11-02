@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
     anchored, canvas, deferred, div, point, prelude::*, px, svg, Anchor, App, Bounds, ClickEvent,
-    Context, ElementId, IntoElement, Pixels, Point, Render, SharedString, Window,
+    Context, ElementId, IntoElement, KeyDownEvent, Pixels, Point, Render, SharedString, Window,
 };
 
 #[derive(Clone, Debug)]
@@ -31,6 +31,7 @@ pub struct Dropdown {
     options: Vec<DropdownOption>,
     open: bool,
     closing: bool,
+    highlighted: usize,
     motion_epoch: u64,
     drop_origin: Point<Pixels>,
     trigger_bounds: Arc<Mutex<Option<Bounds<Pixels>>>>,
@@ -48,6 +49,7 @@ impl Dropdown {
             options: vec![],
             open: false,
             closing: false,
+            highlighted: 0,
             motion_epoch: 0,
             drop_origin: point(px(0.0), px(0.0)),
             trigger_bounds: Arc::new(Mutex::new(None)),
@@ -120,6 +122,15 @@ impl Dropdown {
     }
 
     fn open_popup(&mut self, cx: &mut Context<Self>) {
+        self.highlighted = self
+            .selected
+            .as_ref()
+            .and_then(|selected| {
+                self.options
+                    .iter()
+                    .position(|option| option.value == *selected)
+            })
+            .unwrap_or(0);
         self.open = true;
         self.closing = false;
         self.motion_epoch = self.motion_epoch.wrapping_add(1);
@@ -156,6 +167,53 @@ impl Dropdown {
         .detach();
 
         cx.notify();
+    }
+
+    fn handle_key(&mut self, ev: &KeyDownEvent, cx: &mut Context<Self>) {
+        if self.disabled || self.closing {
+            return;
+        }
+
+        match ev.keystroke.key.as_str() {
+            "escape" => self.close_popup(cx),
+            "down" => {
+                if self.options.is_empty() {
+                    return;
+                }
+                if self.open {
+                    self.highlighted = (self.highlighted + 1).min(self.options.len() - 1);
+                } else {
+                    self.open_popup(cx);
+                }
+                cx.notify();
+            }
+            "up" => {
+                if self.options.is_empty() {
+                    return;
+                }
+                if self.open {
+                    self.highlighted = self.highlighted.saturating_sub(1);
+                } else {
+                    self.open_popup(cx);
+                }
+                cx.notify();
+            }
+            "enter" | "space" if self.open => {
+                if let Some(value) = self
+                    .options
+                    .get(self.highlighted)
+                    .map(|option| option.value.clone())
+                {
+                    self.selected = Some(value.clone());
+                    if let Some(f) = &self.on_select {
+                        f(value, cx);
+                    }
+                    self.close_popup(cx);
+                }
+            }
+            "enter" | "space" => self.open_popup(cx),
+            _ => {}
+        }
     }
 }
 
@@ -196,6 +254,14 @@ impl Render for Dropdown {
 
         let mut el = div()
             .id(self.id.clone())
+            .debug_selector(|| "dropdown-trigger".into())
+            .focusable()
+            .tab_stop(true)
+            .on_key_down(
+                cx.listener(|dropdown: &mut Dropdown, ev: &KeyDownEvent, _, cx| {
+                    dropdown.handle_key(ev, cx);
+                }),
+            )
             .relative()
             .flex()
             .flex_row()
@@ -294,6 +360,7 @@ impl Render for Dropdown {
 
                 let mut row = div()
                     .id(("dropdown-option", idx as u64))
+                    .debug_selector(move || format!("dropdown-option-{idx}"))
                     .flex()
                     .items_center()
                     .h(px(components.dropdown_option_height))
@@ -355,11 +422,56 @@ impl Render for Dropdown {
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
+    use std::{cell::Cell, rc::Rc};
 
-    use fluent_test_utils::init_fluent_test;
+    use fluent_test_utils::{init_fluent_test, open_fluent_test_window, FluentInteractionExt as _};
     use gpui::TestAppContext;
 
     use super::*;
+
+    fn open(
+        cx: &mut TestAppContext,
+        changes: Rc<Cell<usize>>,
+    ) -> (gpui::Entity<Dropdown>, &mut gpui::VisualTestContext) {
+        open_fluent_test_window(cx, move |_, _| {
+            Dropdown::new("dropdown")
+                .option("one", "One")
+                .option("two", "Two")
+                .on_select(move |_, _| changes.set(changes.get() + 1))
+        })
+    }
+
+    #[gpui::test]
+    fn click_and_keyboard_selection_fire_once(cx: &mut TestAppContext) {
+        let changes = Rc::new(Cell::new(0));
+        let (dropdown, cx) = open(cx, changes.clone());
+        cx.click_selector("dropdown-trigger");
+        cx.click_selector("dropdown-option-1");
+        assert_eq!(
+            dropdown.read_with(cx, |dropdown, _| dropdown.selected_value().cloned()),
+            Some("two".into())
+        );
+        assert_eq!(changes.get(), 1);
+
+        cx.executor().advance_clock(Duration::from_millis(160));
+        cx.update(|window, app| window.draw(app).clear(app));
+        cx.click_selector("dropdown-trigger");
+        cx.type_keys("up enter");
+        assert_eq!(
+            dropdown.read_with(cx, |dropdown, _| dropdown.selected_value().cloned()),
+            Some("one".into())
+        );
+        assert_eq!(changes.get(), 2);
+    }
+
+    #[gpui::test]
+    fn escape_closes_open_dropdown(cx: &mut TestAppContext) {
+        let (dropdown, cx) = open(cx, Rc::new(Cell::new(0)));
+        cx.click_selector("dropdown-trigger");
+        assert!(dropdown.read_with(cx, |dropdown, _| dropdown.open));
+        cx.type_keys("escape");
+        assert!(dropdown.read_with(cx, |dropdown, _| dropdown.closing));
+    }
 
     #[gpui::test]
     fn close_popup_keeps_dropdown_mounted_until_exit_duration(cx: &mut TestAppContext) {
