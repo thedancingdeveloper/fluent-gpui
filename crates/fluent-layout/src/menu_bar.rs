@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use fluent_core::{Theme, ThemeProvider as _};
+use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use gpui::{
     anchored, canvas, deferred, div, point, prelude::*, px, svg, App, Bounds, ClickEvent, Context,
     FocusHandle, IntoElement, KeyDownEvent, MouseButton, Pixels, Render, Role, SharedString,
@@ -401,7 +401,7 @@ impl MenuBar {
                 }
             }
             "f10" if !ev.keystroke.modifiers.shift => self.dismiss(window, cx),
-            "left" => {
+            "left" if !self.is_rtl(cx) => {
                 if self.selected_path.len() > 1 {
                     self.leave_submenu(cx);
                 } else {
@@ -409,7 +409,7 @@ impl MenuBar {
                     cx.notify();
                 }
             }
-            "right" => {
+            "right" if !self.is_rtl(cx) => {
                 let submenu_selected = self
                     .current_items()
                     .and_then(|items| menu_tree::item_at_path(items, &self.selected_path))
@@ -446,10 +446,44 @@ impl MenuBar {
                 }
             }
             _ => {
+                if matches!(ev.keystroke.key.as_str(), "left" | "right") {
+                    if ev.keystroke.key == "left" {
+                        self.enter_or_move_right(cx);
+                    } else {
+                        self.leave_or_move_left(cx);
+                    }
+                    return;
+                }
                 if let Some(ch) = menu_tree::typed_access_char(&ev.keystroke) {
                     self.press_access_key(ch, &ev.keystroke, window, cx);
                 }
             }
+        }
+    }
+
+    fn is_rtl(&self, cx: &Context<Self>) -> bool {
+        cx.global::<LayoutDirection>().is_rtl()
+    }
+
+    fn enter_or_move_right(&mut self, cx: &mut Context<Self>) {
+        let submenu_selected = self
+            .current_items()
+            .and_then(|items| menu_tree::item_at_path(items, &self.selected_path))
+            .is_some_and(|item| matches!(item, ContextMenuItem::Submenu { .. }));
+        if submenu_selected {
+            self.enter_submenu(cx);
+        } else {
+            self.move_top_menu(1);
+            cx.notify();
+        }
+    }
+
+    fn leave_or_move_left(&mut self, cx: &mut Context<Self>) {
+        if self.selected_path.len() > 1 {
+            self.leave_submenu(cx);
+        } else {
+            self.move_top_menu(-1);
+            cx.notify();
         }
     }
 
@@ -812,6 +846,7 @@ impl Render for MenuBar {
         let motion = theme.motion();
         let bar_height = components.menu_bar_height;
         let env = MenuRenderEnv::from_theme(theme);
+        let rtl = cx.global::<LayoutDirection>().is_rtl();
 
         let self_weak = cx.entity().downgrade();
         let open_idx = self.open_index;
@@ -827,7 +862,8 @@ impl Render for MenuBar {
         // Build the trigger buttons row.
         let mut triggers_row = div()
             .flex()
-            .flex_row()
+            .when(rtl, |row| row.flex_row_reverse())
+            .when(!rtl, |row| row.flex_row())
             .items_center()
             .h(px(bar_height))
             .bg(bar_bg)

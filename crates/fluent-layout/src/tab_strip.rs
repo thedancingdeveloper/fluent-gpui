@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use fluent_core::{Theme, ThemeProvider as _};
+use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use gpui::{
     div, prelude::*, px, svg, ClickEvent, Context, FocusHandle, IntoElement, KeyDownEvent, Render,
     Role, SharedString, Window,
@@ -56,6 +56,8 @@ pub struct TabStrip {
 impl TabStrip {
     pub fn new(cx: &mut Context<Self>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
+        cx.observe_global::<LayoutDirection>(|_, cx| cx.notify())
+            .detach();
         Self::default()
     }
 
@@ -107,6 +109,7 @@ impl Render for TabStrip {
         let typography = theme.typography;
         let radii = theme.radii;
         let components = theme.components;
+        let rtl = cx.global::<LayoutDirection>().is_rtl();
 
         let active = self.active;
         let n_tabs = self.tabs.len();
@@ -122,7 +125,8 @@ impl Render for TabStrip {
             .role(Role::TabList)
             .aria_orientation(gpui::accesskit::Orientation::Horizontal)
             .flex()
-            .flex_row()
+            .when(rtl, |strip| strip.flex_row_reverse())
+            .when(!rtl, |strip| strip.flex_row())
             .w_full()
             .min_w_0()
             .h(px(components.content_tab_strip_height))
@@ -163,7 +167,12 @@ impl Render for TabStrip {
 
             let key_handler = cx.listener(move |ts: &mut TabStrip, ev: &KeyDownEvent, win, cx| {
                 let enabled = vec![true; ts.tabs.len()];
-                if let Some(next) = crate::roving::target(ev.keystroke.key.as_str(), i, &enabled) {
+                let key = match (rtl, ev.keystroke.key.as_str()) {
+                    (true, "left") => "right",
+                    (true, "right") => "left",
+                    (_, key) => key,
+                };
+                if let Some(next) = crate::roving::target(key, i, &enabled) {
                     ts.focus_handles[next].focus(win, cx);
                     ts.active = next;
                     if let Some(f) = &ts.on_select.clone() {
@@ -189,7 +198,8 @@ impl Render for TabStrip {
                 .tab_stop(stop == Some(i))
                 .on_key_down(key_handler)
                 .flex()
-                .flex_row()
+                .when(rtl, |tab| tab.flex_row_reverse())
+                .when(!rtl, |tab| tab.flex_row())
                 .items_center()
                 .gap(px(spacing.xs))
                 .px(px(spacing.md))

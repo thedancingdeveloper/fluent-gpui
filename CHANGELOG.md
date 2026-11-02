@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- fluent-layout, fluent-app, fluent-primitives: mirror Dock, MenuBar, TabStrip and Field layouts for RTL while preserving the platform title-bar control position (WI-2927).
 - Add opt-in system light/dark theme following for FluentApp.
 - fluent-core: high-contrast theme (`ColorScheme::high_contrast`, `Theme::high_contrast`, `Theme::apply_high_contrast`) mapped from the system colours Canvas, CanvasText, Highlight, GrayText and ButtonFace, with strokes in place of fills; covered by the token and contrast tests (7:1 checks); the gallery ribbon View group switches Dark, Light and High contrast (WI-2923).
 - fluent-layout: AccessKit semantics for Tree (tree/treeitem with level, expanded, selected), DataTable (grid/row/columnheader/cell), TabStrip (tablist/tab), SelectableList (list/listitem), MenuBar, MenuButton and ContextMenu (menubar/menu/menuitem); snapshot test per widget (WI-2918).
