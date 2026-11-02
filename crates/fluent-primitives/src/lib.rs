@@ -1,3 +1,4 @@
+mod accordion;
 mod app_dot;
 mod avatar;
 mod badge;
@@ -38,6 +39,7 @@ mod token_input;
 mod tooltip;
 mod video_surface;
 
+pub use accordion::Accordion;
 pub use app_dot::AppDot;
 pub use avatar::Avatar;
 pub use badge::{Badge, BadgeVariant, CounterBadge, CounterBadgeAppearance};
