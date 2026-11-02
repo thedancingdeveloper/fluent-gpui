@@ -107,7 +107,20 @@ impl RadioGroup {
 }
 
 impl RenderOnce for RadioGroup {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let enabled: Vec<bool> = self
+            .options
+            .iter()
+            .map(|o| !(self.disabled || o.disabled))
+            .collect();
+        let handles = crate::roving::handles(window, cx, &self.id, self.options.len());
+        let default = self
+            .options
+            .iter()
+            .position(|o| self.selected.as_ref() == Some(&o.value));
+        let stop = crate::roving::stop_index(window, &handles, &enabled, default);
+        let values: Vec<SharedString> = self.options.iter().map(|o| o.value.clone()).collect();
+
         let theme = cx.theme();
         let colors = &theme.colors;
         let spacing = &theme.spacing;
@@ -154,10 +167,25 @@ impl RenderOnce for RadioGroup {
                 .text_color(fg);
 
             if !disabled {
+                let nav_handles = handles.clone();
+                let nav_enabled = enabled.clone();
+                let nav_values = values.clone();
+                let nav_handler = on_select.clone();
                 row = row
-                    .focusable()
-                    .tab_stop(true)
+                    .track_focus(&handles[idx])
                     .fluent_focus(tab_index, focus_ring)
+                    .tab_stop(stop == Some(idx))
+                    .on_key_down(move |ev: &KeyDownEvent, win, app| {
+                        if let Some(next) =
+                            crate::roving::target(ev.keystroke.key.as_str(), idx, &nav_enabled)
+                        {
+                            nav_handles[next].focus(win, app);
+                            if let Some(h) = &nav_handler {
+                                h(nav_values[next].clone(), &ClickEvent::default(), win, app);
+                            }
+                            app.stop_propagation();
+                        }
+                    })
                     .cursor_pointer()
                     .hover({
                         let hover = colors.subtle_hover;
@@ -247,6 +275,32 @@ mod tests {
             assert_eq!(host.selected.as_ref(), "two");
             assert_eq!(host.changes, 1);
         });
+    }
+
+    #[gpui::test]
+    fn arrows_move_and_select_and_home_end_jump(cx: &mut TestAppContext) {
+        let (host, cx) = open(cx);
+        cx.click_selector("radio-option-0");
+        cx.type_keys("right");
+        host.read_with(cx, |h, _| assert_eq!(h.selected.as_ref(), "two"));
+        cx.type_keys("right");
+        host.read_with(cx, |h, _| assert_eq!(h.selected.as_ref(), "one"));
+        cx.type_keys("end");
+        host.read_with(cx, |h, _| assert_eq!(h.selected.as_ref(), "two"));
+        cx.type_keys("home");
+        host.read_with(cx, |h, _| assert_eq!(h.selected.as_ref(), "one"));
+    }
+
+    #[gpui::test]
+    fn group_is_one_tab_stop(cx: &mut TestAppContext) {
+        let (host, cx) = open(cx);
+        cx.type_keys("tab");
+        host.read_with(cx, |h, _| assert_eq!(h.selected.as_ref(), "one"));
+        cx.type_keys("tab");
+        // Tab left the group instead of visiting the second option.
+        host.read_with(cx, |h, _| assert_eq!(h.changes, 0));
+        cx.type_keys("space");
+        host.read_with(cx, |h, _| assert_eq!(h.changes, 0));
     }
 
     #[gpui::test]

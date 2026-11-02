@@ -19,6 +19,7 @@ mod input_capture;
 mod label;
 mod progress;
 mod radio_group;
+mod roving;
 mod searchbox;
 mod section_header;
 mod skeleton;

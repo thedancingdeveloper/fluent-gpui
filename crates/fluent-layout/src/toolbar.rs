@@ -2,11 +2,20 @@ use std::sync::Arc;
 
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, prelude::*, px, svg, App, ClickEvent, IntoElement, RenderOnce, SharedString, Window,
+    div, prelude::*, px, svg, App, ClickEvent, ElementId, FocusHandle, IntoElement, KeyDownEvent,
+    RenderOnce, SharedString, Window,
 };
 
 type ToolbarClick = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
+type KeyNav = Arc<dyn Fn(&KeyDownEvent, &mut Window, &mut App) + 'static>;
 type ToolbarToggleClick = Arc<dyn Fn(bool, &ClickEvent, &mut Window, &mut App) + 'static>;
+
+/// Roving-focus wiring for one visible toolbar item.
+struct Roving {
+    handle: FocusHandle,
+    tab_stop: bool,
+    on_key: KeyNav,
+}
 
 #[derive(Clone)]
 pub enum ToolbarItem {
@@ -116,6 +125,7 @@ impl ToolbarItem {
 /// A compact command surface for panes, lists, and editor-like tools.
 #[derive(IntoElement)]
 pub struct Toolbar {
+    id: ElementId,
     items: Vec<ToolbarItem>,
     max_visible: Option<usize>,
     overflow_open: bool,
@@ -125,11 +135,18 @@ pub struct Toolbar {
 impl Toolbar {
     pub fn new() -> Self {
         Self {
+            id: "toolbar".into(),
             items: Vec::new(),
             max_visible: None,
             overflow_open: false,
             on_overflow_click: None,
         }
+    }
+
+    /// Identifies the toolbar so its focus state survives between frames.
+    pub fn id(mut self, id: impl Into<ElementId>) -> Self {
+        self.id = id.into();
+        self
     }
 
     pub fn item(mut self, item: ToolbarItem) -> Self {
@@ -160,7 +177,29 @@ impl Toolbar {
         self
     }
 
-    fn render_item(item: ToolbarItem, idx: usize, cx: &mut App) -> gpui::AnyElement {
+    fn with_roving(
+        el: gpui::Stateful<gpui::Div>,
+        nav: Option<Roving>,
+    ) -> gpui::Stateful<gpui::Div> {
+        match nav {
+            Some(Roving {
+                handle,
+                tab_stop,
+                on_key,
+            }) => el
+                .track_focus(&handle)
+                .tab_stop(tab_stop)
+                .on_key_down(move |ev, win, app| on_key(ev, win, app)),
+            None => el,
+        }
+    }
+
+    fn render_item(
+        item: ToolbarItem,
+        idx: usize,
+        nav: Option<Roving>,
+        cx: &mut App,
+    ) -> gpui::AnyElement {
         let theme = cx.theme();
         let colors = theme.colors.clone();
         let spacing = theme.spacing;
@@ -189,6 +228,7 @@ impl Toolbar {
                 };
                 let mut el = div()
                     .id(("toolbar-action", idx as u64))
+                    .debug_selector(move || format!("toolbar-item-{idx}"))
                     .flex()
                     .flex_row()
                     .items_center()
@@ -208,13 +248,20 @@ impl Toolbar {
                     })
                     .child(label);
                 if !disabled {
+                    let key_click = on_click.clone();
                     el = el
                         .cursor_pointer()
                         .hover({
                             let hover = colors.subtle_hover;
                             move |s| s.bg(hover)
                         })
+                        .on_key_down(move |ev, win, app| {
+                            if matches!(ev.keystroke.key.as_str(), "enter" | "space") {
+                                key_click(&ClickEvent::default(), win, app);
+                            }
+                        })
                         .on_click(move |ev, win, app| on_click(ev, win, app));
+                    el = Self::with_roving(el, nav);
                 }
                 let _ = id;
                 el.into_any_element()
@@ -239,6 +286,7 @@ impl Toolbar {
                 };
                 let mut el = div()
                     .id(("toolbar-toggle", idx as u64))
+                    .debug_selector(move || format!("toolbar-item-{idx}"))
                     .flex()
                     .flex_row()
                     .items_center()
@@ -265,7 +313,16 @@ impl Toolbar {
                             let hover = colors.neutral_hover;
                             move |s| s.bg(hover)
                         })
+                        .on_key_down({
+                            let key_click = on_click.clone();
+                            move |ev, win, app| {
+                                if matches!(ev.keystroke.key.as_str(), "enter" | "space") {
+                                    key_click(!selected, &ClickEvent::default(), win, app);
+                                }
+                            }
+                        })
                         .on_click(move |ev, win, app| on_click(!selected, ev, win, app));
+                    el = Self::with_roving(el, nav);
                 }
                 let _ = id;
                 el.into_any_element()
@@ -281,7 +338,23 @@ impl Default for Toolbar {
 }
 
 impl RenderOnce for Toolbar {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let visible_count = self.max_visible.unwrap_or(self.items.len());
+        let visible = visible_count.min(self.items.len());
+        let enabled: Vec<bool> = self
+            .items
+            .iter()
+            .take(visible)
+            .map(|item| match item {
+                ToolbarItem::Action { disabled, .. } | ToolbarItem::Toggle { disabled, .. } => {
+                    !disabled
+                }
+                ToolbarItem::Separator => false,
+            })
+            .collect();
+        let handles = crate::roving::handles(window, cx, &self.id, visible);
+        let stop = crate::roving::stop_index(window, &handles, &enabled, None);
+
         let theme = cx.theme();
         let colors = theme.colors.clone();
         let spacing = theme.spacing;
@@ -289,8 +362,8 @@ impl RenderOnce for Toolbar {
         let radii = theme.radii;
         let typography = theme.typography;
 
-        let visible_count = self.max_visible.unwrap_or(self.items.len());
         let mut root = div()
+            .id(self.id.clone())
             .flex()
             .flex_row()
             .items_center()
@@ -303,7 +376,22 @@ impl RenderOnce for Toolbar {
             .border_color(colors.stroke_neutral_subtle);
 
         for (idx, item) in self.items.iter().take(visible_count).cloned().enumerate() {
-            root = root.child(Self::render_item(item, idx, cx));
+            let nav = (idx < visible).then(|| {
+                let (nav_handles, nav_enabled) = (handles.clone(), enabled.clone());
+                Roving {
+                    handle: handles[idx].clone(),
+                    tab_stop: stop == Some(idx),
+                    on_key: Arc::new(move |ev, win, app| {
+                        if let Some(next) =
+                            crate::roving::target(ev.keystroke.key.as_str(), idx, &nav_enabled)
+                        {
+                            nav_handles[next].focus(win, app);
+                            app.stop_propagation();
+                        }
+                    }),
+                }
+            });
+            root = root.child(Self::render_item(item, idx, nav, cx));
         }
 
         let overflow: Vec<ToolbarItem> = self.items.into_iter().skip(visible_count).collect();
@@ -347,12 +435,50 @@ impl RenderOnce for Toolbar {
                     .shadow_md()
                     .py(px(spacing.xs));
                 for (idx, item) in overflow.into_iter().enumerate() {
-                    menu = menu.child(Self::render_item(item, idx + visible_count, cx));
+                    menu = menu.child(Self::render_item(item, idx + visible_count, None, cx));
                 }
                 root = root.child(menu);
             }
         }
 
         root
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{cell::Cell, rc::Rc};
+
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Context, Render, TestAppContext};
+
+    use super::*;
+
+    struct Host(Rc<Cell<usize>>);
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let hits = self.0.clone();
+            Toolbar::new()
+                .item(ToolbarItem::action("a", "A", |_, _, _| {}))
+                .item(ToolbarItem::separator())
+                .item(ToolbarItem::action("b", "B", |_, _, _| {}).disabled(true))
+                .item(ToolbarItem::action("c", "C", move |_, _, _| {
+                    hits.set(hits.get() + 1)
+                }))
+        }
+    }
+
+    #[gpui::test]
+    fn arrows_skip_disabled_and_home_end_jump(cx: &mut TestAppContext) {
+        let hits = Rc::new(Cell::new(0));
+        let (_host, cx) = open_fluent_test_window(cx, |_, _| Host(hits.clone()));
+        cx.click_selector("toolbar-item-0");
+        cx.type_keys("right enter"); // skips the separator and disabled item
+        assert_eq!(hits.get(), 1);
+        cx.type_keys("home right enter");
+        assert_eq!(hits.get(), 2);
+        cx.type_keys("end enter");
+        assert_eq!(hits.get(), 3);
     }
 }
