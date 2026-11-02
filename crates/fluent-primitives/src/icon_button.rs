@@ -10,6 +10,9 @@ use crate::button::{ButtonAppearance, ButtonSize};
 /// An icon-only variant of `Button` — no visible label.
 ///
 /// Size is square: icon size determines the hit area.
+///
+/// Always set `.label()` (the accessible name) and show a tooltip with the
+/// same text; see "Icons and icon-only controls" in `docs/tokens.md`.
 #[allow(clippy::type_complexity)]
 #[derive(IntoElement)]
 pub struct IconButton {
