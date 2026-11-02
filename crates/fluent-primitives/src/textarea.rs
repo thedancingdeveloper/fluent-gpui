@@ -12,6 +12,8 @@ pub struct Textarea {
     rows: usize,
     disabled: bool,
     focus_handle: Option<FocusHandle>,
+    a11y_name: Option<SharedString>,
+    a11y_description: Option<SharedString>,
     observing_theme: bool,
     on_change: Option<Box<dyn Fn(SharedString, &mut App) + 'static>>,
 }
@@ -24,6 +26,8 @@ impl Default for Textarea {
             rows: 4,
             disabled: false,
             focus_handle: None,
+            a11y_name: None,
+            a11y_description: None,
             observing_theme: false,
             on_change: None,
         }
@@ -33,6 +37,13 @@ impl Default for Textarea {
 impl Textarea {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// The accessible name announced by assistive technology. A [`crate::Field`]
+    /// label overrides it.
+    pub fn accessible_name(mut self, name: impl Into<SharedString>) -> Self {
+        self.a11y_name = Some(name.into());
+        self
     }
 
     pub fn value(mut self, value: impl Into<SharedString>) -> Self {
@@ -224,7 +235,8 @@ impl Render for Textarea {
             lines = lines.child(line);
         }
 
-        div()
+        let root = div()
+            .id(("textarea", cx.entity_id().as_u64()))
             .key_context("Textarea")
             .track_focus(&focus_handle)
             .cursor(if self.disabled {
@@ -264,7 +276,28 @@ impl Render for Textarea {
                     }))
                     .bg(indicator),
             )
-            .child(lines)
+            .child(lines);
+        crate::field::input_semantics(
+            root,
+            crate::field::InputSemantics {
+                role: gpui::accesskit::Role::MultilineTextInput,
+                name: &self.a11y_name,
+                description: &self.a11y_description,
+                value: Some(SharedString::from(self.value.clone())),
+                placeholder: Some(self.placeholder.clone()),
+            },
+        )
+    }
+}
+
+impl crate::FieldControl for Textarea {
+    fn set_field_semantics(
+        &mut self,
+        name: Option<SharedString>,
+        description: Option<SharedString>,
+    ) {
+        self.a11y_name = name;
+        self.a11y_description = description;
     }
 }
 
