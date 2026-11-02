@@ -1,11 +1,14 @@
-use std::sync::Arc;
+use std::{rc::Rc, sync::Arc};
 
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, prelude::*, px, svg, uniform_list, App, ClickEvent, ElementId, FontWeight, IntoElement,
-    KeyDownEvent, MouseButton, MouseDownEvent, RenderOnce, Role, SharedString, Window,
+    div, prelude::*, px, svg, App, ClickEvent, ElementId, FontWeight, IntoElement, KeyDownEvent,
+    MouseButton, MouseDownEvent, RenderOnce, Role, SharedString, Window,
 };
 
+use crate::virtual_list::VirtualList;
+
+type RowSource = Rc<dyn Fn(usize) -> SelectableListItem + 'static>;
 type ListSelectHandler = Arc<dyn Fn(SharedString, &mut Window, &mut App) + 'static>;
 type ListActivateHandler = Arc<dyn Fn(SharedString, &ClickEvent, &mut Window, &mut App) + 'static>;
 type ListContextHandler =
@@ -84,18 +87,24 @@ impl SelectableListItem {
     }
 }
 
-#[derive(Clone, Debug)]
-struct SelectableKeyItem {
-    id: SharedString,
-}
-
-/// A single-selection list with lazy uniform-row rendering, keyboard roving,
+/// A single-selection list with virtualised rows (only the visible rows plus
+/// overscan are built), keyboard roving with scroll-into-view,
 /// loading/empty/error states, and activation/context-menu callbacks.
+///
+/// Rows come either from [`SelectableList::items`] or, for large
+/// collections, from [`SelectableList::rows`]: an item count plus a function
+/// that produces the item at an index on demand. Rows are `row_height` tall
+/// (uniform) unless variable heights are enabled with
+/// [`SelectableList::variable_row_heights`], in which case each row is measured
+/// and `row_height` is the estimate for rows not yet built.
 #[allow(clippy::type_complexity)]
 #[derive(IntoElement)]
 pub struct SelectableList {
     id: ElementId,
     items: Vec<SelectableListItem>,
+    rows: Option<(usize, RowSource)>,
+    selected_index: Option<usize>,
+    variable_heights: bool,
     state: SelectableListState,
     empty_text: SharedString,
     selected_id: Option<SharedString>,
@@ -111,6 +120,9 @@ impl SelectableList {
         Self {
             id: id.into(),
             items: Vec::new(),
+            rows: None,
+            selected_index: None,
+            variable_heights: false,
             state: SelectableListState::Ready,
             empty_text: "No items".into(),
             selected_id: None,
@@ -129,6 +141,31 @@ impl SelectableList {
 
     pub fn items(mut self, items: impl IntoIterator<Item = SelectableListItem>) -> Self {
         self.items = items.into_iter().collect();
+        self
+    }
+
+    /// Supplies `count` rows built on demand by `item_at`. Only the rows near
+    /// the viewport are requested, so `count` may be very large. Replaces any
+    /// items added with `item`/`items`.
+    pub fn rows(
+        mut self,
+        count: usize,
+        item_at: impl Fn(usize) -> SelectableListItem + 'static,
+    ) -> Self {
+        self.rows = Some((count, Rc::new(item_at)));
+        self
+    }
+
+    /// Selects the row at `index` (for lists built with [`Self::rows`]).
+    pub fn selected_index(mut self, index: usize) -> Self {
+        self.selected_index = Some(index);
+        self
+    }
+
+    /// Lets rows differ in height (for example when a row wraps its subtitle).
+    /// Rows are measured as they are built.
+    pub fn variable_row_heights(mut self, variable: bool) -> Self {
+        self.variable_heights = variable;
         self
     }
 
@@ -193,80 +230,102 @@ impl SelectableList {
         self
     }
 
-    fn key_items(items: &[SelectableListItem]) -> Vec<SelectableKeyItem> {
-        items
-            .iter()
-            .filter(|item| !item.disabled)
-            .map(|item| SelectableKeyItem {
-                id: item.id.clone(),
-            })
-            .collect()
-    }
-
-    fn selected_key_index(
-        key_items: &[SelectableKeyItem],
-        selected_id: Option<&SharedString>,
-    ) -> Option<usize> {
-        selected_id.and_then(|id| key_items.iter().position(|item| &item.id == id))
-    }
-
+    /// Index of the row a navigation key moves to, skipping disabled rows.
+    /// Returns `None` when the key is not a navigation key or no row is enabled.
     fn key_target(
-        key_items: &[SelectableKeyItem],
-        selected_id: Option<&SharedString>,
+        count: usize,
+        disabled: &dyn Fn(usize) -> bool,
+        current: Option<usize>,
         key: &str,
-    ) -> Option<SharedString> {
-        if key_items.is_empty() {
+    ) -> Option<usize> {
+        if count == 0 {
             return None;
         }
-        let current = Self::selected_key_index(key_items, selected_id).unwrap_or(0);
-        let next = match key {
-            "up" => current.saturating_sub(1),
-            "down" => (current + 1).min(key_items.len() - 1),
-            "home" => 0,
-            "end" => key_items.len() - 1,
-            "pageup" => current.saturating_sub(5),
-            "pagedown" => (current + 5).min(key_items.len() - 1),
+        let last = count - 1;
+        let cur = current.unwrap_or(0).min(last);
+        let (goal, forward) = match key {
+            "up" => (cur.checked_sub(1)?, false),
+            "down" => (cur + 1, true),
+            "home" => (0, true),
+            "end" => (last, false),
+            "pageup" => (cur.saturating_sub(5), false),
+            "pagedown" => (cur + 5, true),
             _ => return None,
         };
-        Some(key_items[next].id.clone())
+        let goal = goal.min(last);
+        let mut ix = goal;
+        loop {
+            if !disabled(ix) {
+                return Some(ix);
+            }
+            if forward {
+                if ix == last {
+                    break;
+                }
+                ix += 1;
+            } else {
+                if ix == 0 {
+                    break;
+                }
+                ix -= 1;
+            }
+        }
+        // Nothing enabled beyond the goal in the travel direction.
+        (!disabled(cur)).then_some(cur)
     }
 }
 
 impl RenderOnce for SelectableList {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(mut self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = cx.theme();
         let colors = theme.colors.clone();
         let typography = theme.typography;
         let row_height = self.row_height;
-        let key_items = Self::key_items(&self.items);
-        let selected_id = self.selected_id.clone();
+        let variable_heights = self.variable_heights;
+        let (count, item_at): (usize, RowSource) = match self.rows.take() {
+            Some(rows) => rows,
+            None => {
+                let items = Rc::new(std::mem::take(&mut self.items));
+                (items.len(), Rc::new(move |ix| items[ix].clone()))
+            }
+        };
+        let selected_ix = match (self.selected_index, self.selected_id.as_ref()) {
+            (Some(ix), _) => Some(ix),
+            (None, Some(id)) => (0..count).find(|ix| &item_at(*ix).id == id),
+            (None, None) => None,
+        };
         let on_select = self.on_select.clone();
         let on_activate = self.on_activate.clone();
+        let key_item_at = item_at.clone();
 
         let mut root = div()
-            .id("selectable-list")
+            .id(self.id.clone())
             .role(Role::List)
+            .aria_size_of_set(count)
             .tab_index(0)
             .key_context("SelectableList")
             .on_key_down(
                 move |ev: &KeyDownEvent, window, app| match ev.keystroke.key.as_str() {
                     "up" | "down" | "home" | "end" | "pageup" | "pagedown" => {
-                        if let (Some(handler), Some(id)) = (
-                            on_select.as_ref(),
-                            Self::key_target(&key_items, selected_id.as_ref(), &ev.keystroke.key),
-                        ) {
-                            handler(id, window, app);
+                        let target = Self::key_target(
+                            count,
+                            &|ix| key_item_at(ix).disabled,
+                            selected_ix,
+                            &ev.keystroke.key,
+                        );
+                        if let (Some(handler), Some(ix)) = (on_select.as_ref(), target) {
+                            handler(key_item_at(ix).id, window, app);
                         }
                     }
                     "return" | "space" => {
-                        let current = Self::selected_key_index(&key_items, selected_id.as_ref())
-                            .unwrap_or(0)
-                            .min(key_items.len().saturating_sub(1));
-                        if let (Some(handler), Some(item)) =
-                            (on_activate.as_ref(), key_items.get(current))
-                        {
+                        if count == 0 {
+                            return;
+                        }
+                        let ix = selected_ix.unwrap_or(0).min(count - 1);
+                        let item = key_item_at(ix);
+                        if let (Some(handler), false) = (on_activate.as_ref(), item.disabled) {
                             let ev = ClickEvent::default();
-                            handler(item.id.clone(), &ev, window, app);
+                            handler(item.id, &ev, window, app);
                         }
                     }
                     _ => {}
@@ -292,7 +351,7 @@ impl RenderOnce for SelectableList {
                     &typography,
                 ));
             }
-            SelectableListState::Ready if self.items.is_empty() => {
+            SelectableListState::Ready if count == 0 => {
                 return root.child(status_panel(
                     self.empty_text,
                     colors.on_subtle_disabled,
@@ -303,31 +362,32 @@ impl RenderOnce for SelectableList {
             SelectableListState::Ready => {}
         }
 
-        let items = self.items;
-        let selected_id = self.selected_id.clone();
         let activate_handler = self.on_activate.clone();
         let select_handler = self.on_select.clone();
         let context_handler = self.on_context_menu.clone();
-        let mut list = uniform_list(self.id, items.len(), move |range, _window, cx| {
-            range
-                .map(|idx| {
-                    render_row(
-                        idx,
-                        items[idx].clone(),
-                        selected_id.as_ref() == Some(&items[idx].id),
-                        row_height,
-                        activate_handler.clone(),
-                        select_handler.clone(),
-                        context_handler.clone(),
-                        cx,
-                    )
-                })
-                .collect::<Vec<_>>()
-        })
-        .w_full();
+        let build_row = move |idx: usize, _window: &mut Window, cx: &mut App| {
+            render_row(
+                idx,
+                count,
+                item_at(idx),
+                selected_ix == Some(idx),
+                row_height,
+                variable_heights,
+                activate_handler.clone(),
+                select_handler.clone(),
+                context_handler.clone(),
+                cx,
+            )
+            .into_any_element()
+        };
+        let mut list = div().w_full().child(
+            VirtualList::new(("selectable-list-body", 0u64), count, build_row)
+                .row_height(row_height)
+                .reveal(selected_ix),
+        );
 
         if let Some(height) = self.max_body_height {
-            list = list.max_h(px(height));
+            list = list.h(px(height).min(px(row_height * count as f32)));
         } else {
             list = list.h_full();
         }
@@ -356,9 +416,11 @@ fn status_panel(
 #[allow(clippy::too_many_arguments)]
 fn render_row(
     idx: usize,
+    count: usize,
     item: SelectableListItem,
     selected: bool,
     row_height: f32,
+    variable_height: bool,
     activate_handler: Option<ListActivateHandler>,
     select_handler: Option<ListSelectHandler>,
     context_handler: Option<ListContextHandler>,
@@ -379,11 +441,14 @@ fn render_row(
         .role(Role::ListItem)
         .aria_label(item.title.clone())
         .aria_selected(selected)
+        .aria_position_in_set(idx + 1)
+        .aria_size_of_set(count)
         .flex()
         .flex_row()
         .items_center()
         .gap(px(spacing.sm))
-        .h(px(row_height))
+        .when(variable_height, |row| row.min_h(px(row_height)))
+        .when(!variable_height, |row| row.h(px(row_height)))
         .w_full()
         .px(px(spacing.md))
         .bg(if selected {
@@ -486,8 +551,8 @@ fn render_row(
         text = text.child(
             div()
                 .overflow_hidden()
-                .whitespace_nowrap()
-                .text_ellipsis()
+                .when(!variable_height, |d| d.whitespace_nowrap().text_ellipsis())
+                .py(px(if variable_height { 4.0 } else { 0.0 }))
                 .text_size(px(typography.caption.size))
                 .text_color(if item.disabled {
                     colors.on_neutral_disabled
@@ -529,106 +594,146 @@ fn render_row(
 
 #[cfg(test)]
 mod tests {
+    use std::cell::Cell;
+
+    use fluent_test_utils::*;
+    use gpui::{Context, IntoElement, Render, Window};
+
     use super::*;
 
-    fn ids(items: &[SelectableKeyItem]) -> Vec<&str> {
-        items.iter().map(|item| item.id.as_ref()).collect()
+    fn none_disabled(_: usize) -> bool {
+        false
     }
 
     #[test]
-    fn key_items_skip_disabled_rows() {
-        let items = vec![
-            SelectableListItem::new("one", "One"),
-            SelectableListItem::new("two", "Two").disabled(true),
-            SelectableListItem::new("three", "Three"),
-        ];
-
+    fn key_target_skips_disabled_rows() {
+        let disabled = |ix: usize| ix == 1;
         assert_eq!(
-            ids(&SelectableList::key_items(&items)),
-            vec!["one", "three"]
-        );
-    }
-
-    #[test]
-    fn key_target_moves_from_selected_row() {
-        let items = SelectableList::key_items(&[
-            SelectableListItem::new("one", "One"),
-            SelectableListItem::new("two", "Two"),
-            SelectableListItem::new("three", "Three"),
-        ]);
-        let selected = SharedString::from("two");
-
-        assert_eq!(
-            SelectableList::key_target(&items, Some(&selected), "down")
-                .map(|id| id.to_string())
-                .as_deref(),
-            Some("three")
+            SelectableList::key_target(3, &disabled, Some(0), "down"),
+            Some(2)
         );
         assert_eq!(
-            SelectableList::key_target(&items, Some(&selected), "up")
-                .map(|id| id.to_string())
-                .as_deref(),
-            Some("one")
+            SelectableList::key_target(3, &disabled, Some(2), "up"),
+            Some(0)
         );
     }
 
     #[test]
     fn key_target_clamps_home_end_and_pages() {
-        let items = SelectableList::key_items(&[
-            SelectableListItem::new("one", "One"),
-            SelectableListItem::new("two", "Two"),
-            SelectableListItem::new("three", "Three"),
-        ]);
-        let selected = SharedString::from("two");
-
         assert_eq!(
-            SelectableList::key_target(&items, Some(&selected), "home")
-                .map(|id| id.to_string())
-                .as_deref(),
-            Some("one")
+            SelectableList::key_target(3, &none_disabled, Some(1), "home"),
+            Some(0)
         );
         assert_eq!(
-            SelectableList::key_target(&items, Some(&selected), "end")
-                .map(|id| id.to_string())
-                .as_deref(),
-            Some("three")
+            SelectableList::key_target(3, &none_disabled, Some(1), "end"),
+            Some(2)
         );
         assert_eq!(
-            SelectableList::key_target(&items, Some(&selected), "pagedown")
-                .map(|id| id.to_string())
-                .as_deref(),
-            Some("three")
+            SelectableList::key_target(3, &none_disabled, Some(1), "pagedown"),
+            Some(2)
+        );
+        assert_eq!(
+            SelectableList::key_target(100_000, &none_disabled, Some(10), "pagedown"),
+            Some(15)
+        );
+        assert_eq!(
+            SelectableList::key_target(0, &none_disabled, None, "down"),
+            None
         );
     }
 
-    #[gpui::test]
-    fn accessibility_snapshot_reports_list_and_listitems(cx: &mut gpui::TestAppContext) {
-        use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
-        struct SnapHost;
-        impl gpui::Render for SnapHost {
-            fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
-                gpui::div().flex().flex_row().size(gpui::px(300.0)).child(
-                    SelectableList::new("snap-list")
-                        .items([
-                            SelectableListItem::new("a", "Alpha"),
-                            SelectableListItem::new("b", "Beta"),
-                        ])
-                        .selected("b"),
-                )
+    thread_local! {
+        static BUILT: Cell<usize> = const { Cell::new(0) };
+    }
+
+    struct Host {
+        selected: usize,
+        variable: bool,
+    }
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let view = cx.entity();
+            let mut list = SelectableList::new("big")
+                .rows(100_000, |ix| {
+                    BUILT.with(|b| b.set(b.get() + 1));
+                    let item = SelectableListItem::new(format!("r{ix}"), format!("Row {ix}"));
+                    if ix % 3 == 0 {
+                        item.subtitle("with a second line")
+                    } else {
+                        item
+                    }
+                })
+                .selected_index(self.selected)
+                .max_body_height(320.0)
+                .on_select(move |id, _, cx| {
+                    let ix: usize = id[1..].parse().unwrap();
+                    view.update(cx, |host, cx| {
+                        host.selected = ix;
+                        cx.notify();
+                    });
+                });
+            if self.variable {
+                list = list.variable_row_heights(true);
             }
+            list
         }
-        let (_, vcx) = open_fluent_test_window(cx, |_, _| SnapHost);
-        for _ in 0..4 {
-            vcx.accessibility_snapshot();
-        }
-        assert_eq!(
-            vcx.accessibility_snapshot(),
-            vec![
-                "Window".to_string(),
-                "List".to_string(),
-                "ListItem \"Alpha\" [selected=false]".to_string(),
-                "ListItem \"Beta\" [selected=true]".to_string(),
-            ]
+    }
+
+    fn host(cx: &mut gpui::TestAppContext, variable: bool) -> &mut gpui::VisualTestContext {
+        BUILT.with(|b| b.set(0));
+        let (_, cx) = open_fluent_test_window(cx, |_, _| Host {
+            selected: 0,
+            variable,
+        });
+        cx.run_until_parked();
+        cx
+    }
+
+    #[gpui::test]
+    fn builds_only_visible_rows_plus_overscan(cx: &mut gpui::TestAppContext) {
+        let _cx = host(cx, false);
+        let built = BUILT.with(Cell::get);
+        // 320px viewport / 56px rows is 6 visible rows; overscan adds a few more.
+        assert!(built > 0 && built <= 20, "built {built} rows of 100000");
+    }
+
+    #[gpui::test]
+    fn variable_heights_also_virtualise(cx: &mut gpui::TestAppContext) {
+        let _cx = host(cx, true);
+        let built = BUILT.with(Cell::get);
+        assert!(built > 0 && built <= 30, "built {built} rows of 100000");
+    }
+
+    #[gpui::test]
+    fn keyboard_navigation_selects_and_scrolls_into_view(cx: &mut gpui::TestAppContext) {
+        let cx = host(cx, false);
+        cx.update(|window, cx| {
+            window.focus_next(cx);
+        });
+        cx.type_keys("down down down");
+        cx.type_keys("end");
+        cx.run_until_parked();
+        assert_a11y_node(
+            &cx.accessibility_snapshot(),
+            "ListItem",
+            Some("Row 99999"),
+            &["selected=true", "position_in_set=100000"],
+        );
+        let built = BUILT.with(Cell::get);
+        assert!(built < 200, "built {built} rows after scrolling to the end");
+    }
+
+    #[gpui::test]
+    fn exposes_set_size_and_position(cx: &mut gpui::TestAppContext) {
+        let cx = host(cx, false);
+        let snapshot = cx.accessibility_snapshot();
+        assert_a11y_node(&snapshot, "List", None, &["size_of_set=100000"]);
+        assert_a11y_node(
+            &snapshot,
+            "ListItem",
+            Some("Row 0"),
+            &["selected=true", "position_in_set=1", "size_of_set=100000"],
         );
     }
 }
