@@ -3,9 +3,11 @@ mod app_dot;
 mod avatar;
 mod badge;
 mod button;
+mod calendar;
 mod card;
 mod checkbox;
 mod chip;
+mod color_picker;
 mod combobox;
 mod connection_badge;
 mod date_time_picker;
@@ -51,9 +53,11 @@ pub use badge::{
     Badge, BadgeVariant, CounterBadge, CounterBadgeAppearance, PresenceBadge, PresenceBadgeState,
 };
 pub use button::{Button, ButtonAppearance, ButtonShape, ButtonSize};
+pub use calendar::{Calendar, CalendarDate};
 pub use card::Card;
 pub use checkbox::{Checkbox, CheckboxState};
 pub use chip::Chip;
+pub use color_picker::{Color, ColorPicker};
 pub use combobox::{Combobox, ComboboxOption};
 pub use connection_badge::{ConnectionBadge, ConnectionBadgeState};
 pub use date_time_picker::{
