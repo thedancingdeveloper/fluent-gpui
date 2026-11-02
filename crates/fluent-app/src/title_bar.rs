@@ -1,4 +1,4 @@
-use fluent_core::{Theme, ThemeProvider as _};
+use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use gpui::{
     div, prelude::*, px, svg, ClickEvent, Context, IntoElement, MouseButton, MouseDownEvent,
     Render, SharedString, Window,
@@ -26,6 +26,8 @@ pub struct TitleBar {
 impl TitleBar {
     pub fn new(cx: &mut Context<Self>, title: impl Into<SharedString>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
+        cx.observe_global::<LayoutDirection>(|_, cx| cx.notify())
+            .detach();
         cx.observe_global::<WindowTitle>(|_, cx| cx.notify())
             .detach();
         Self {
@@ -76,6 +78,7 @@ impl Render for TitleBar {
         let colors = theme.colors.clone();
         let spacing = theme.spacing;
         let typography = theme.typography;
+        let rtl = cx.global::<LayoutDirection>().is_rtl();
 
         let (title, status) = if self.follow_window_title {
             cx.try_global::<WindowTitle>()
@@ -132,7 +135,8 @@ impl Render for TitleBar {
             .flex()
             .items_center()
             .gap(px(spacing.sm))
-            .pl(px(spacing.md))
+            .when(!rtl, |area| area.pl(px(spacing.md)))
+            .when(rtl, |area| area.pr(px(spacing.md)))
             .text_size(px(typography.caption.size))
             .text_color(fg)
             .on_mouse_down(MouseButton::Left, drag_handler);

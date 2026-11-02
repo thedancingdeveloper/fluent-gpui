@@ -1,4 +1,4 @@
-use fluent_core::{Theme, ThemeProvider as _};
+use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use gpui::{
     div, prelude::*, px, svg, AnyView, ClickEvent, Context, CursorStyle, DragMoveEvent, FontWeight,
     IntoElement, MouseButton, MouseDownEvent, Render, SharedString, Window,
@@ -47,6 +47,8 @@ impl DockPanel {
         title: impl Into<SharedString>,
     ) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
+        cx.observe_global::<LayoutDirection>(|_, cx| cx.notify())
+            .detach();
         let size = match position {
             DockPosition::Left | DockPosition::Right => 240.0,
             DockPosition::Top | DockPosition::Bottom => 200.0,
@@ -90,6 +92,7 @@ impl Render for DockPanel {
         let spacing = theme.spacing;
         let typography = theme.typography;
         let components = theme.components;
+        let rtl = cx.global::<LayoutDirection>().is_rtl();
 
         let panel_bg = colors.panel_bg;
         let panel_border = colors.panel_border;
@@ -99,7 +102,15 @@ impl Render for DockPanel {
 
         let title = self.title.clone();
         let collapsed = self.collapsed;
-        let pos = self.position;
+        let pos = if rtl {
+            match self.position {
+                DockPosition::Left => DockPosition::Right,
+                DockPosition::Right => DockPosition::Left,
+                position => position,
+            }
+        } else {
+            self.position
+        };
 
         // ---- Collapse toggle ----
         let collapse_handler = cx.listener(|panel: &mut DockPanel, _: &ClickEvent, _, cx| {
@@ -109,7 +120,8 @@ impl Render for DockPanel {
 
         let header = div()
             .flex()
-            .flex_row()
+            .when(rtl, |header| header.flex_row_reverse())
+            .when(!rtl, |header| header.flex_row())
             .items_center()
             .px(px(spacing.sm))
             .h(px(components.dock_header_height))

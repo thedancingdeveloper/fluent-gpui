@@ -1,4 +1,4 @@
-use fluent_core::ThemeProvider as _;
+use fluent_core::{LayoutDirection, ThemeProvider as _};
 use gpui::{
     div, prelude::*, px, AnyElement, App, Entity, IntoElement, RenderOnce, SharedString, Window,
 };
@@ -145,6 +145,7 @@ impl RenderOnce for Field {
         let colors = &theme.colors;
         let spacing = &theme.spacing;
         let typography = &theme.typography;
+        let rtl = cx.global::<LayoutDirection>().is_rtl();
 
         let message_color = match self.validation_state {
             FieldValidationState::Error => colors.status_error,
@@ -158,7 +159,8 @@ impl RenderOnce for Field {
         let label_el = self.label.map(|label| {
             let mut label_row = div()
                 .flex()
-                .flex_row()
+                .when(rtl, |row| row.flex_row_reverse())
+                .when(!rtl, |row| row.flex_row())
                 .items_center()
                 .gap(px(spacing.xs))
                 .text_size(px(typography.body.size))
