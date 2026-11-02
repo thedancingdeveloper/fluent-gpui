@@ -59,6 +59,7 @@ pub(crate) struct TestWindowState {
     appearance: WindowAppearance,
     external_drag_files: Vec<(PathBuf, bool)>,
     start_external_drag_result: bool,
+    a11y_callbacks: Option<crate::A11yCallbacks>,
 }
 
 #[derive(Clone)]
@@ -135,7 +136,18 @@ impl TestWindow {
             appearance: WindowAppearance::Light,
             external_drag_files: Vec::new(),
             start_external_drag_result: false,
+            a11y_callbacks: None,
         })))
+    }
+
+    /// Activates accessibility for a headless test window and returns the
+    /// initial tree supplied by the adapter.
+    pub fn activate_accessibility(&self) -> Option<accesskit::TreeUpdate> {
+        self.0
+            .lock()
+            .a11y_callbacks
+            .as_ref()
+            .and_then(|callbacks| (callbacks.activation)())
     }
     pub fn simulate_close(&self) {
         let callback = self.0.lock().close_callback.take();
@@ -315,6 +327,10 @@ impl TestWindow {
 }
 
 impl PlatformWindow for TestWindow {
+    fn a11y_init(&self, callbacks: crate::A11yCallbacks) {
+        self.0.lock().a11y_callbacks = Some(callbacks);
+    }
+
     fn visual_viewport_bounds(&self) -> Bounds<Pixels> {
         let state = self.0.lock();
         state

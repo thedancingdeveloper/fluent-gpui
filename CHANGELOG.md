@@ -12,8 +12,8 @@ per crate.
 
 ## Unreleased
 
+- fluent-test-utils: add compact role, accessible-name and state snapshots of rendered AccessKit trees, with Expander coverage (WI-2915).
 - Add click, keyboard, dismissal, callback, and filtering interaction coverage for radio groups, dropdowns, and comboboxes.
-
 - Add headless click and keyboard interaction coverage for buttons, checkboxes, and switches.
 - fluent-core: check every dark, light, Midnight and Ember colour token for initialization and enforce WCAG contrast for text, brand and status pairs (WI-2914).
 - fluent-test-utils: `FluentInteractionExt` helpers on `VisualTestContext` to type keys, click an element by debug selector and assert focus (WI-2906).

@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 gpui = { workspace = true, features = ["test-support"] }
 fluent-core = { workspace = true }
+serde_json = { version = "1", features = ["preserve_order"] }
 
 [package.metadata.estate-gpui]
 # Must equal the zed commit in vendor/zed/UPSTREAM.md (scripts/check-zed-rev.sh).

@@ -156,7 +156,7 @@ impl RenderOnce for Expander {
 mod tests {
     use std::{cell::RefCell, rc::Rc};
 
-    use fluent_test_utils::open_fluent_test_window;
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
     use gpui::{
         Context, InputEvent as _, KeyDownEvent, KeyUpEvent, Keystroke, Render, TestAppContext,
         VisualTestContext,
@@ -295,5 +295,17 @@ mod tests {
             assert_eq!(node.label(), Some("Workspace limits"));
             assert_eq!(node.is_expanded(), Some(expanded));
         }
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_expander_state(cx: &mut TestAppContext) {
+        let (_, vcx, _) = open(cx, true, false);
+        assert_eq!(
+            vcx.accessibility_snapshot(),
+            vec![
+                "Window".to_string(),
+                "Button \"Workspace limits\" [expanded=true]".to_string(),
+            ]
+        );
     }
 }

@@ -1570,6 +1570,7 @@ version = "0.1.0"
 dependencies = [
  "fluent-core",
  "gpui",
+ "serde_json",
 ]
 
 [[package]]
