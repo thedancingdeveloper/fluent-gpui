@@ -27,7 +27,7 @@ row marked **divergent** is an intentional platform difference, not a failure.
 | IME composition and committed text | `WM_IME_COMPOSITION` sends committed `GCS_RESULTSTR` text through `replace_text_in_range`, and the active `GCS_COMPSTR` through `replace_and_mark_text_in_range`; the IME context is enabled only while the focused input accepts text. | XIM preedit callbacks map to marked text and XIM commit callbacks map to committed text; XKB compose sequences use the same marked/committed path, while the physical key event remains separate. | `zwp_text_input_v3` preedit maps to marked text and commit strings map to committed text; the text-input state is enabled only for an accepting input and committed before dispatch. | **source-audited; unverified manually**. The shared `TextInput` handler replaces marked text, clears the mark on commit, and preserves UTF-16 ranges. See [IME evidence](#ime-evidence). |
 | Physical scancodes and key repeat | Set-1 make code is derived from the Windows message, with `0xE000` marking an extended key. | Scancode is derived from X11 event detail (`detail - 8`). | Wayland supplies the evdev key on the initial event and repeat timer. | **verified-by-test** for the shared patch/InputCapture press-repeat-release contract; **unverified natively** on all three backends. See [scancode evidence](#physical-scancode-evidence) and [`PATCHES.md`](../vendor/zed/PATCHES.md). |
 | Clipboard (text and image) | GPUI's DirectX backend reads and writes Unicode text and registered image formats (PNG, GIF, JPEG, SVG). | The X11 selection backend supports UTF-8 text and the GPUI image formats; ownership and persistence depend on the selection owner/clipboard manager. | The data-device backend supports text and image MIME types, with reads transferred through a pipe and cached after a successful offer read. | **source-verified; native run unavailable**. See the [clipboard audit](#clipboard-audit) and follow [WI-3059](https://vogt.sprooty.com/work/WI-3059) for a Windows/X11/Wayland host run. |
-| File and folder pickers | `fluent-app::pickers` delegates to native GPUI prompts; test-platform filtering and cancellation are tested, native dialogs are not. | Native dialog availability depends on the desktop portal/toolkit environment. | Native dialog availability normally depends on the desktop portal/toolkit environment. | **unverified** natively. Follow [WI-3060](https://vogt.sprooty.com/work/WI-3060); see [picker contracts](consumer-contracts.md#3-file-and-folder-pickers). |
+| File and folder pickers | `fluent-app::pickers` delegates to the Windows `IFileOpenDialog`/`IFileSaveDialog`; cancellation maps from `ERROR_CANCELLED` to `Ok(None)`, while other dialog and shell-item failures remain errors. The save dialog currently advertises `*.*`; Fluent applies extension filters and preferred save extensions after the response. | `fluent-app::pickers` delegates to the xdg-desktop-portal OpenFile/SaveFile requests. A missing portal is reported as an error; a portal response cancellation maps to `Ok(None)`, and returned URIs are converted to local paths. | Same portal contract as X11, using the Wayland connection identifier where available. | **source-audited; verified-by-test** for shared filtering, cancellation, save-extension, and result-shape contracts; **unverified manually** on all three native backends. See [picker evidence](#picker-evidence-wi-3060). |
 | DPI scaling and device pixels | `WM_DPICHANGED` updates the window scale factor; device-pixel resize sizes are converted to logical pixels before the resize callback. Text and layout continue to use logical pixels, while renderer bounds use device pixels. | The display scale is selected from `GPUI_X11_SCALE_FACTOR`, RandR, `Xft.dpi`, or the default `1.0` (in that order); X11 resize callbacks receive logical size and scale. | The compositor-provided output scale is applied to the surface; configure/resize handling is throttled during interactive resizing and callbacks receive logical size and scale. | **source-audited, unverified manually**. The shared contract is `logical = physical / scale` and `physical = round(logical * scale)`; see the manual evidence and test plan below. Follow [WI-3061](https://vogt.sprooty.com/work/WI-3061) for native runs. |
 | X11 vs Wayland window/input differences | Not applicable. | X11 exposes server-side selections and X11 event details; window-manager policy is external. | Wayland delegates more policy to the compositor and uses evdev/data-device protocols; server-side assumptions must not be made. | **divergent** by design and **unverified** as a complete matrix. Follow [WI-3062](https://vogt.sprooty.com/work/WI-3062). |
 
@@ -164,6 +164,31 @@ are attached to the work item.
   check is useful build evidence, but it is not a native interaction test.
 - No macOS, web, or wasm behavior is included because those targets are outside
   this repository's support contract.
+
+## Picker evidence (WI-3060)
+
+The shared picker contract was verified on the GPUI test platform on
+2026-11-02. The tests cover single-file and folder prompt shape, cancellation
+as `Ok(None)`, multi-file filtering with case-insensitive extensions, and save
+selection extension completion. The source audit also confirms that Windows
+uses the native Shell file dialogs, while Linux uses the xdg-desktop-portal
+OpenFile/SaveFile requests for both X11 and Wayland. Portal absence and other
+backend failures remain `Err`; a user cancellation is not an error.
+
+No native desktop run was available to this worker: `DISPLAY` and
+`WAYLAND_DISPLAY` are unset and this is not a Windows host. Consequently the
+following manual evidence remains **unverified** rather than being inferred
+from the test platform:
+
+| Backend | Manual status | Required run |
+|---|---|---|
+| Windows DirectX 11 | unverified | Open one file and a folder, cancel both, choose multiple files with a filter, and save with and without an extension. Record the Shell dialog result, returned paths, and any non-cancellation error. |
+| Linux X11 | unverified | Repeat the same file/folder, cancellation, filter, and save-extension cases with the xdg-desktop-portal backend. Record portal availability and returned local paths. |
+| Linux Wayland | unverified | Repeat on a Wayland compositor, recording portal availability, cancellation, URI-to-path conversion, and save-extension behavior. |
+
+The manual runs should also exercise an invalid/unavailable portal or
+equivalent dialog failure and confirm that it is surfaced to the consumer as
+an error rather than mistaken for cancellation.
 
 ## IME evidence
 
