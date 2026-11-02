@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::focus::FluentFocus as _;
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, App, ClickEvent, ElementId, Hsla, IntoElement, KeyDownEvent, RenderOnce,
@@ -44,6 +45,7 @@ pub struct RadioGroup {
     selected: Option<SharedString>,
     orientation: RadioGroupOrientation,
     disabled: bool,
+    tab_index: Option<isize>,
     on_select: Option<Arc<dyn Fn(SharedString, &ClickEvent, &mut Window, &mut App) + 'static>>,
 }
 
@@ -55,6 +57,7 @@ impl RadioGroup {
             selected: None,
             orientation: RadioGroupOrientation::Vertical,
             disabled: false,
+            tab_index: None,
             on_select: None,
         }
     }
@@ -80,6 +83,12 @@ impl RadioGroup {
 
     pub fn orientation(mut self, orientation: RadioGroupOrientation) -> Self {
         self.orientation = orientation;
+        self
+    }
+
+    /// Explicit position in the Tab order (lower first). Defaults to document order.
+    pub fn tab_index(mut self, index: isize) -> Self {
+        self.tab_index = Some(index);
         self
     }
 
@@ -117,6 +126,8 @@ impl RenderOnce for RadioGroup {
 
         for (idx, option) in self.options.into_iter().enumerate() {
             let checked = self.selected.as_ref() == Some(&option.value);
+            let tab_index = self.tab_index;
+            let focus_ring = colors.stroke_accent;
             let disabled = self.disabled || option.disabled;
             let on_select = self.on_select.clone();
             let value = option.value.clone();
@@ -143,10 +154,15 @@ impl RenderOnce for RadioGroup {
                 .text_color(fg);
 
             if !disabled {
-                row = row.focusable().tab_stop(true).cursor_pointer().hover({
-                    let hover = colors.subtle_hover;
-                    move |s| s.bg(hover)
-                });
+                row = row
+                    .focusable()
+                    .tab_stop(true)
+                    .fluent_focus(tab_index, focus_ring)
+                    .cursor_pointer()
+                    .hover({
+                        let hover = colors.subtle_hover;
+                        move |s| s.bg(hover)
+                    });
                 if let Some(handler) = on_select {
                     let key_handler = handler.clone();
                     let key_value = value.clone();

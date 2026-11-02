@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- fluent-primitives: Button, IconButton, ToggleButton, Checkbox, Switch, RadioGroup and Dropdown take `tab_index`, handle Tab/Shift-Tab, and show the Fluent 2 focus stroke for keyboard focus only (WI-2919).
 - Add interaction coverage for text-input editing and clipboard shortcuts, textarea newlines, and Escape-cleared searchboxes (WI-2909).
 - fluent-test-utils: add compact role, accessible-name and state snapshots of rendered AccessKit trees, with Expander coverage (WI-2915).
 - Add click, keyboard, dismissal, callback, and filtering interaction coverage for radio groups, dropdowns, and comboboxes.
