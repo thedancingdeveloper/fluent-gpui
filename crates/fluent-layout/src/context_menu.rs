@@ -3,7 +3,7 @@ use std::sync::Arc;
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
     anchored, deferred, div, prelude::*, px, svg, App, ClickEvent, Context, FocusHandle,
-    IntoElement, KeyDownEvent, MouseButton, Point, Render, SharedString, WeakEntity, Window,
+    IntoElement, KeyDownEvent, MouseButton, Point, Render, Role, SharedString, WeakEntity, Window,
 };
 
 use crate::menu_tree::{self, MenuRenderEnv};
@@ -446,6 +446,11 @@ impl ContextMenu {
         cx: &mut Context<Self>,
     ) -> gpui::AnyElement {
         let mut menu = div()
+            .id(SharedString::from(format!(
+                "{}-panel-{:?}",
+                "ctx", path_prefix
+            )))
+            .role(Role::Menu)
             .relative()
             .flex()
             .flex_col()
@@ -480,7 +485,15 @@ impl ContextMenu {
                     } else {
                         env.colors.on_neutral
                     };
-                    let mut row = menu_tree::row_base("ctx-item", &path, selected, fg, env);
+                    let mut row = menu_tree::row_base(
+                        "ctx-item",
+                        &path,
+                        selected,
+                        fg,
+                        env,
+                        Role::MenuItem,
+                        label,
+                    );
 
                     if !disabled && !self.closing {
                         row = row
@@ -539,7 +552,15 @@ impl ContextMenu {
                     } else {
                         env.colors.on_neutral
                     };
-                    let mut row = menu_tree::row_base("ctx-item", &path, selected, fg, env);
+                    let mut row = menu_tree::row_base(
+                        "ctx-item",
+                        &path,
+                        selected,
+                        fg,
+                        env,
+                        Role::MenuItemCheckBox,
+                        label,
+                    );
                     if !disabled && !self.closing {
                         row = row
                             .on_mouse_move(cx.listener(move |menu: &mut ContextMenu, _, _, cx| {
@@ -603,7 +624,15 @@ impl ContextMenu {
                     } else {
                         env.colors.on_neutral
                     };
-                    let mut row = menu_tree::row_base("ctx-item", &path, selected, fg, env);
+                    let mut row = menu_tree::row_base(
+                        "ctx-item",
+                        &path,
+                        selected,
+                        fg,
+                        env,
+                        Role::MenuItemRadio,
+                        label,
+                    );
                     if !disabled && !self.closing {
                         row = row
                             .on_mouse_move(cx.listener(move |menu: &mut ContextMenu, _, _, cx| {
@@ -661,7 +690,15 @@ impl ContextMenu {
                     } else {
                         env.colors.on_neutral
                     };
-                    let mut row = menu_tree::row_base("ctx-item", &path, selected, fg, env);
+                    let mut row = menu_tree::row_base(
+                        "ctx-item",
+                        &path,
+                        selected,
+                        fg,
+                        env,
+                        Role::MenuItem,
+                        label,
+                    );
                     if !disabled && !self.closing {
                         row = row
                             .cursor_pointer()
@@ -833,6 +870,25 @@ mod tests {
             assert_eq!(menu.selected_path, vec![1]);
             assert!(menu.open_path.is_empty());
         });
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_menu_and_items(cx: &mut TestAppContext) {
+        use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+        let (_, vcx) = open_fluent_test_window(cx, |_, _| {
+            ContextMenu::build(point(px(0.0), px(0.0)))
+                .action("Open", |_, _, _| {})
+                .submenu("More", vec![ContextMenuItem::action("Deep", |_, _, _| {})])
+        });
+        assert_eq!(
+            vcx.accessibility_snapshot(),
+            vec![
+                "Window".to_string(),
+                "Menu".to_string(),
+                "MenuItem \"Open\"".to_string(),
+                "MenuItem \"More\"".to_string(),
+            ]
+        );
     }
 
     #[gpui::test]

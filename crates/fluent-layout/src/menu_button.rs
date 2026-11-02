@@ -4,7 +4,7 @@ use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
     anchored, canvas, deferred, div, point, prelude::*, px, svg, Anchor, App, Bounds, ClickEvent,
     Context, ElementId, FocusHandle, IntoElement, KeyDownEvent, MouseButton, Pixels, Point, Render,
-    SharedString, WeakEntity, Window,
+    Role, SharedString, WeakEntity, Window,
 };
 
 use crate::context_menu::ContextMenuItem;
@@ -254,6 +254,11 @@ impl MenuButton {
         cx: &mut Context<Self>,
     ) -> gpui::AnyElement {
         let mut menu = div()
+            .id(SharedString::from(format!(
+                "{}-panel-{:?}",
+                "menubtn", path_prefix
+            )))
+            .role(Role::Menu)
             .relative()
             .flex()
             .flex_col()
@@ -288,15 +293,25 @@ impl MenuButton {
                     } else {
                         env.colors.on_neutral
                     };
-                    let mut row = menu_tree::row_base("menu-button-item", &path, selected, fg, env)
-                        .on_mouse_move(cx.listener(move |button: &mut MenuButton, _, _, cx| {
+                    let mut row = menu_tree::row_base(
+                        "menu-button-item",
+                        &path,
+                        selected,
+                        fg,
+                        env,
+                        Role::MenuItem,
+                        label,
+                    )
+                    .on_mouse_move(cx.listener(
+                        move |button: &mut MenuButton, _, _, cx| {
                             if button.closing {
                                 return;
                             }
                             button.selected_path = select_path.clone();
                             button.open_path = hover_path.clone();
                             cx.notify();
-                        }));
+                        },
+                    ));
 
                     if !disabled && !self.closing {
                         row = row
@@ -351,15 +366,25 @@ impl MenuButton {
                     } else {
                         env.colors.on_neutral
                     };
-                    let mut row = menu_tree::row_base("menu-button-item", &path, selected, fg, env)
-                        .on_mouse_move(cx.listener(move |button: &mut MenuButton, _, _, cx| {
+                    let mut row = menu_tree::row_base(
+                        "menu-button-item",
+                        &path,
+                        selected,
+                        fg,
+                        env,
+                        Role::MenuItemCheckBox,
+                        label,
+                    )
+                    .on_mouse_move(cx.listener(
+                        move |button: &mut MenuButton, _, _, cx| {
                             if button.closing {
                                 return;
                             }
                             button.selected_path = select_path.clone();
                             button.open_path = hover_path.clone();
                             cx.notify();
-                        }));
+                        },
+                    ));
 
                     if !disabled && !self.closing {
                         row = row
@@ -419,15 +444,25 @@ impl MenuButton {
                     } else {
                         env.colors.on_neutral
                     };
-                    let mut row = menu_tree::row_base("menu-button-item", &path, selected, fg, env)
-                        .on_mouse_move(cx.listener(move |button: &mut MenuButton, _, _, cx| {
+                    let mut row = menu_tree::row_base(
+                        "menu-button-item",
+                        &path,
+                        selected,
+                        fg,
+                        env,
+                        Role::MenuItemRadio,
+                        label,
+                    )
+                    .on_mouse_move(cx.listener(
+                        move |button: &mut MenuButton, _, _, cx| {
                             if button.closing {
                                 return;
                             }
                             button.selected_path = select_path.clone();
                             button.open_path = hover_path.clone();
                             cx.notify();
-                        }));
+                        },
+                    ));
 
                     if !disabled && !self.closing {
                         row = row
@@ -481,7 +516,15 @@ impl MenuButton {
                     } else {
                         env.colors.on_neutral
                     };
-                    let mut row = menu_tree::row_base("menu-button-item", &path, selected, fg, env);
+                    let mut row = menu_tree::row_base(
+                        "menu-button-item",
+                        &path,
+                        selected,
+                        fg,
+                        env,
+                        Role::MenuItem,
+                        label,
+                    );
 
                     if !disabled && !self.closing {
                         row = row
@@ -577,6 +620,9 @@ impl Render for MenuButton {
 
         let mut trigger = div()
             .id(self.id.clone())
+            .role(Role::Button)
+            .aria_label(self.label.clone())
+            .aria_expanded(self.open && !self.closing)
             .relative()
             .flex()
             .flex_row()
@@ -793,5 +839,32 @@ mod tests {
             assert_eq!(button.selected_path, vec![1]);
             assert!(button.open_path.is_empty());
         });
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_menu_and_items(cx: &mut TestAppContext) {
+        use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+        let (button, vcx) = open_fluent_test_window(cx, |_, _| {
+            MenuButton::new("snap-menu", "Actions").item(item("One"))
+        });
+        assert_eq!(
+            vcx.accessibility_snapshot(),
+            vec![
+                "Window".to_string(),
+                "Button \"Actions\" [expanded=false]".to_string(),
+            ]
+        );
+        button.update(vcx, |button, cx| {
+            button.open_popup(cx);
+        });
+        assert_eq!(
+            vcx.accessibility_snapshot(),
+            vec![
+                "Window".to_string(),
+                "Button \"Actions\" [expanded=true]".to_string(),
+                "Menu".to_string(),
+                "MenuItem \"One\"".to_string(),
+            ]
+        );
     }
 }

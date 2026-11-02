@@ -3,7 +3,7 @@ use std::sync::Arc;
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
     div, prelude::*, px, svg, ClickEvent, Context, FocusHandle, IntoElement, KeyDownEvent, Render,
-    SharedString, Window,
+    Role, SharedString, Window,
 };
 
 /// A single tab in a `TabStrip`.
@@ -118,6 +118,9 @@ impl Render for TabStrip {
         let border_c = colors.stroke_neutral_subtle;
 
         let mut strip = div()
+            .id("tab-strip")
+            .role(Role::TabList)
+            .aria_orientation(gpui::accesskit::Orientation::Horizontal)
             .flex()
             .flex_row()
             .w_full()
@@ -177,6 +180,11 @@ impl Render for TabStrip {
             let mut tab_el = div()
                 .id(("tab", (n_tabs as u64 * 100 + i as u64)))
                 .debug_selector(move || format!("tab-{i}"))
+                .role(Role::Tab)
+                .aria_label(tab_label.clone())
+                .aria_selected(is_active)
+                .aria_position_in_set(i + 1)
+                .aria_size_of_set(n_tabs)
                 .track_focus(&tab_handle)
                 .tab_stop(stop == Some(i))
                 .on_key_down(key_handler)
@@ -291,5 +299,20 @@ mod tests {
 
         assert_eq!(strip.active, 0);
         assert_eq!(strip.tabs[strip.active].id.as_ref(), "a");
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_tablist_and_selected_tab(cx: &mut TestAppContext) {
+        let (_, cx) = strip(cx);
+        assert_eq!(
+            cx.accessibility_snapshot(),
+            vec![
+                "Window".to_string(),
+                "TabList [orientation=Horizontal]".to_string(),
+                "Tab \"a\" [selected=true, position_in_set=1, size_of_set=3]".to_string(),
+                "Tab \"b\" [selected=false, position_in_set=2, size_of_set=3]".to_string(),
+                "Tab \"c\" [selected=false, position_in_set=3, size_of_set=3]".to_string(),
+            ]
+        );
     }
 }

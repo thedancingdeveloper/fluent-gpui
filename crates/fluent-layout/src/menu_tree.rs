@@ -296,9 +296,13 @@ pub(crate) fn row_base(
     selected: bool,
     fg: gpui::Hsla,
     env: &MenuRenderEnv,
+    role: gpui::Role,
+    label: &SharedString,
 ) -> gpui::Stateful<gpui::Div> {
     div()
         .id(row_id(id_prefix, path))
+        .role(role)
+        .aria_label(label.clone())
         .flex()
         .flex_row()
         .items_center()
