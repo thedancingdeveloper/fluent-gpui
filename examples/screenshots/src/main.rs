@@ -16,6 +16,10 @@
 use std::fs;
 
 use fluent_app::FluentAssets;
+use fluent_core::gpui::{
+    div, prelude::*, px, App, Bounds, Context, Entity, IntoElement, Point, SharedString, Size,
+    TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions,
+};
 use fluent_core::{Theme, ThemeProvider as _};
 use fluent_layout::{modal::ModalStack, ToastStack};
 use fluent_primitives::{
@@ -24,10 +28,6 @@ use fluent_primitives::{
     Icon, IconButton, IconSize, Label, LabelSize, ProgressBar, RadioGroup, RadioGroupOrientation,
     Searchbox, SectionHeader, Skeleton, SkeletonRow, Spinner, Switch, TextInput, Textarea,
     ToggleButton,
-};
-use fluent_core::gpui::{
-    div, prelude::*, px, App, Bounds, Context, Entity, IntoElement, Point, SharedString, Size,
-    TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions,
 };
 
 const SENTINEL: &str = "/tmp/.fluent-screenshot-ready";

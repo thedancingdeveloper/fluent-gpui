@@ -1,4 +1,9 @@
 use fluent_app::FluentApp;
+use fluent_core::gpui;
+use fluent_core::gpui::{
+    actions, div, prelude::*, px, App, Context, Entity, FontWeight, IntoElement, KeyBinding,
+    MouseButton, MouseDownEvent, Render, SharedString, Window,
+};
 use fluent_core::ThemeProvider as _;
 use fluent_layout::{
     CommandPalette, ConfirmModal, ContextMenu, DataColumn, DataRow, DataTable, DockPanel,
@@ -6,11 +11,6 @@ use fluent_layout::{
     SettingsNavItem, SettingsNavSection, TabItem, TabStrip, Workspace,
 };
 use fluent_ribbon::RibbonBar;
-use fluent_core::gpui as gpui;
-use fluent_core::gpui::{
-    actions, div, prelude::*, px, App, Context, Entity, FontWeight, IntoElement, KeyBinding,
-    MouseButton, MouseDownEvent, Render, SharedString, Window,
-};
 
 actions!(demo_app, [TogglePalette, ToggleLightTheme, ToggleDarkTheme]);
 
@@ -281,7 +281,12 @@ impl Render for DashboardView {
                     .flex()
                     .flex_col()
                     .gap(px(spacing.xs))
-                    .child(div().size(px(8.0)).rounded(px(99.0)).bg(fluent_core::gpui::rgb(hex)))
+                    .child(
+                        div()
+                            .size(px(8.0))
+                            .rounded(px(99.0))
+                            .bg(fluent_core::gpui::rgb(hex)),
+                    )
                     .child(
                         div()
                             .text_size(px(typography.display.size))
@@ -591,10 +596,12 @@ impl Render for ProjectTree {
             if menu_entity.read(cx).open {
                 tree = tree.child(menu_entity.clone());
             } else {
-                let _ = cx.listener(|tree: &mut ProjectTree, _: &fluent_core::gpui::ClickEvent, _, cx| {
-                    tree.context_menu = None;
-                    cx.notify();
-                });
+                let _ = cx.listener(
+                    |tree: &mut ProjectTree, _: &fluent_core::gpui::ClickEvent, _, cx| {
+                        tree.context_menu = None;
+                        cx.notify();
+                    },
+                );
             }
         }
 

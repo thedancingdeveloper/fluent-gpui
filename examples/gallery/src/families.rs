@@ -5,12 +5,12 @@
 //! theme row on top switches light, dark, high contrast and RTL so each
 //! family can be checked in every variant without leaving the page.
 
-use gpui::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_primitives::{
     Button, ButtonAppearance, ButtonIconPosition, ButtonShape, ButtonSize, Checkbox, CheckboxState,
     Chip, Divider, Label, LabelSize, Link, LinkAppearance, RadioGroup, Switch, ToggleButton,
 };
 use gpui::{div, prelude::*, AnyElement, AnyView, Context, Entity, IntoElement, Render, Window};
+use gpui::{LayoutDirection, Theme, ThemeProvider as _};
 
 /// A Fluent 2 component family, one gallery route each.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
