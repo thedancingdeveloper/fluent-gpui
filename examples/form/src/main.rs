@@ -4,7 +4,7 @@ use fluent_primitives::{
     Button, ButtonAppearance, Checkbox, CheckboxState, Divider, Dropdown, Label, LabelSize, Switch,
     TextInput,
 };
-use fluent_core::{
+use fluent_core::gpui::{
     div, prelude::*, px, ClickEvent, Context, Entity, IntoElement, Render, SharedString, Window,
 };
 
@@ -21,7 +21,7 @@ struct FormDemo {
 }
 
 impl FormDemo {
-    fn new(cx: &mut fluent_core::App) -> Self {
+    fn new(cx: &mut fluent_core::gpui::App) -> Self {
         Self {
             name: cx.new(|_| TextInput::new().placeholder("e.g. My Home Server")),
             host: cx.new(|_| TextInput::new().placeholder("e.g. 192.168.1.100")),
@@ -68,7 +68,7 @@ impl Render for FormDemo {
         };
 
         // ── row helper (label + control, space-between) ────────────────────
-        let control_row = |label_text: &'static str, control: fluent_core::AnyElement| {
+        let control_row = |label_text: &'static str, control: fluent_core::gpui::AnyElement| {
             div()
                 .flex()
                 .flex_row()

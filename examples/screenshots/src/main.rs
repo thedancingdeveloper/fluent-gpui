@@ -25,7 +25,7 @@ use fluent_primitives::{
     Searchbox, SectionHeader, Skeleton, SkeletonRow, Spinner, Switch, TextInput, Textarea,
     ToggleButton,
 };
-use gpui::{
+use fluent_core::gpui::{
     div, prelude::*, px, App, Bounds, Context, Entity, IntoElement, Point, SharedString, Size,
     TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions,
 };
@@ -106,7 +106,7 @@ impl Render for Screenshots {
         let dropdown = self.dropdown.clone();
         let combobox = self.combobox.clone();
 
-        let panel_content: gpui::AnyElement = match self.component.as_ref() {
+        let panel_content: fluent_core::gpui::AnyElement = match self.component.as_ref() {
             "button" => ss_buttons().into_any_element(),
             "icon-button" => ss_icon_buttons().into_any_element(),
             "toggle-button" => ss_toggle_buttons().into_any_element(),
@@ -159,11 +159,11 @@ impl Render for Screenshots {
 
 // ── Per-component render functions ────────────────────────────────────────
 
-fn row() -> gpui::Div {
+fn row() -> fluent_core::gpui::Div {
     div().flex().flex_row().items_center().gap(px(8.0))
 }
 
-fn col() -> gpui::Div {
+fn col() -> fluent_core::gpui::Div {
     div().flex().flex_col().gap(px(12.0))
 }
 
@@ -574,7 +574,7 @@ fn main() {
     let component = args.get(1).cloned().unwrap_or_else(|| "button".into());
     let dark = !args.iter().any(|a| a == "--light");
 
-    gpui_platform::application()
+    fluent_core::gpui_platform::application()
         .with_assets(FluentAssets::new(None))
         .run(move |cx: &mut App| {
             if dark {

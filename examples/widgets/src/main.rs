@@ -12,7 +12,7 @@ use fluent_primitives::{
     Searchbox, Spinner, Switch, TextInput, Textarea, ToggleButton, TokenInput,
     TokenInputSuggestion, TokenInputToken, Tooltip,
 };
-use gpui::{div, prelude::*, px, App, Context, Entity, IntoElement, Render, SharedString, Window};
+use fluent_core::gpui::{div, prelude::*, px, App, Context, Entity, IntoElement, Render, SharedString, Window};
 
 struct WidgetGallery {
     check: CheckboxState,

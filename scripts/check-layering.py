@@ -15,12 +15,10 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 # BASELINE: examples that predate the rule. Shrink, never grow (see deny.toml).
 BASELINE = {
-    "examples/demo_app",
-    "examples/screenshots",
-    "examples/widgets",
+    "examples/gallery",
 }
 SKIP_DIRS = {"target", ".git", ".graft"}
-PATH_RE = re.compile(r"(?<![A-Za-z0-9_])gpui(?:_[a-z_]+)?::")
+PATH_RE = re.compile(r"(?<![A-Za-z0-9_:])gpui(?:_[a-z_]+)?::")
 
 
 def allowed(rel: pathlib.PurePosixPath) -> bool:

@@ -1147,7 +1147,6 @@ dependencies = [
  "fluent-core",
  "fluent-layout",
  "fluent-ribbon",
- "gpui",
 ]
 
 [[package]]
@@ -1818,6 +1817,7 @@ dependencies = [
  "fluent-layout",
  "fluent-primitives",
  "fluent-ribbon",
+ "gpui",
 ]
 
 [[package]]
@@ -4345,8 +4345,6 @@ dependencies = [
  "fluent-core",
  "fluent-layout",
  "fluent-primitives",
- "gpui",
- "gpui_platform",
 ]
 
 [[package]]
@@ -5709,7 +5707,6 @@ dependencies = [
  "fluent-core",
  "fluent-layout",
  "fluent-primitives",
- "gpui",
 ]
 
 [[package]]

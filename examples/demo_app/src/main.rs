@@ -6,7 +6,8 @@ use fluent_layout::{
     SettingsNavItem, SettingsNavSection, TabItem, TabStrip, Workspace,
 };
 use fluent_ribbon::RibbonBar;
-use gpui::{
+use fluent_core::gpui as gpui;
+use fluent_core::gpui::{
     actions, div, prelude::*, px, App, Context, Entity, FontWeight, IntoElement, KeyBinding,
     MouseButton, MouseDownEvent, Render, SharedString, Window,
 };
@@ -105,8 +106,8 @@ impl Render for ProjectView {
         let spacing = theme.spacing;
         let typography = theme.typography;
 
-        let priority_color = gpui::rgb(self.project.priority.color_hex());
-        let status_color = gpui::rgb(self.project.status.color_hex());
+        let priority_color = fluent_core::gpui::rgb(self.project.priority.color_hex());
+        let status_color = fluent_core::gpui::rgb(self.project.status.color_hex());
 
         div()
             .size_full()
@@ -137,7 +138,7 @@ impl Render for ProjectView {
                             .py(px(2.0))
                             .rounded(px(4.0))
                             .bg(status_color)
-                            .text_color(gpui::rgb(0xFFFFFF))
+                            .text_color(fluent_core::gpui::rgb(0xFFFFFF))
                             .text_size(px(typography.caption.size))
                             .font_weight(FontWeight::SEMIBOLD)
                             .child(self.project.status.label()),
@@ -280,7 +281,7 @@ impl Render for DashboardView {
                     .flex()
                     .flex_col()
                     .gap(px(spacing.xs))
-                    .child(div().size(px(8.0)).rounded(px(99.0)).bg(gpui::rgb(hex)))
+                    .child(div().size(px(8.0)).rounded(px(99.0)).bg(fluent_core::gpui::rgb(hex)))
                     .child(
                         div()
                             .text_size(px(typography.display.size))
@@ -350,8 +351,8 @@ impl Render for DashboardView {
                     .flex_col()
                     .gap(px(spacing.xs))
                     .children(starred.iter().map(|p| {
-                        let status_color = gpui::rgb(p.status.color_hex());
-                        let priority_color = gpui::rgb(p.priority.color_hex());
+                        let status_color = fluent_core::gpui::rgb(p.status.color_hex());
+                        let priority_color = fluent_core::gpui::rgb(p.priority.color_hex());
                         div()
                             .flex()
                             .flex_row()
@@ -364,7 +365,7 @@ impl Render for DashboardView {
                             .child(
                                 div()
                                     .text_size(px(10.0))
-                                    .text_color(gpui::rgb(0xFF9800))
+                                    .text_color(fluent_core::gpui::rgb(0xFF9800))
                                     .child("★"),
                             )
                             .child(
@@ -386,7 +387,7 @@ impl Render for DashboardView {
                                     .py(px(1.0))
                                     .rounded(px(3.0))
                                     .bg(status_color)
-                                    .text_color(gpui::rgb(0xFFFFFF))
+                                    .text_color(fluent_core::gpui::rgb(0xFFFFFF))
                                     .text_size(px(typography.caption.size))
                                     .child(p.status.label()),
                             )
@@ -511,7 +512,7 @@ impl Render for ProjectTree {
             for (pi, project) in board.projects.iter().enumerate() {
                 let is_selected = selected == Some((bi, pi));
                 let project_clone = project.clone();
-                let status_color = gpui::rgb(project.status.color_hex());
+                let status_color = fluent_core::gpui::rgb(project.status.color_hex());
                 let project_name = project.name.clone();
                 let starred = project.starred;
                 let row_bg = if is_selected {
@@ -577,7 +578,7 @@ impl Render for ProjectTree {
                         .child(if starred {
                             div()
                                 .text_size(px(10.0))
-                                .text_color(gpui::rgb(0xFF9800))
+                                .text_color(fluent_core::gpui::rgb(0xFF9800))
                                 .child("★")
                         } else {
                             div()
@@ -590,7 +591,7 @@ impl Render for ProjectTree {
             if menu_entity.read(cx).open {
                 tree = tree.child(menu_entity.clone());
             } else {
-                let _ = cx.listener(|tree: &mut ProjectTree, _: &gpui::ClickEvent, _, cx| {
+                let _ = cx.listener(|tree: &mut ProjectTree, _: &fluent_core::gpui::ClickEvent, _, cx| {
                     tree.context_menu = None;
                     cx.notify();
                 });
@@ -1323,7 +1324,7 @@ fn main() {
                 }
             });
 
-            let tab_strip = cx.new(|cx: &mut gpui::Context<TabStrip>| {
+            let tab_strip = cx.new(|cx: &mut fluent_core::gpui::Context<TabStrip>| {
                 let mut ts = TabStrip::new(cx);
                 ts.add_tab(TabItem::new("dashboard").label("Dashboard"));
                 ts
