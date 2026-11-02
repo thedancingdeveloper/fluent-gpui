@@ -261,7 +261,7 @@ impl Render for Dropdown {
         let theme = cx.theme();
         let colors = theme.colors.clone();
         let tab_index = self.tab_index;
-        let focus_ring = colors.stroke_accent;
+        let focus_ring = colors.focus_ring;
         let radii = theme.radii;
         let spacing = theme.spacing;
         let typography = theme.typography;

@@ -217,7 +217,7 @@ impl RenderOnce for Button {
 
         let disabled = self.disabled;
         let tab_index = self.tab_index;
-        let focus_ring = colors.stroke_accent;
+        let focus_ring = colors.focus_ring;
         let on_click = self.on_click;
         let icon = self.icon;
         let label = self.label;

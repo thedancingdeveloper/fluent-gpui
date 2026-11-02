@@ -150,7 +150,7 @@ impl RenderOnce for RadioGroup {
         for (idx, option) in self.options.into_iter().enumerate() {
             let checked = self.selected.as_ref() == Some(&option.value);
             let tab_index = self.tab_index;
-            let focus_ring = colors.stroke_accent;
+            let focus_ring = colors.focus_ring;
             let disabled = self.disabled || option.disabled;
             let on_select = self.on_select.clone();
             let value = option.value.clone();

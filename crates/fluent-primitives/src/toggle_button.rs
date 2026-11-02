@@ -110,7 +110,7 @@ impl RenderOnce for ToggleButton {
 
         let disabled = self.disabled;
         let tab_index = self.tab_index;
-        let focus_ring = colors.stroke_accent;
+        let focus_ring = colors.focus_ring;
         let selected = self.selected;
         let on_click = self.on_click;
         let icon = self.icon;
