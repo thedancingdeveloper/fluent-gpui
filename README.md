@@ -10,9 +10,11 @@ fluent-gpui is not affiliated with, endorsed by or sponsored by Microsoft.
 
 > **Status: re-fork in progress.** The 3.x line replaces the old vendored
 > GPUI copy with a filtered snapshot of current Zed `main` under
-> `vendor/zed/crates/*`. That vendoring work is planned and not yet landed.
-> Sections below describe the 3.x consumer contract; where something does
-> not exist yet, it says so.
+> `vendor/zed/crates/*` (Zed `ba63a022c9a2`). The vendoring has landed; the
+> named estate patches are listed in `vendor/zed/PATCHES.md`. Backdrop blur
+> (WI-1349) is not re-applied yet, and video frames are not validated at
+> runtime. Sections below describe the 3.x consumer contract; where
+> something does not exist yet, it says so.
 
 ---
 
@@ -122,7 +124,6 @@ runtime, but the link step still needs the `-dev` packages above.
 |----------|----------|---------------|--------|
 | Windows 10/11 x64 | DirectX 11 | UI Automation | **Supported** |
 | Linux x64, X11 and Wayland | wgpu (Vulkan, GL fallback) | AT-SPI | **Supported** |
-| macOS | Metal (upstream) | — | **Not supported, not validated.** Best-effort compile only. No video surface, no blur |
 | Web / wasm | — | — | Not a target |
 
 ---
