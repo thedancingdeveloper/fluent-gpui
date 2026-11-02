@@ -907,6 +907,13 @@ mod tests {
             ("focus ring on surface", c.focus_ring, c.surface),
             ("accent stroke on surface", c.stroke_accent, c.surface),
             ("panel border on panel", c.panel_border, c.panel_bg),
+            ("brand text on surface", c.on_neutral_accent, c.surface),
+            ("secondary text on subtle", c.on_subtle, c.subtle),
+            ("info status", c.status_info, c.status_info_bg),
+            ("success status", c.status_success, c.status_success_bg),
+            ("warning status", c.status_warning, c.status_warning_bg),
+            ("error status", c.status_error, c.status_error_bg),
+            ("error border on surface", c.status_error_border, c.surface),
         ];
         for (name, fg, bg) in pairs {
             assert!(
