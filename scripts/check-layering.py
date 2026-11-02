@@ -16,7 +16,6 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 # BASELINE: examples that predate the rule. Shrink, never grow (see deny.toml).
 BASELINE = {
     "examples/demo_app",
-    "examples/gallery",
     "examples/screenshots",
     "examples/widgets",
 }
