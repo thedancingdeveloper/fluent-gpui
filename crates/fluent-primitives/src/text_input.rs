@@ -852,3 +852,82 @@ impl Focusable for TextInput {
             .unwrap_or_else(|| cx.focus_handle().tab_stop(true))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{cell::RefCell, rc::Rc};
+
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{ClipboardItem, KeyDownEvent, Keystroke, TestAppContext};
+
+    use super::*;
+
+    fn focus_input(input: &Entity<TextInput>, cx: &mut gpui::VisualTestContext) {
+        let focus = input.read_with(cx, |input, _| {
+            input
+                .focus_handle
+                .as_ref()
+                .expect("rendered focus handle")
+                .clone()
+        });
+        cx.update(|window, cx| window.focus(&focus, cx));
+    }
+
+    #[gpui::test]
+    fn keyboard_editing_and_clipboard_shortcuts(cx: &mut TestAppContext) {
+        let (input, cx) = open_fluent_test_window(cx, |_, _| TextInput::new().value("abcd"));
+        focus_input(&input, cx);
+
+        cx.type_keys("home delete end backspace");
+        cx.type_text("!");
+        assert_eq!(
+            input.read_with(cx, |input, _| input.text().to_owned()),
+            "bc!"
+        );
+
+        cx.type_keys("ctrl-a ctrl-c");
+        assert_eq!(
+            cx.read_from_clipboard().and_then(|item| item.text()),
+            Some("bc!".to_owned())
+        );
+        cx.type_keys("ctrl-x");
+        assert_eq!(input.read_with(cx, |input, _| input.text().to_owned()), "");
+
+        cx.write_to_clipboard(ClipboardItem::new_string("pasted text".to_owned()));
+        cx.type_keys("ctrl-v");
+        assert_eq!(
+            input.read_with(cx, |input, _| input.text().to_owned()),
+            "pasted text"
+        );
+    }
+
+    #[gpui::test]
+    fn enter_submits_current_text(cx: &mut TestAppContext) {
+        let submitted = Rc::new(RefCell::new(Vec::new()));
+        let submitted_for_callback = submitted.clone();
+        let (input, cx) = open_fluent_test_window(cx, move |_, _| {
+            TextInput::new().on_submit(move |value, _| {
+                submitted_for_callback.borrow_mut().push(value.to_string());
+                false
+            })
+        });
+        focus_input(&input, cx);
+
+        cx.type_text("send me");
+        let enter = KeyDownEvent {
+            keystroke: Keystroke::parse("enter").expect("valid enter keystroke"),
+            is_held: false,
+            prefer_character_input: false,
+            scan_code: None,
+        };
+        cx.update(|window, app| {
+            input.update(app, |input, app| input.handle_key(&enter, window, app));
+        });
+
+        assert_eq!(&*submitted.borrow(), &["send me"]);
+        assert_eq!(
+            input.read_with(cx, |input, _| input.text().to_owned()),
+            "send me"
+        );
+    }
+}
