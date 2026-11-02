@@ -15,7 +15,6 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 # BASELINE: examples that predate the rule. Shrink, never grow (see deny.toml).
 BASELINE = {
-    "examples/gallery",
 }
 SKIP_DIRS = {"target", ".git", ".graft"}
 PATH_RE = re.compile(r"(?<![A-Za-z0-9_:])gpui(?:_[a-z_]+)?::")
