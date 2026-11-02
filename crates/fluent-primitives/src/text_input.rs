@@ -17,6 +17,7 @@ pub struct TextInput {
     placeholder: SharedString,
     disabled: bool,
     error: bool,
+    field_validation: crate::FieldValidationState,
     /// When true, each character is displayed as `•` (password masking). The real
     /// value is still stored and returned by `text()`; only the visual is hidden.
     masked: bool,
@@ -41,6 +42,7 @@ impl Default for TextInput {
             placeholder: SharedString::default(),
             disabled: false,
             error: false,
+            field_validation: crate::FieldValidationState::None,
             masked: false,
             focus_handle: None,
             a11y_name: None,
@@ -799,14 +801,14 @@ impl Render for TextInput {
         } else {
             colors.surface
         };
-        let indicator = if self.error {
-            colors.stroke_accent
-        } else if self.disabled {
-            colors.stroke_neutral_disabled
-        } else if focus_handle.is_focused(_window) {
-            colors.accent
-        } else {
-            colors.stroke_neutral
+        let indicator = match self.field_validation {
+            crate::FieldValidationState::Error => colors.status_error,
+            crate::FieldValidationState::Warning => colors.status_warning,
+            crate::FieldValidationState::Success => colors.status_success,
+            crate::FieldValidationState::None if self.error => colors.stroke_accent,
+            crate::FieldValidationState::None if self.disabled => colors.stroke_neutral_disabled,
+            crate::FieldValidationState::None if focus_handle.is_focused(_window) => colors.accent,
+            crate::FieldValidationState::None => colors.stroke_neutral,
         };
 
         let root = div()
@@ -836,6 +838,8 @@ impl Render for TextInput {
             .h(px(components.text_input_height))
             .px(px(spacing.md))
             .rounded(px(radii.md))
+            .border_1()
+            .border_color(indicator)
             .bg(bg)
             .text_size(px(typography.body.size))
             .line_height(px(typography.body.line_height))
@@ -880,6 +884,10 @@ impl crate::FieldControl for TextInput {
     ) {
         self.a11y_name = name;
         self.a11y_description = description;
+    }
+
+    fn set_field_validation(&mut self, state: crate::FieldValidationState) {
+        self.field_validation = state;
     }
 }
 

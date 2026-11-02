@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Add Field validation states, status messages, required markers, hints, and input borders.
 - fluent-primitives: add inline and standalone `Link` with default/subtle and disabled styles, hover underline, keyboard activation, accessible link semantics, and URL-opening support (WI-2930).
 
 - fluent-core: add complete Fluent 2 neutral foreground, background and stroke state aliases for light, dark, Midnight, Ember and high-contrast themes (WI-2981).

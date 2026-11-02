@@ -15,6 +15,9 @@ pub trait FieldControl: 'static {
         name: Option<SharedString>,
         description: Option<SharedString>,
     );
+
+    /// Replace the visual validation state set by the owning field.
+    fn set_field_validation(&mut self, _state: FieldValidationState) {}
 }
 
 /// What an input reports to assistive technology.
@@ -47,7 +50,8 @@ pub(crate) fn input_semantics(
     root
 }
 
-type SemanticsApplier = Box<dyn FnOnce(Option<SharedString>, Option<SharedString>, &mut App)>;
+type SemanticsApplier =
+    Box<dyn FnOnce(Option<SharedString>, Option<SharedString>, FieldValidationState, &mut App)>;
 
 /// Validation state for a `Field`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -92,9 +96,10 @@ impl Field {
     /// accessible description.
     pub fn input<T: FieldControl + gpui::Render>(input: Entity<T>) -> Self {
         let mut field = Self::new(input.clone());
-        field.semantics = Some(Box::new(move |name, description, cx| {
+        field.semantics = Some(Box::new(move |name, description, validation, cx| {
             input.update(cx, |control, _| {
-                control.set_field_semantics(name, description)
+                control.set_field_semantics(name, description);
+                control.set_field_validation(validation);
             });
         }));
         field
@@ -139,7 +144,7 @@ impl RenderOnce for Field {
                 .validation_message
                 .clone()
                 .or_else(|| self.helper_text.clone());
-            apply(self.label.clone(), description, cx);
+            apply(self.label.clone(), description, self.validation_state, cx);
         }
         let theme = cx.theme();
         let colors = &theme.colors;
@@ -205,13 +210,13 @@ impl RenderOnce for Field {
                 );
             }
             if let Some(message) = self.validation_message {
-                body = body.child(
-                    div()
-                        .text_size(px(typography.caption.size))
-                        .line_height(px(typography.caption.line_height))
-                        .text_color(message_color)
-                        .child(message),
-                );
+                body = body.child(validation_message(
+                    message,
+                    message_color,
+                    self.validation_state,
+                    spacing,
+                    typography,
+                ));
             }
             return root.child(body);
         }
@@ -230,26 +235,93 @@ impl RenderOnce for Field {
         }
 
         if let Some(message) = self.validation_message {
-            root = root.child(
-                div()
-                    .text_size(px(typography.caption.size))
-                    .line_height(px(typography.caption.line_height))
-                    .text_color(message_color)
-                    .child(message),
-            );
+            root = root.child(validation_message(
+                message,
+                message_color,
+                self.validation_state,
+                spacing,
+                typography,
+            ));
         }
 
         root
     }
 }
 
+fn validation_message(
+    message: SharedString,
+    color: gpui::Hsla,
+    state: FieldValidationState,
+    spacing: &fluent_core::SpacingTokens,
+    typography: &fluent_core::TypographyTokens,
+) -> impl IntoElement {
+    let icon = match state {
+        FieldValidationState::Error => "×",
+        FieldValidationState::Warning => "!",
+        FieldValidationState::Success => "✓",
+        FieldValidationState::None => "",
+    };
+    div()
+        .flex()
+        .items_center()
+        .gap(px(spacing.xs))
+        .text_size(px(typography.caption.size))
+        .line_height(px(typography.caption.line_height))
+        .text_color(color)
+        .when(state != FieldValidationState::None, |row| {
+            row.child(
+                div()
+                    .flex_none()
+                    .w(px(12.0))
+                    .text_align(gpui::TextAlign::Center)
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .child(icon),
+            )
+        })
+        .child(message)
+}
+
 #[cfg(test)]
 mod tests {
+    use std::{cell::RefCell, rc::Rc};
+
     use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
     use gpui::{Entity, TestAppContext, VisualTestContext};
 
     use super::*;
     use crate::{Combobox, Searchbox, TextInput, Textarea, TokenInput};
+
+    struct ValidationProbe {
+        state: Rc<RefCell<FieldValidationState>>,
+    }
+
+    struct ValidationHost {
+        probe: Entity<ValidationProbe>,
+    }
+
+    impl gpui::Render for ValidationHost {
+        fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+            Field::input(self.probe.clone())
+                .label("Server")
+                .required(true)
+                .helper_text("Host or IP address")
+                .validation(FieldValidationState::Warning, "Connection is unverified")
+        }
+    }
+
+    impl gpui::Render for ValidationProbe {
+        fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+            div()
+        }
+    }
+
+    impl FieldControl for ValidationProbe {
+        fn set_field_semantics(&mut self, _: Option<SharedString>, _: Option<SharedString>) {}
+
+        fn set_field_validation(&mut self, state: FieldValidationState) {
+            *self.state.borrow_mut() = state;
+        }
+    }
 
     struct Host {
         text: Entity<TextInput>,
@@ -323,5 +395,33 @@ mod tests {
         assert!(tree.contains("line one"), "{tree}");
         assert!(tree.contains("needle"), "{tree}");
         assert!(!tree.contains("hunter2"), "password value leaked: {tree}");
+    }
+
+    #[gpui::test]
+    fn field_propagates_validation_state_to_wrapped_control(cx: &mut TestAppContext) {
+        let state = Rc::new(RefCell::new(FieldValidationState::None));
+        let state_for_probe = state.clone();
+        let (_, vcx) = open_fluent_test_window(cx, move |_, cx| {
+            let probe = cx.new(|_| ValidationProbe {
+                state: state_for_probe,
+            });
+            ValidationHost { probe }
+        });
+
+        vcx.update(|window, cx| window.draw(cx).clear(cx));
+        assert_eq!(*state.borrow(), FieldValidationState::Warning);
+    }
+
+    #[test]
+    fn field_configures_required_hint_and_validation_message() {
+        let field = Field::new(div())
+            .required(true)
+            .helper_text("Use the account name")
+            .validation(FieldValidationState::Success, "Account found");
+
+        assert!(field.required);
+        assert_eq!(field.helper_text.as_deref(), Some("Use the account name"));
+        assert_eq!(field.validation_message.as_deref(), Some("Account found"));
+        assert_eq!(field.validation_state, FieldValidationState::Success);
     }
 }

@@ -10,6 +10,7 @@ pub struct Searchbox {
     value: String,
     placeholder: SharedString,
     disabled: bool,
+    field_validation: crate::FieldValidationState,
     focus_handle: Option<FocusHandle>,
     a11y_name: Option<SharedString>,
     a11y_description: Option<SharedString>,
@@ -24,6 +25,7 @@ impl Default for Searchbox {
             value: String::new(),
             placeholder: "Search".into(),
             disabled: false,
+            field_validation: crate::FieldValidationState::None,
             focus_handle: None,
             a11y_name: None,
             a11y_description: None,
@@ -163,10 +165,12 @@ impl Render for Searchbox {
         } else {
             colors.on_neutral
         };
-        let indicator = if focused {
-            colors.accent
-        } else {
-            colors.stroke_neutral
+        let indicator = match self.field_validation {
+            crate::FieldValidationState::Error => colors.status_error,
+            crate::FieldValidationState::Warning => colors.status_warning,
+            crate::FieldValidationState::Success => colors.status_success,
+            crate::FieldValidationState::None if focused => colors.accent,
+            crate::FieldValidationState::None => colors.stroke_neutral,
         };
         let text = if self.value.is_empty() {
             self.placeholder.clone()
@@ -195,6 +199,8 @@ impl Render for Searchbox {
             .h(px(components.text_input_height))
             .px(px(spacing.md))
             .rounded(px(radii.md))
+            .border_1()
+            .border_color(indicator)
             .bg(if self.disabled {
                 colors.neutral_disabled
             } else {
@@ -282,6 +288,10 @@ impl crate::FieldControl for Searchbox {
     ) {
         self.a11y_name = name;
         self.a11y_description = description;
+    }
+
+    fn set_field_validation(&mut self, state: crate::FieldValidationState) {
+        self.field_validation = state;
     }
 }
 
