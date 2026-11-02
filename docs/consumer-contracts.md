@@ -97,6 +97,9 @@ Windows 10/11 x64 and Linux x64 (X11, Wayland) only.
 
 ## 4. Support boundaries
 
+The detailed behavior matrix and its open verification work are in [platform-parity.md](platform-parity.md).
+
+
 - Supported: Windows 10/11 x64 (DirectX 11), Linux x64 X11 and Wayland (wgpu).
 - Out of scope: macOS (no Metal paths, no claims) and web/wasm.
 - Windows-specific input details (scan codes, UI Automation) are unverified on real

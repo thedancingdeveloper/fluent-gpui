@@ -11,6 +11,7 @@ per crate.
 ---
 
 ## Unreleased
+- Add the Windows/Linux platform parity matrix and native verification gap list ([WI-3043](https://vogt.sprooty.com/work/WI-3043)).
 - fluent-layout, gallery: virtualised expanded tree rows with keyboard-preserving navigation, lazy child loading states, and a 50,000-node gallery story (WI-3035).
 - fluent-layout, gallery: virtualised `SelectableList` rows (`rows(count, item_at)`, optional variable row heights, scroll-into-view on keyboard selection, AccessKit position-in-set/set-size) on a new `VirtualList` element, and a 100,000-row gallery story (WI-3033).
 - fluent-primitives, gallery: `Slider` (horizontal/vertical, step, range, disabled, Slider role with value text, arrow/Home/End/PageUp/PageDown keys) and `SpinButton` (step buttons, min/max clamp, Up/Down keys, format and parse hooks, SpinButton role) with gallery stories; no pointer drag or typed text entry yet (WI-3032).
