@@ -181,7 +181,7 @@ impl RenderOnce for Field {
             FieldValidationState::Error => colors.status_error,
             FieldValidationState::Warning => colors.status_warning,
             FieldValidationState::Success => colors.status_success,
-            FieldValidationState::None => colors.on_subtle,
+            FieldValidationState::None => colors.neutral_foreground_2.default,
         };
 
         let mut body = div().flex().flex_col().gap(px(spacing.xs)).w_full();

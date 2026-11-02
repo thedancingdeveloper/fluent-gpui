@@ -104,8 +104,8 @@ impl RenderOnce for Card {
         let theme = cx.theme();
         let colors = &theme.colors;
         let radii = &theme.radii;
-        let hover_bg = colors.neutral_hover;
-        let hover_border = colors.stroke_neutral;
+        let hover_bg = colors.neutral_background_3.hover;
+        let hover_border = colors.neutral_stroke_1.default;
         let id = self.id;
         let row = self.row;
         let flex_1 = self.flex_1;
@@ -115,9 +115,9 @@ impl RenderOnce for Card {
         let card = div()
             .p(px(self.padding))
             .rounded(px(radii.md))
-            .bg(colors.neutral)
+            .bg(colors.neutral_background_3.default)
             .border_1()
-            .border_color(colors.stroke_neutral_subtle)
+            .border_color(colors.neutral_stroke_3.default)
             .flex()
             .gap(px(self.gap));
 

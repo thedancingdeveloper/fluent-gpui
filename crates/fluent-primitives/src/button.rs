@@ -1,5 +1,5 @@
 use crate::focus::FluentFocus as _;
-use fluent_core::ThemeProvider as _;
+use fluent_core::{ControlStates, NeutralColorStates, ThemeProvider as _};
 use gpui::{
     div, prelude::*, px, App, ClickEvent, ElementId, Hsla, IntoElement, RenderOnce, Role,
     SharedString, Window,
@@ -123,76 +123,36 @@ impl RenderOnce for Button {
         let radii = &theme.radii;
         let typography = &theme.typography;
 
-        let (bg, bg_hover, bg_active, fg, border): (Hsla, Hsla, Hsla, Hsla, Option<Hsla>) =
-            match self.appearance {
-                ButtonAppearance::Accent => (
-                    if self.disabled {
-                        colors.accent_disabled
-                    } else {
-                        colors.accent
-                    },
-                    colors.accent_hover,
-                    colors.accent_selected,
-                    if self.disabled {
-                        colors.on_accent_disabled
-                    } else {
-                        colors.on_accent
-                    },
-                    None,
-                ),
-                ButtonAppearance::Neutral => (
-                    if self.disabled {
-                        colors.neutral_disabled
-                    } else {
-                        colors.neutral
-                    },
-                    colors.neutral_hover,
-                    colors.neutral_selected,
-                    if self.disabled {
-                        colors.on_neutral_disabled
-                    } else {
-                        colors.on_neutral
-                    },
-                    Some(colors.stroke_neutral),
-                ),
-                ButtonAppearance::Danger => (
-                    if self.disabled {
-                        colors.neutral_disabled
-                    } else {
-                        colors.status_error
-                    },
-                    colors.status_error_border,
-                    colors.status_error_bg,
-                    if self.disabled {
-                        colors.on_neutral_disabled
-                    } else {
-                        colors.on_accent
-                    },
-                    None,
-                ),
-                ButtonAppearance::Subtle => (
-                    colors.subtle,
-                    colors.subtle_hover,
-                    colors.subtle_selected,
-                    if self.disabled {
-                        colors.on_subtle_disabled
-                    } else {
-                        colors.on_subtle
-                    },
-                    None,
-                ),
-                ButtonAppearance::Hyperlink => (
-                    colors.subtle,
-                    colors.subtle_hover,
-                    colors.subtle_selected,
-                    if self.disabled {
-                        colors.on_neutral_disabled
-                    } else {
-                        colors.on_neutral_accent
-                    },
-                    None,
-                ),
-            };
+        let (states, border): (ControlStates, Option<Hsla>) = match self.appearance {
+            ButtonAppearance::Accent => (colors.accent_control(), None),
+            ButtonAppearance::Neutral => (
+                colors.neutral_control(),
+                Some(if self.disabled {
+                    colors.neutral_stroke_1.disabled
+                } else {
+                    colors.neutral_stroke_1.default
+                }),
+            ),
+            ButtonAppearance::Danger => (colors.danger_control(), None),
+            ButtonAppearance::Subtle => (colors.subtle_control(), None),
+            ButtonAppearance::Hyperlink => {
+                let mut s = colors.subtle_control();
+                s.foreground = NeutralColorStates {
+                    default: colors.on_neutral_accent,
+                    hover: colors.on_neutral_accent,
+                    pressed: colors.on_neutral_accent,
+                    selected: colors.on_neutral_accent,
+                    disabled: colors.neutral_foreground_1.disabled,
+                };
+                (s, None)
+            }
+        };
+        let (bg, fg) = if self.disabled {
+            (states.background.disabled, states.foreground.disabled)
+        } else {
+            (states.background.default, states.foreground.default)
+        };
+        let (bg_hover, bg_active) = (states.background.hover, states.background.pressed);
 
         let radius = match self.shape {
             ButtonShape::Rounded => px(radii.md),
