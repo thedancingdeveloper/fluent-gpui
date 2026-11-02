@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- fluent-core: audit Fluent 2 alias token coverage in `docs/tokens.md`, mapping existing neutral, brand, status, radius and popup-motion names and recording missing state, shadow, stroke-width and motion families (WI-2925).
 - fluent-layout, fluent-app, fluent-primitives: mirror Dock, MenuBar, TabStrip and Field layouts for RTL while preserving the platform title-bar control position (WI-2927).
 - Add opt-in system light/dark theme following for FluentApp.
 - fluent-core: high-contrast theme (`ColorScheme::high_contrast`, `Theme::high_contrast`, `Theme::apply_high_contrast`) mapped from the system colours Canvas, CanvasText, Highlight, GrayText and ButtonFace, with strokes in place of fills; covered by the token and contrast tests (7:1 checks); the gallery ribbon View group switches Dark, Light and High contrast (WI-2923).
