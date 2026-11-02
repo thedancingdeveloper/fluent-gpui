@@ -1,7 +1,7 @@
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
-    div, prelude::*, px, AnyView, ClickEvent, Context, Entity, Global, IntoElement, MouseButton,
-    Render, SharedString, Window,
+    div, prelude::*, px, AnyView, ClickEvent, Context, Entity, FocusHandle, Global, IntoElement,
+    MouseButton, Render, SharedString, WeakFocusHandle, Window,
 };
 
 // ---------------------------------------------------------------------------
@@ -59,9 +59,11 @@ impl ModalStack {
 ///
 /// Include one `ModalHost` as a child of your `Workspace`; it will render
 /// any active modals above all other content.
-#[derive(Default)]
 pub struct ModalHost {
     observing: bool,
+    focus_handle: FocusHandle,
+    prior_focus: Option<WeakFocusHandle>,
+    had_modal: bool,
 }
 
 impl ModalHost {
@@ -69,12 +71,17 @@ impl ModalHost {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
         cx.observe_global::<ModalStack>(|_, cx| cx.notify())
             .detach();
-        Self { observing: true }
+        Self {
+            observing: true,
+            focus_handle: cx.focus_handle(),
+            prior_focus: None,
+            had_modal: false,
+        }
     }
 }
 
 impl Render for ModalHost {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if !self.observing {
             cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
             cx.observe_global::<ModalStack>(|_, cx| cx.notify())
@@ -92,7 +99,20 @@ impl Render for ModalHost {
             .unwrap_or_default();
 
         if stack.is_empty() {
+            if self.had_modal {
+                match self.prior_focus.take().and_then(|focus| focus.upgrade()) {
+                    Some(prior) => window.focus(&prior, cx),
+                    None => window.blur(cx),
+                }
+                self.had_modal = false;
+            }
             return div();
+        }
+
+        if !self.had_modal {
+            self.prior_focus = window.focused(cx).map(|focus| focus.downgrade());
+            window.focus(&self.focus_handle, cx);
+            self.had_modal = true;
         }
 
         let (top_view, top_size) = stack.last().unwrap().clone();
@@ -118,6 +138,20 @@ impl Render for ModalHost {
         // needing deferred(). Removing deferred() here allows modals to host Dropdown/anchored
         // popups (which use deferred() internally) without triggering GPUI's nested-deferred panic.
         div()
+            .track_focus(&self.focus_handle)
+            .on_key_down(|event, window, cx| match event.keystroke.key.as_str() {
+                "escape" => {
+                    cx.stop_propagation();
+                    ModalStack::pop(cx);
+                }
+                "tab" => {
+                    cx.stop_propagation();
+                    if let Some(focus) = window.focused(cx) {
+                        window.focus(&focus, cx);
+                    }
+                }
+                _ => {}
+            })
             .absolute()
             .inset_0()
             .size_full()
@@ -437,6 +471,7 @@ mod tests {
     struct Root {
         host: Entity<ModalHost>,
         clicks: Rc<Cell<usize>>,
+        opener: FocusHandle,
     }
 
     impl Render for Root {
@@ -450,6 +485,7 @@ mod tests {
                         .id("below")
                         .debug_selector(|| "below".into())
                         .size(px(100.))
+                        .track_focus(&self.opener)
                         .on_click(move |_, _, _| clicks.set(clicks.get() + 1)),
                 )
                 .child(self.host.clone())
@@ -464,6 +500,7 @@ mod tests {
             Root {
                 host: cx.new(ModalHost::new),
                 clicks: c,
+                opener: cx.focus_handle(),
             }
         });
         (clicks, cx)
@@ -560,11 +597,7 @@ mod tests {
         assert_eq!(stack_len(cx), 0);
     }
 
-    // `DialogView::render` `take()`s the dialog, so a second render of the
-    // view paints an empty `Dialog` and the actions vanish before they can be
-    // clicked. Reported on WI-2911; un-ignore once fixed.
     #[gpui::test]
-    #[ignore = "DialogView drops its content after the first render (WI-2911 finding)"]
     fn dialog_action_runs_and_does_not_dismiss(cx: &mut TestAppContext) {
         let (_, cx) = root(cx);
         let fired = Rc::new(Cell::new(0));
@@ -578,6 +611,56 @@ mod tests {
         cx.click_selector("dialog-action-0");
         assert_eq!(fired.get(), 1);
         assert_eq!(stack_len(cx), 1, "an action does not itself dismiss");
+    }
+
+    #[gpui::test]
+    fn escape_dismisses_dialog_and_restores_focus(cx: &mut TestAppContext) {
+        let clicks = Rc::new(Cell::new(0));
+        let c = clicks.clone();
+        let (root, cx) = open_fluent_test_window(cx, move |_, cx| {
+            cx.set_global(ModalStack { entries: vec![] });
+            Root {
+                host: cx.new(ModalHost::new),
+                clicks: c,
+                opener: cx.focus_handle(),
+            }
+        });
+        let opener = root.read_with(cx, |root, _| root.opener.clone());
+        cx.update(|window, cx| window.focus(&opener, cx));
+        cx.assert_focused(&opener);
+
+        cx.update(|_, cx| Dialog::new("D").show(ModalSize::Fit, cx));
+        cx.run_until_parked();
+        cx.assert_not_focused(&opener);
+        cx.type_keys("escape");
+
+        assert_eq!(stack_len(cx), 0);
+        cx.assert_focused(&opener);
+    }
+
+    #[gpui::test]
+    fn dialog_traps_focus_until_dismissed(cx: &mut TestAppContext) {
+        let clicks = Rc::new(Cell::new(0));
+        let c = clicks.clone();
+        let (root, cx) = open_fluent_test_window(cx, move |_, cx| {
+            cx.set_global(ModalStack { entries: vec![] });
+            Root {
+                host: cx.new(ModalHost::new),
+                clicks: c,
+                opener: cx.focus_handle(),
+            }
+        });
+        let opener = root.read_with(cx, |root, _| root.opener.clone());
+        cx.update(|window, cx| window.focus(&opener, cx));
+        cx.update(|_, cx| Dialog::new("D").show(ModalSize::Fit, cx));
+        cx.run_until_parked();
+
+        cx.type_keys("tab shift-tab");
+        cx.assert_not_focused(&opener);
+        assert_eq!(stack_len(cx), 1);
+
+        cx.type_keys("escape");
+        cx.assert_focused(&opener);
     }
 
     #[gpui::test]
