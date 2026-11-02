@@ -976,4 +976,71 @@ mod tests {
             "send me"
         );
     }
+
+    #[gpui::test]
+    fn arrows_move_by_grapheme_cluster(cx: &mut TestAppContext) {
+        // "e" + combining acute, a family emoji (ZWJ sequence), then "z".
+        let text = "e\u{301}\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}z";
+        let (input, cx) = open_fluent_test_window(cx, move |_, _| TextInput::new().value(text));
+        focus_input(&input, cx);
+
+        cx.type_keys("home right");
+        assert_eq!(
+            input.read_with(cx, |i, _| i.cursor_offset()),
+            "e\u{301}".len()
+        );
+        cx.type_keys("right");
+        assert_eq!(
+            input.read_with(cx, |i, _| i.cursor_offset()),
+            text.len() - 1
+        );
+        cx.type_keys("left left");
+        assert_eq!(input.read_with(cx, |i, _| i.cursor_offset()), 0);
+    }
+
+    #[gpui::test]
+    fn backspace_removes_whole_cluster(cx: &mut TestAppContext) {
+        let (input, cx) = open_fluent_test_window(cx, |_, _| TextInput::new().value("ae\u{301}"));
+        focus_input(&input, cx);
+        cx.type_keys("end backspace");
+        assert_eq!(input.read_with(cx, |i, _| i.text().to_owned()), "a");
+    }
+
+    #[gpui::test]
+    fn shift_arrows_extend_and_reverse_selection(cx: &mut TestAppContext) {
+        let (input, cx) = open_fluent_test_window(cx, |_, _| TextInput::new().value("abcd"));
+        focus_input(&input, cx);
+
+        cx.type_keys("home shift-right shift-right");
+        assert_eq!(input.read_with(cx, |i, _| i.selected_range.clone()), 0..2);
+        cx.type_keys("shift-left shift-left shift-left");
+        assert_eq!(input.read_with(cx, |i, _| i.selected_range.clone()), 0..0);
+        cx.type_keys("shift-left");
+        assert_eq!(input.read_with(cx, |i, _| i.selected_range.clone()), 0..0);
+        cx.type_keys("end shift-left");
+        assert_eq!(input.read_with(cx, |i, _| i.selected_range.clone()), 3..4);
+        cx.type_text("X");
+        assert_eq!(input.read_with(cx, |i, _| i.text().to_owned()), "abcX");
+    }
+
+    #[gpui::test]
+    fn typing_replaces_selection_and_arrow_collapses(cx: &mut TestAppContext) {
+        let (input, cx) = open_fluent_test_window(cx, |_, _| TextInput::new().value("hello"));
+        focus_input(&input, cx);
+        cx.type_keys("ctrl-a");
+        cx.type_text("é");
+        assert_eq!(input.read_with(cx, |i, _| i.text().to_owned()), "é");
+        cx.type_keys("ctrl-a left");
+        assert_eq!(input.read_with(cx, |i, _| i.selected_range.clone()), 0..0);
+    }
+
+    #[gpui::test]
+    fn utf16_offsets_round_trip_across_astral_chars(cx: &mut TestAppContext) {
+        let (input, cx) = open_fluent_test_window(cx, |_, _| TextInput::new().value("a\u{1F600}b"));
+        input.read_with(cx, |i, _| {
+            assert_eq!(i.offset_to_utf16(5), 3);
+            assert_eq!(i.offset_from_utf16(3), 5);
+            assert_eq!(i.offset_from_utf16(0), 0);
+        });
+    }
 }
