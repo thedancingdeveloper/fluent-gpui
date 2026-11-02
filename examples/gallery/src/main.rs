@@ -9,9 +9,9 @@ use fluent_layout::{
 use fluent_primitives::{
     Avatar, Button, ButtonAppearance, Checkbox, CounterBadge, CounterBadgeAppearance,
     DateTimeLocale, DateTimePicker, DateTimeValue, InputCapture, InputCaptureEvent, Link,
-    LinkAppearance, Persona, PersonaSize, PresenceBadgeState, ProgressBar, Slider, SpinButton,
-    Spinner, Switch, TerminalCell, TerminalGrid, TerminalView, TerminalViewEvent, ToggleButton,
-    VideoScaling, VideoSurface, VideoSurfaceEvent,
+    LinkAppearance, Persona, PersonaSize, PresenceBadgeState, ProgressBar, Rating, Slider,
+    SpinButton, Spinner, Switch, Tag, TagAppearance, TagGroup, TagSize, TerminalCell, TerminalGrid,
+    TerminalView, TerminalViewEvent, ToggleButton, VideoScaling, VideoSurface, VideoSurfaceEvent,
 };
 use fluent_ribbon::RibbonBar;
 
@@ -30,6 +30,32 @@ struct GalleryRoot {
 /// Data-heavy screens in every non-ready state: an rtbit torrent list and an
 /// rdpapp connection tree.
 struct DataStatesDemo;
+
+struct TagRatingDemo;
+impl Render for TagRatingDemo {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .p_2()
+            .child("Tags and rating")
+            .child(
+                TagGroup::new("gallery-tags")
+                    .tag(Tag::new("tag-one", "Design").appearance(TagAppearance::Accent))
+                    .tag(
+                        Tag::new("tag-two", "Review")
+                            .size(TagSize::Small)
+                            .dismissible(true),
+                    ),
+            )
+            .child(
+                Rating::new("gallery-rating")
+                    .value(3.5)
+                    .label("Product rating"),
+            )
+    }
+}
 
 impl DataStatesDemo {
     fn torrents(state: DataTableState, full: bool) -> DataTable {
@@ -1002,6 +1028,7 @@ fn main() {
         let input_demo = cx.new(InputCaptureDemo::new);
         let terminal_demo = cx.new(TerminalDemo::new);
         let video_demo = cx.new(VideoDemo::new);
+        let tag_rating_demo = cx.new(|_| TagRatingDemo);
         let range_demo = cx.new(|_| RangeInputDemo {
             volume: 40.0,
             vertical: 0.5,
@@ -1017,7 +1044,12 @@ fn main() {
         });
         let host = cx.new(|_| {
             FamilyHost::new(DemoViews {
-                status: vec![badge_demo.into(), persona_demo.into(), download_demo.into()],
+                status: vec![
+                    badge_demo.into(),
+                    persona_demo.into(),
+                    download_demo.into(),
+                    tag_rating_demo.into(),
+                ],
                 data: vec![data_states.into(), big_list.into(), big_tree.into()],
                 date_input: vec![date_demo.into(), input_demo.into(), range_demo.into()],
                 media: vec![terminal_demo.into(), video_demo.into()],
