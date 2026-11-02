@@ -1,3 +1,4 @@
+pub mod breadcrumb;
 pub mod command;
 pub mod command_palette;
 pub mod context_menu;
@@ -27,6 +28,7 @@ pub mod tree;
 pub mod virtual_list;
 pub mod workspace;
 
+pub use breadcrumb::{Breadcrumb, BreadcrumbItem, Pagination};
 pub use command::CommandDef;
 pub use command_palette::{CommandPalette, PaletteEntry, PaletteEntryAction};
 pub use context_menu::{
