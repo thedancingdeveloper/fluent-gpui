@@ -25,7 +25,9 @@ pub mod workspace;
 
 pub use command::CommandDef;
 pub use command_palette::{CommandPalette, PaletteEntry, PaletteEntryAction};
-pub use context_menu::{ContextMenu, ContextMenuItem};
+pub use context_menu::{
+    context_menu_key_target, is_context_menu_key, ContextMenu, ContextMenuItem,
+};
 pub use data_table::{
     DataCell, DataCellAlign, DataColumn, DataRow, DataSortDirection, DataSortKind, DataTable,
     DataTableState,
