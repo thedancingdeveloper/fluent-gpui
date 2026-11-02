@@ -1818,7 +1818,6 @@ dependencies = [
  "fluent-layout",
  "fluent-primitives",
  "fluent-ribbon",
- "gpui",
 ]
 
 [[package]]

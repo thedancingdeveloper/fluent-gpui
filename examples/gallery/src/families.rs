@@ -10,7 +10,7 @@ use fluent_primitives::{
     Button, ButtonAppearance, ButtonIconPosition, ButtonShape, ButtonSize, Checkbox, CheckboxState,
     Chip, Divider, Label, LabelSize, Link, LinkAppearance, RadioGroup, Switch, ToggleButton,
 };
-use gpui::{div, prelude::*, AnyElement, AnyView, Context, Entity, IntoElement, Render, Window};
+use fluent_core::{div, prelude::*, AnyElement, AnyView, Context, Entity, IntoElement, Render, Window};
 
 /// A Fluent 2 component family, one gallery route each.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -97,7 +97,7 @@ impl FamilyHost {
             .gap_3()
             .children(views.iter().map(|v| {
                 div()
-                    .h(gpui::px(300.0))
+                    .h(fluent_core::px(300.0))
                     .relative()
                     .overflow_hidden()
                     .child(v.clone())

@@ -17,14 +17,14 @@ use fluent_ribbon::RibbonBar;
 
 mod families;
 use families::{DemoViews, FamilyHost, FamilyNav};
-use gpui::{div, prelude::*, px, rgb, Context, Entity, IntoElement, Render, SharedString, Window};
+use fluent_core::{div, prelude::*, px, rgb, Context, Entity, IntoElement, Render, SharedString, Window};
 
 // ---------------------------------------------------------------------------
 // Root gallery view — wires the full shell together
 // ---------------------------------------------------------------------------
 
 struct GalleryRoot {
-    workspace: gpui::Entity<Workspace>,
+    workspace: fluent_core::Entity<Workspace>,
 }
 
 /// Data-heavy screens in every non-ready state: an rtbit torrent list and an
@@ -125,7 +125,7 @@ impl Render for BigListDemo {
             .flex_col()
             .gap_2()
             .p_2()
-            .child(div().text_size(gpui::px(12.0)).child(format!(
+            .child(div().text_size(fluent_core::px(12.0)).child(format!(
                 "100,000 rows (variable height), row {} selected: click, or use Up/Down/PageUp/PageDown/Home/End",
                 self.selected + 1
             )))
@@ -158,7 +158,7 @@ impl Render for BigListDemo {
 
 impl Render for DataStatesDemo {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        let label = |t: &'static str| div().text_size(gpui::px(12.0)).child(t);
+        let label = |t: &'static str| div().text_size(fluent_core::px(12.0)).child(t);
         div()
             .flex()
             .flex_col()
@@ -243,8 +243,8 @@ impl Render for DateTimeDemo {
         div()
             .flex()
             .flex_col()
-            .gap(gpui::px(theme.spacing.sm))
-            .p(gpui::px(theme.spacing.md))
+            .gap(fluent_core::px(theme.spacing.sm))
+            .p(fluent_core::px(theme.spacing.md))
             .child("Date/time: en-US and de-DE (locale and timezone owned by the app)")
             .child(self.us.clone())
             .child(self.de.clone())
@@ -275,8 +275,8 @@ impl Render for DownloadProgressDemo {
         div()
             .flex()
             .flex_col()
-            .gap(gpui::px(theme.spacing.sm))
-            .p(gpui::px(theme.spacing.md))
+            .gap(fluent_core::px(theme.spacing.sm))
+            .p(fluent_core::px(theme.spacing.md))
             .child("rtbit downloads (value text is announced; animation honours reduced motion)")
             .child(row(
                 "ubuntu-26.04-desktop.iso",
@@ -615,7 +615,7 @@ impl Render for RangeInputDemo {
         let entity = cx.entity();
         let set = |f: fn(&mut RangeInputDemo, f64)| {
             let entity = entity.clone();
-            move |v: f64, _: &mut Window, cx: &mut gpui::App| {
+            move |v: f64, _: &mut Window, cx: &mut fluent_core::App| {
                 entity.update(cx, |d, cx| {
                     f(d, v);
                     cx.notify();
@@ -1026,7 +1026,7 @@ fn main() {
         });
 
         // Main pane with a tab strip
-        let tab_strip = cx.new(|cx: &mut gpui::Context<TabStrip>| {
+        let tab_strip = cx.new(|cx: &mut fluent_core::Context<TabStrip>| {
             let mut ts = TabStrip::new(cx);
             ts.add_tab(TabItem::new("dashboard").label("Dashboard").closable(true));
             ts.add_tab(TabItem::new("settings").label("Settings").closable(true));
