@@ -120,7 +120,7 @@ impl RenderOnce for IconButton {
 
         let disabled = self.disabled;
         let tab_index = self.tab_index;
-        let focus_ring = colors.stroke_accent;
+        let focus_ring = colors.focus_ring;
         let on_click = self.on_click;
         let name = self.label.unwrap_or_else(|| icon_name(&self.icon));
 

@@ -91,7 +91,7 @@ impl RenderOnce for Switch {
 
         let disabled = self.disabled;
         let tab_index = self.tab_index;
-        let focus_ring = colors.stroke_accent;
+        let focus_ring = colors.focus_ring;
         let new_state = !self.on;
         let on_click = self.on_click;
         let on = self.on;

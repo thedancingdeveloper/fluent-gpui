@@ -5,9 +5,10 @@ use fluent_layout::{
     TabStrip, Workspace,
 };
 use fluent_primitives::{
-    Avatar, CounterBadge, CounterBadgeAppearance, InputCapture, InputCaptureEvent, Link,
-    LinkAppearance, Persona, PersonaSize, PresenceBadgeState, TerminalCell, TerminalGrid,
-    TerminalView, TerminalViewEvent, VideoScaling, VideoSurface, VideoSurfaceEvent,
+    Avatar, Button, ButtonAppearance, Checkbox, CounterBadge, CounterBadgeAppearance, InputCapture,
+    InputCaptureEvent, Link, LinkAppearance, Persona, PersonaSize, PresenceBadgeState, Switch,
+    TerminalCell, TerminalGrid, TerminalView, TerminalViewEvent, ToggleButton, VideoScaling,
+    VideoSurface, VideoSurfaceEvent,
 };
 use fluent_ribbon::RibbonBar;
 use gpui::{div, prelude::*, rgb, Context, Entity, IntoElement, Render, SharedString, Window};
@@ -23,6 +24,67 @@ struct GalleryRoot {
 struct CounterBadgeDemo;
 
 struct PersonaDemo;
+
+struct ThemeMatrixDemo;
+
+impl Render for ThemeMatrixDemo {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let colors = cx.theme().colors.clone();
+        div()
+            .size_full()
+            .p_3()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .bg(colors.surface)
+            .text_color(colors.on_neutral)
+            .child("Theme token matrix")
+            .child("Neutral, accent, selected, disabled, status, border, and focus states")
+            .child(
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .gap_2()
+                    .child(Button::new("matrix-neutral").label("Neutral"))
+                    .child(
+                        Button::new("matrix-accent")
+                            .label("Accent")
+                            .appearance(ButtonAppearance::Accent),
+                    )
+                    .child(
+                        Button::new("matrix-disabled")
+                            .label("Disabled")
+                            .disabled(true),
+                    )
+                    .child(
+                        ToggleButton::new("matrix-selected")
+                            .label("Selected")
+                            .selected(true),
+                    ),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_1()
+                    .child(
+                        Checkbox::new("matrix-checkbox")
+                            .label("Checked")
+                            .checked(true),
+                    )
+                    .child(Switch::new("matrix-switch").label("On").on(true))
+                    .child(
+                        div()
+                            .p_2()
+                            .border_1()
+                            .border_color(colors.status_error_border)
+                            .bg(colors.status_error_bg)
+                            .text_color(colors.status_error)
+                            .child("Error status with explicit foreground, background, and border"),
+                    ),
+            )
+    }
+}
 
 impl Render for PersonaDemo {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -437,6 +499,7 @@ fn main() {
         });
         let split_list = cx.new(TerminalDemo::new);
         let badge_demo = cx.new(|_| CounterBadgeDemo);
+        let matrix_demo = cx.new(|_| ThemeMatrixDemo);
         let persona_demo = cx.new(|_| PersonaDemo);
         let input_demo = cx.new(InputCaptureDemo::new);
         let video_demo = cx.new(VideoDemo::new);
@@ -452,10 +515,16 @@ fn main() {
                 .second(input_video.into())
                 .ratio(0.35)
         });
+        let matrix_detail = cx.new(|_| {
+            PaneGroup::vertical()
+                .first(matrix_demo.into())
+                .second(badge_detail.into())
+                .ratio(0.5)
+        });
         let split_detail = cx.new(|_| {
             PaneGroup::vertical()
                 .first(persona_demo.into())
-                .second(badge_detail.into())
+                .second(matrix_detail.into())
                 .ratio(0.3)
         });
         let pane_content = cx.new(|_| {

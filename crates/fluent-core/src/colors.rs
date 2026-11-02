@@ -147,6 +147,8 @@ pub struct ColorScheme {
     pub stroke_neutral_subtle: Hsla,
     /// Brand / accent border
     pub stroke_accent: Hsla,
+    /// Keyboard focus ring; kept distinct from accent fills for high contrast themes
+    pub focus_ring: Hsla,
 
     // --- Semantic status colours ---
     /// Informational status accent
@@ -288,6 +290,7 @@ impl ColorScheme {
             stroke_neutral_dim: hex(0x525252),
             stroke_neutral_subtle: hex(0x383838),
             stroke_accent: hex(0x479EF5),
+            focus_ring: hex(0xFFFFFF),
 
             // --- Semantic status ---
             status_info: hex(0x479EF5),
@@ -371,6 +374,7 @@ impl ColorScheme {
             stroke_neutral_dim: hex(0xC7C7C7),
             stroke_neutral_subtle: hex(0xEBEBEB),
             stroke_accent: hex(0x0078D4),
+            focus_ring: hex(0x000000),
 
             // --- Semantic status ---
             status_info: hex(0x005A9E),
@@ -453,6 +457,7 @@ impl ColorScheme {
             stroke_neutral_dim: hex(0x192540),
             stroke_neutral_subtle: hex(0x0F1A30),
             stroke_accent: hex(0x7C3FFF),
+            focus_ring: hex(0xFFFFFF),
 
             // --- Semantic status ---
             status_info: hex(0x79B8FF),
@@ -535,6 +540,7 @@ impl ColorScheme {
             stroke_neutral_dim: hex(0x3E2E18),
             stroke_neutral_subtle: hex(0x281E10),
             stroke_accent: hex(0xE07B39),
+            focus_ring: hex(0xFFFFFF),
 
             // --- Semantic status ---
             status_info: hex(0x79B8FF),
@@ -624,6 +630,7 @@ impl ColorScheme {
             stroke_neutral_dim: text,
             stroke_neutral_subtle: text,
             stroke_accent: highlight,
+            focus_ring: text,
 
             status_info: highlight,
             status_info_bg: canvas,
@@ -667,7 +674,7 @@ mod tests {
         ]
     }
 
-    fn tokens(colors: &ColorScheme) -> [(&'static str, Hsla); 51] {
+    fn tokens(colors: &ColorScheme) -> [(&'static str, Hsla); 52] {
         [
             ("neutral", colors.neutral),
             ("neutral_hover", colors.neutral_hover),
@@ -699,6 +706,7 @@ mod tests {
             ("stroke_neutral_dim", colors.stroke_neutral_dim),
             ("stroke_neutral_subtle", colors.stroke_neutral_subtle),
             ("stroke_accent", colors.stroke_accent),
+            ("focus_ring", colors.focus_ring),
             ("status_info", colors.status_info),
             ("status_info_bg", colors.status_info_bg),
             ("status_info_border", colors.status_info_border),
@@ -846,6 +854,7 @@ mod tests {
         for (theme, colors) in themes() {
             let pairs = [
                 ("text on surface", colors.on_neutral, colors.surface),
+                ("focus ring on surface", colors.focus_ring, colors.surface),
                 (
                     "brand text on surface",
                     colors.on_neutral_accent,
@@ -895,6 +904,7 @@ mod tests {
             ("text on accent hover", c.on_accent, c.accent_hover),
             ("disabled text on surface", c.on_neutral_disabled, c.surface),
             ("stroke on surface", c.stroke_neutral, c.surface),
+            ("focus ring on surface", c.focus_ring, c.surface),
             ("accent stroke on surface", c.stroke_accent, c.surface),
             ("panel border on panel", c.panel_border, c.panel_bg),
         ];

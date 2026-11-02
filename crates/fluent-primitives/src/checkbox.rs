@@ -116,7 +116,7 @@ impl RenderOnce for Checkbox {
 
         let disabled = self.disabled;
         let tab_index = self.tab_index;
-        let focus_ring = colors.stroke_accent;
+        let focus_ring = colors.focus_ring;
         let current = self.state;
         let on_click = self.on_click;
         let label = self.label;
@@ -152,7 +152,7 @@ impl RenderOnce for Checkbox {
                 .tab_stop(true)
                 .fluent_focus(tab_index, focus_ring)
                 .cursor_pointer()
-                .hover(move |s| s.border_color(colors.stroke_accent));
+                .hover(move |s| s.border_color(colors.focus_ring));
         }
 
         if let Some(handler) = on_click.filter(|_| !disabled) {
