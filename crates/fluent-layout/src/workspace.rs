@@ -212,3 +212,37 @@ impl Render for Workspace {
         root
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::TestAppContext;
+
+    use super::*;
+    use crate::dock::DockPosition;
+
+    #[gpui::test]
+    fn hosted_dock_collapses_through_workspace(cx: &mut TestAppContext) {
+        let mut dock = None;
+        let (ws, cx) = open_fluent_test_window(cx, |_, cx| {
+            let d = cx.new(|cx| DockPanel::new(cx, DockPosition::Left, "Files"));
+            dock = Some(d.clone());
+            Workspace::new(cx).left_dock(d)
+        });
+        let dock = dock.unwrap();
+        ws.read_with(cx, |w, _| assert!(w.left_dock.is_some()));
+        cx.click_selector("dock-close");
+        dock.read_with(cx, |d, _| assert!(d.collapsed));
+        cx.click_selector("dock-close");
+        dock.read_with(cx, |d, _| assert!(!d.collapsed));
+    }
+
+    #[gpui::test]
+    fn set_content_replaces_content(cx: &mut TestAppContext) {
+        let (ws, cx) = open_fluent_test_window(cx, |_, cx| Workspace::new(cx));
+        ws.read_with(cx, |w, _| assert!(w.content.is_none()));
+        let view = cx.new(|cx| DockPanel::new(cx, DockPosition::Top, "x"));
+        ws.update(cx, |w, cx| w.set_content(view.into(), cx));
+        ws.read_with(cx, |w, _| assert!(w.content.is_some()));
+    }
+}

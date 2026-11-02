@@ -127,6 +127,7 @@ impl Render for DockPanel {
             .child(
                 div()
                     .id("dock-close")
+                    .debug_selector(|| "dock-close".into())
                     .size(px(components.dock_action_size))
                     .flex()
                     .items_center()
@@ -302,5 +303,41 @@ impl Render for DockPanel {
                 .child(content_div)
                 .child(handle.w_full()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::TestAppContext;
+
+    use super::*;
+
+    #[gpui::test]
+    fn close_button_collapses_and_expands(cx: &mut TestAppContext) {
+        let (dock, cx) =
+            open_fluent_test_window(cx, |_, cx| DockPanel::new(cx, DockPosition::Left, "Files"));
+        dock.read_with(cx, |d, _| assert!(!d.collapsed));
+        cx.click_selector("dock-close");
+        dock.read_with(cx, |d, _| assert!(d.collapsed));
+        cx.click_selector("dock-close");
+        dock.read_with(cx, |d, _| assert!(!d.collapsed));
+    }
+
+    #[gpui::test]
+    fn toggle_collapsed_flips_state(cx: &mut TestAppContext) {
+        let (dock, cx) =
+            open_fluent_test_window(cx, |_, cx| DockPanel::new(cx, DockPosition::Bottom, "Out"));
+        dock.update(cx, |d, cx| d.toggle_collapsed(cx));
+        dock.read_with(cx, |d, _| assert!(d.collapsed));
+        dock.update(cx, |d, cx| d.toggle_collapsed(cx));
+        dock.read_with(cx, |d, _| assert!(!d.collapsed));
+    }
+
+    #[gpui::test]
+    fn default_size_depends_on_edge(cx: &mut TestAppContext) {
+        let (dock, cx) =
+            open_fluent_test_window(cx, |_, cx| DockPanel::new(cx, DockPosition::Right, "R"));
+        dock.read_with(cx, |d, _| assert_eq!(d.size, 240.0));
     }
 }
