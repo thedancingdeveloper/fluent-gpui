@@ -1,4 +1,4 @@
-use fluent_core::Theme;
+use fluent_core::{LayoutDirection, Theme};
 
 pub use gpui::{Context, Entity, FocusHandle, TestAppContext, VisualTestContext, Window};
 
@@ -232,9 +232,204 @@ fn compact_json(value: &serde_json::Value) -> String {
     }
 }
 
+/// Asserts that an [`FluentInteractionExt::accessibility_snapshot`] contains a
+/// node with the given role, accessible name and states.
+///
+/// `name` of `None` matches any name (including none). Every entry of
+/// `states` (for example `"toggled=True"`) must appear in the node's state
+/// list; extra states are allowed, so the helper never needs updating when a
+/// component gains an unrelated state.
+///
+/// ```
+/// use fluent_test_utils::assert_a11y_node;
+/// let snap = vec!["Window".to_string(), "Switch \"Wi-Fi\" [toggled=True]".to_string()];
+/// assert_a11y_node(&snap, "Switch", Some("Wi-Fi"), &["toggled=True"]);
+/// ```
+///
+/// # Panics
+/// Panics, printing the whole snapshot, if no node matches.
+#[track_caller]
+pub fn assert_a11y_node(snapshot: &[String], role: &str, name: Option<&str>, states: &[&str]) {
+    let found = snapshot.iter().any(|line| {
+        let (head, state_list) = match line.split_once(" [") {
+            Some((head, rest)) => (head, rest.trim_end_matches(']')),
+            None => (line.as_str(), ""),
+        };
+        let (line_role, line_name) = match head.split_once(" \"") {
+            Some((role, rest)) => (role, Some(rest.trim_end_matches('"'))),
+            None => (head, None),
+        };
+        line_role == role
+            && name.is_none_or(|n| line_name == Some(n))
+            && states
+                .iter()
+                .all(|wanted| state_list.split(", ").any(|have| have == *wanted))
+    });
+    assert!(
+        found,
+        "no accessibility node with role {role:?}, name {name:?}, states {states:?} in {snapshot:#?}"
+    );
+}
+
+/// Asserts that no node with the given role and name is exposed.
+#[track_caller]
+pub fn assert_no_a11y_node(snapshot: &[String], role: &str, name: Option<&str>) {
+    let prefix = match name {
+        Some(n) => format!("{role} \"{n}\""),
+        None => role.to_string(),
+    };
+    assert!(
+        !snapshot
+            .iter()
+            .any(|line| line == &prefix || line.starts_with(&format!("{prefix} ["))),
+        "unexpected accessibility node {prefix:?} in {snapshot:#?}"
+    );
+}
+
+/// WCAG relative luminance of a colour composited over `backdrop`.
+fn luminance_over(color: gpui::Hsla, backdrop: gpui::Hsla) -> f32 {
+    let (c, b) = (color.to_rgb(), backdrop.to_rgb());
+    let mix = |fg: f32, bg: f32| fg * c.a + bg * (1.0 - c.a);
+    let lin = |v: f32| {
+        if v <= 0.03928 {
+            v / 12.92
+        } else {
+            ((v + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * lin(mix(c.r, b.r)) + 0.7152 * lin(mix(c.g, b.g)) + 0.0722 * lin(mix(c.b, b.b))
+}
+
+/// WCAG 2.x contrast ratio (1.0 to 21.0) of `foreground` on an opaque
+/// `background`; a translucent foreground is composited over it first.
+pub fn contrast_ratio(foreground: gpui::Hsla, background: gpui::Hsla) -> f32 {
+    let fg = luminance_over(foreground, background);
+    let bg = luminance_over(background, gpui::black());
+    let (hi, lo) = if fg > bg { (fg, bg) } else { (bg, fg) };
+    (hi + 0.05) / (lo + 0.05)
+}
+
+/// Asserts `foreground` on `background` reaches `minimum` (4.5 for body text,
+/// 3.0 for large text and UI components under WCAG AA).
+///
+/// ```
+/// use fluent_test_utils::assert_contrast;
+/// assert_contrast("text", gpui::black(), gpui::white(), 4.5);
+/// ```
+#[track_caller]
+pub fn assert_contrast(label: &str, foreground: gpui::Hsla, background: gpui::Hsla, minimum: f32) {
+    let ratio = contrast_ratio(foreground, background);
+    assert!(
+        ratio >= minimum,
+        "{label}: contrast {ratio:.2}:1 is below the required {minimum}:1"
+    );
+}
+
+/// Semantic, focus, keyboard and directionality assertions for a
+/// [`VisualTestContext`].
+pub trait FluentAssertExt {
+    /// Asserts the rendered accessibility tree has a node with this role,
+    /// name and states (see [`assert_a11y_node`]).
+    fn assert_a11y(&mut self, role: &str, name: Option<&str>, states: &[&str]);
+
+    /// Asserts that pressing `tab` visits exactly `order` (starting from the
+    /// first handle, which is focused first) and that `shift-tab` walks it back.
+    fn assert_tab_order(&mut self, order: &[&FocusHandle]);
+
+    /// Types `keys`, then asserts `observe` returns `expected`. Use it to pin
+    /// a keyboard outcome (state change, value, selection) in one line.
+    fn assert_keys_yield<T: PartialEq + std::fmt::Debug>(
+        &mut self,
+        keys: &str,
+        observe: impl FnOnce(&mut Self) -> T,
+        expected: T,
+    );
+
+    /// Sets the application layout direction and lets the window re-render.
+    fn set_layout_direction(&mut self, direction: LayoutDirection);
+
+    /// Asserts the element `leading` sits on the start side of `trailing`:
+    /// left of it in LTR, right of it in RTL. Both are debug selectors.
+    fn assert_inline_order(&mut self, leading: &'static str, trailing: &'static str);
+}
+
+impl FluentAssertExt for VisualTestContext {
+    #[track_caller]
+    fn assert_a11y(&mut self, role: &str, name: Option<&str>, states: &[&str]) {
+        let snapshot = self.accessibility_snapshot();
+        assert_a11y_node(&snapshot, role, name, states);
+    }
+
+    #[track_caller]
+    fn assert_tab_order(&mut self, order: &[&FocusHandle]) {
+        let Some(first) = order.first() else { return };
+        self.update(|window, cx| window.focus(first, cx));
+        self.run_until_parked();
+        for (i, handle) in order.iter().enumerate() {
+            assert!(
+                self.is_focused(handle),
+                "tab order: expected stop {i} of {} to hold focus",
+                order.len()
+            );
+            if i + 1 < order.len() {
+                self.type_keys("tab");
+            }
+        }
+        for (i, handle) in order.iter().enumerate().rev().skip(1) {
+            self.type_keys("shift-tab");
+            assert!(
+                self.is_focused(handle),
+                "reverse tab order: expected stop {i} of {} to hold focus",
+                order.len()
+            );
+        }
+    }
+
+    #[track_caller]
+    fn assert_keys_yield<T: PartialEq + std::fmt::Debug>(
+        &mut self,
+        keys: &str,
+        observe: impl FnOnce(&mut Self) -> T,
+        expected: T,
+    ) {
+        self.type_keys(keys);
+        assert_eq!(observe(self), expected, "after typing {keys:?}");
+    }
+
+    fn set_layout_direction(&mut self, direction: LayoutDirection) {
+        self.update(|window, cx| {
+            LayoutDirection::set(cx, direction);
+            window.refresh();
+        });
+        self.run_until_parked();
+    }
+
+    #[track_caller]
+    fn assert_inline_order(&mut self, leading: &'static str, trailing: &'static str) {
+        let rtl = self.update(|_, cx| LayoutDirection::current(cx).is_rtl());
+        let a = self
+            .selector_bounds(leading)
+            .unwrap_or_else(|| panic!("no element with debug selector {leading:?}"));
+        let b = self
+            .selector_bounds(trailing)
+            .unwrap_or_else(|| panic!("no element with debug selector {trailing:?}"));
+        let ok = if rtl {
+            a.left() >= b.right()
+        } else {
+            a.right() <= b.left()
+        };
+        assert!(
+            ok,
+            "{leading:?} should start-side of {trailing:?} in {} but is at {a:?} vs {b:?}",
+            if rtl { "RTL" } else { "LTR" }
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gpui::prelude::FluentBuilder as _;
     use gpui::{
         actions, div, px, InteractiveElement, IntoElement, KeyBinding, ParentElement, Render,
         StatefulInteractiveElement, Styled,
@@ -254,7 +449,15 @@ mod tests {
         fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
             div()
                 .on_action(cx.listener(|this, _: &Bump, _, _| this.bumps += 1))
-                .on_key_down(cx.listener(|this, e: &gpui::KeyDownEvent, _, _| {
+                .on_key_down(cx.listener(|this, e: &gpui::KeyDownEvent, window, cx| {
+                    if e.keystroke.key == "tab" {
+                        if e.keystroke.modifiers.shift {
+                            window.focus_prev(cx);
+                        } else {
+                            window.focus_next(cx);
+                        }
+                        return;
+                    }
                     if let Some(c) = &e.keystroke.key_char {
                         this.text.push_str(c);
                     }
@@ -279,8 +482,8 @@ mod tests {
 
     fn open(cx: &mut TestAppContext) -> (Entity<Probe>, &mut VisualTestContext) {
         open_fluent_test_window(cx, |_, cx| Probe {
-            a: cx.focus_handle(),
-            b: cx.focus_handle(),
+            a: cx.focus_handle().tab_stop(true),
+            b: cx.focus_handle().tab_stop(true),
             clicks: 0,
             bumps: 0,
             text: String::new(),
@@ -312,6 +515,77 @@ mod tests {
             assert_eq!(v.text, "hi");
             assert_eq!(v.bumps, 2);
         });
+    }
+
+    #[test]
+    fn a11y_node_matching() {
+        let snap = vec![
+            "Window".to_string(),
+            "Switch \"Wi-Fi\" [toggled=True, disabled=true]".to_string(),
+        ];
+        assert_a11y_node(&snap, "Switch", Some("Wi-Fi"), &["toggled=True"]);
+        assert_a11y_node(&snap, "Switch", None, &[]);
+        assert_a11y_node(&snap, "Window", None, &[]);
+        assert_no_a11y_node(&snap, "Button", None);
+    }
+
+    #[test]
+    #[should_panic(expected = "no accessibility node")]
+    fn a11y_node_wrong_state_panics() {
+        let snap = vec!["Switch \"Wi-Fi\" [toggled=False]".to_string()];
+        assert_a11y_node(&snap, "Switch", Some("Wi-Fi"), &["toggled=True"]);
+    }
+
+    #[test]
+    fn contrast_known_values() {
+        let max = contrast_ratio(gpui::black(), gpui::white());
+        assert!((max - 21.0).abs() < 0.01, "{max}");
+        assert!((contrast_ratio(gpui::white(), gpui::white()) - 1.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn theme_text_meets_aa() {
+        for theme in [Theme::dark(), Theme::light(), Theme::high_contrast()] {
+            let c = &theme.colors;
+            assert_contrast("on_neutral", c.on_neutral, c.surface, 4.5);
+        }
+    }
+
+    #[gpui::test]
+    fn tab_order_and_inline_order(cx: &mut TestAppContext) {
+        let (view, cx) = open(cx);
+        let (a, b) = view.read_with(cx, |v, _| (v.a.clone(), v.b.clone()));
+        cx.assert_tab_order(&[&a, &b]);
+        cx.assert_keys_yield("tab", |cx| cx.is_focused(&a), false);
+    }
+
+    #[gpui::test]
+    fn layout_direction_flips_inline_order(cx: &mut TestAppContext) {
+        struct Row;
+        impl Render for Row {
+            fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+                let rtl = LayoutDirection::current(cx).is_rtl();
+                div()
+                    .flex()
+                    .when(rtl, |d| d.flex_row_reverse())
+                    .child(
+                        div()
+                            .w(px(20.))
+                            .h(px(20.))
+                            .debug_selector(|| "first".into()),
+                    )
+                    .child(
+                        div()
+                            .w(px(20.))
+                            .h(px(20.))
+                            .debug_selector(|| "second".into()),
+                    )
+            }
+        }
+        let (_view, cx) = open_fluent_test_window(cx, |_, _| Row);
+        cx.assert_inline_order("first", "second");
+        cx.set_layout_direction(LayoutDirection::Rtl);
+        cx.assert_inline_order("first", "second");
     }
 
     #[gpui::test]
