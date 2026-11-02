@@ -4,7 +4,7 @@ use bytemuck::{Pod, Zeroable};
 use collections::FxHashMap;
 use gpui::{
     AtlasTextureId, Background, Bounds, DevicePixels, GpuSpecs, Path, Point, PrimitiveBatch,
-    ScaledPixels, Scene, Size, VideoTextureId, get_gamma_correction_ratios,
+    ScaledPixels, Scene, Size, VideoFilter, VideoTextureId, get_gamma_correction_ratios,
 };
 use log::warn;
 #[cfg(not(target_family = "wasm"))]
@@ -190,6 +190,7 @@ struct WgpuResources {
     pipelines: WgpuPipelines,
     bind_group_layouts: WgpuBindGroupLayouts,
     atlas_sampler: wgpu::Sampler,
+    nearest_sampler: wgpu::Sampler,
     atlas_texture_bind_groups: FxHashMap<AtlasTextureId, CachedTextureBindGroup>,
     video_textures: FxHashMap<VideoTextureId, VideoTextureGpu>,
     globals_buffer: wgpu::Buffer,
@@ -218,7 +219,8 @@ struct VideoTextureGpu {
     generation: u64,
     width: u32,
     height: u32,
-    bind_group: wgpu::BindGroup,
+    linear_bind_group: wgpu::BindGroup,
+    nearest_bind_group: wgpu::BindGroup,
 }
 
 impl WgpuResources {
@@ -1350,6 +1352,12 @@ impl WgpuRendererCore {
             min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
+        let nearest_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("video_nearest_sampler"),
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
         let uniform_alignment = device.limits().min_uniform_buffer_offset_alignment as u64;
         let globals_size = std::mem::size_of::<GlobalParams>() as u64;
         let gamma_size = std::mem::size_of::<GammaParams>() as u64;
@@ -1483,6 +1491,7 @@ impl WgpuRendererCore {
                 pipelines,
                 bind_group_layouts,
                 atlas_sampler,
+                nearest_sampler,
                 atlas_texture_bind_groups: FxHashMap::default(),
                 video_textures: FxHashMap::default(),
                 globals_buffer,
@@ -1859,6 +1868,7 @@ impl WgpuRendererCore {
         &self,
         label: &str,
         texture_view: &wgpu::TextureView,
+        sampler: &wgpu::Sampler,
     ) -> wgpu::BindGroup {
         let resources = self.resources();
         resources
@@ -1873,7 +1883,7 @@ impl WgpuRendererCore {
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&resources.atlas_sampler),
+                        resource: wgpu::BindingResource::Sampler(sampler),
                     },
                 ],
             })
@@ -1913,8 +1923,11 @@ impl WgpuRendererCore {
                 continue;
             }
 
-            let bind_group =
-                self.create_texture_bind_group("atlas_texture_bind_group", &texture_info.view);
+            let bind_group = self.create_texture_bind_group(
+                "atlas_texture_bind_group",
+                &texture_info.view,
+                &self.resources().atlas_sampler,
+            );
             self.resources_mut().atlas_texture_bind_groups.insert(
                 texture_id,
                 CachedTextureBindGroup {
@@ -2089,35 +2102,37 @@ impl WgpuRendererCore {
         self.sync_video_textures(scene);
         let frames = &scene.video_frames[range.clone()];
         let mut run_start = None;
-        let mut run_texture = None;
+        let mut run_key = None;
         for (offset, frame) in frames.iter().enumerate() {
             let texture_id = VideoTextureId::new(frame.texture_id);
             let live = self.resources().video_textures.contains_key(&texture_id);
-            match (run_start, live) {
-                (None, true) => {
+            let key = live.then_some((texture_id, frame.filter));
+            match (run_start, run_key, key) {
+                (None, _, Some(key)) => {
                     run_start = Some(offset);
-                    run_texture = Some(texture_id);
+                    run_key = Some(key);
                 }
-                (Some(start), true) if run_texture == Some(texture_id) => {
-                    let _ = start;
-                }
-                (Some(start), _) => {
+                (Some(_), Some(current), Some(key)) if current == key => {}
+                (Some(start), Some((run_texture, run_filter)), next) => {
                     self.draw_video_frame_run(
                         instances,
-                        run_texture.unwrap(),
+                        run_texture,
+                        run_filter,
                         range.start + start..range.start + offset,
                         pass,
                     );
-                    run_start = live.then_some(offset);
-                    run_texture = live.then_some(texture_id);
+                    run_start = next.map(|_| offset);
+                    run_key = next;
                 }
-                (None, false) => {}
+                (None, _, None) => {}
+                _ => unreachable!("video frame run state remains paired"),
             }
         }
-        if let Some(start) = run_start {
+        if let (Some(start), Some((texture, filter))) = (run_start, run_key) {
             self.draw_video_frame_run(
                 instances,
-                run_texture.unwrap(),
+                texture,
+                filter,
                 range.start + start..range.end,
                 pass,
             );
@@ -2197,7 +2212,16 @@ impl WgpuRendererCore {
             generation: pixels.generation,
             width: pixels.width,
             height: pixels.height,
-            bind_group: self.create_texture_bind_group("video_frame_texture_bind_group", &view),
+            linear_bind_group: self.create_texture_bind_group(
+                "video_frame_linear_texture_bind_group",
+                &view,
+                &resources.atlas_sampler,
+            ),
+            nearest_bind_group: self.create_texture_bind_group(
+                "video_frame_nearest_texture_bind_group",
+                &view,
+                &resources.nearest_sampler,
+            ),
         }
     }
 
@@ -2205,6 +2229,7 @@ impl WgpuRendererCore {
         &self,
         instances: &InstanceBinding,
         texture_id: VideoTextureId,
+        filter: VideoFilter,
         range: Range<usize>,
         pass: &mut wgpu::RenderPass<'_>,
     ) {
@@ -2215,7 +2240,11 @@ impl WgpuRendererCore {
         pass.set_pipeline(&resources.pipelines.video_frames);
         pass.set_bind_group(0, &resources.globals_bind_group, &[]);
         pass.set_bind_group(1, &instances.bind_group, &[]);
-        pass.set_bind_group(2, &texture.bind_group, &[]);
+        let bind_group = match filter {
+            VideoFilter::Linear => &texture.linear_bind_group,
+            VideoFilter::Nearest => &texture.nearest_bind_group,
+        };
+        pass.set_bind_group(2, bind_group, &[]);
         let start = instances.first_instance + range.start as u32;
         let end = instances.first_instance + range.end as u32;
         pass.draw(0..4, start..end);
@@ -2261,6 +2290,7 @@ impl WgpuRendererCore {
         let texture = self.create_texture_bind_group(
             "path_intermediate_texture_bind_group",
             &path_intermediate_view,
+            &self.resources().atlas_sampler,
         );
         let resources = self.resources();
         pass.set_pipeline(&resources.pipelines.paths);

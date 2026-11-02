@@ -1,8 +1,8 @@
 //! Paints a generated RGBA8 frame into a standalone video texture every frame.
 
 use gpui::{
-    App, Bounds, Context, Corners, VideoTextureId, Window, WindowBounds, WindowOptions, canvas,
-    div, prelude::*, px, rgb, size,
+    App, Bounds, Context, Corners, VideoFilter, VideoTextureId, Window, WindowBounds,
+    WindowOptions, canvas, div, prelude::*, px, rgb, size,
 };
 use gpui_platform::application;
 
@@ -54,7 +54,12 @@ impl Render for VideoFrameExample {
                 canvas(
                     |_, _, _| {},
                     move |bounds, _, window, _| {
-                        window.paint_video_frame(bounds, Corners::all(px(12.)), texture);
+                        window.paint_video_frame(
+                            bounds,
+                            Corners::all(px(12.)),
+                            texture,
+                            VideoFilter::Linear,
+                        );
                     },
                 )
                 .w(px(WIDTH as f32 * 2.))

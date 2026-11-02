@@ -838,6 +838,17 @@ pub struct VideoFramePixels {
     pub generation: u64,
 }
 
+/// Texture filtering used when painting a video frame.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[repr(u32)]
+pub enum VideoFilter {
+    /// Smoothly interpolate neighbouring texels.
+    #[default]
+    Linear = 0,
+    /// Select the nearest texel without interpolation.
+    Nearest = 1,
+}
+
 /// A video frame painted from a standalone GPU texture.
 ///
 /// Unlike [`PolychromeSprite`], the texture is not an atlas tile: the whole
@@ -852,7 +863,7 @@ pub struct VideoFrame {
     pub pad: u32,
     pub texture_id: u64,
     pub opacity: f32,
-    pub pad2: u32,
+    pub filter: VideoFilter,
     pub bounds: Bounds<ScaledPixels>,
     pub content_mask: ContentMask<ScaledPixels>,
     pub corner_radii: Corners<ScaledPixels>,
