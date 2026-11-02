@@ -315,7 +315,29 @@ impl Render for DownloadProgressDemo {
     }
 }
 
-struct ThemeMatrixDemo;
+struct ThemeMatrixDemo {
+    breadcrumb: Entity<Breadcrumb>,
+    pagination: Entity<Pagination>,
+}
+
+impl ThemeMatrixDemo {
+    fn new(cx: &mut Context<Self>) -> Self {
+        let breadcrumb = cx.new(|cx| {
+            Breadcrumb::new(cx)
+                .items([
+                    BreadcrumbItem::new("home", "Home"),
+                    BreadcrumbItem::new("library", "Library"),
+                    BreadcrumbItem::new("current", "Current"),
+                ])
+                .current(2)
+        });
+        let pagination = cx.new(|_| Pagination::new(4).page(1));
+        Self {
+            breadcrumb,
+            pagination,
+        }
+    }
+}
 
 /// Shows Arabic and Hebrew sample content under the active layout direction.
 /// The rows reorder (logical start/end) but the text itself is never mirrored.
@@ -366,16 +388,8 @@ impl Render for ThemeMatrixDemo {
             .bg(colors.surface)
             .text_color(colors.on_neutral)
             .child("Theme token matrix")
-            .child(
-                Breadcrumb::new(cx)
-                    .items([
-                        BreadcrumbItem::new("home", "Home"),
-                        BreadcrumbItem::new("library", "Library"),
-                        BreadcrumbItem::new("current", "Current"),
-                    ])
-                    .current(2),
-            )
-            .child(Pagination::new(4).page(1))
+            .child(self.breadcrumb.clone())
+            .child(self.pagination.clone())
             .child("Neutral, accent, selected, disabled, status, border, and focus states")
             .child(
                 div()
@@ -1035,7 +1049,7 @@ fn main() {
             threads: 4.0,
             opacity: 80.0,
         });
-        let matrix_demo = cx.new(|_| ThemeMatrixDemo);
+        let matrix_demo = cx.new(ThemeMatrixDemo::new);
         let drawer_demo = cx.new(DrawerDemo::new);
         let rtl_demo = cx.new(|cx| {
             cx.observe_global::<LayoutDirection>(|_, cx| cx.notify())
