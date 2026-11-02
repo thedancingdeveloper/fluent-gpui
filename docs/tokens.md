@@ -27,6 +27,14 @@ a follow-up work item rather than silently substituted.
 | Status | success | `ColorScheme::status_success`, `status_success_bg`, `status_success_border` | Accent, background, and border |
 | Status | warning | `ColorScheme::status_warning`, `status_warning_bg`, `status_warning_border` | Accent, background, and border |
 | Status | error | `ColorScheme::status_error`, `status_error_bg`, `status_error_border` | Accent, background, and border |
+| Control states | neutral/accent/subtle/danger | `ColorScheme::{neutral,accent,subtle,danger}_control()` → `ControlStates { background, foreground }` | Each a `NeutralColorStates` (default, hover, pressed, selected, disabled); `Button`, `Card` and `Field` read these, not raw tokens |
+| Validation | error/warning/success/none | `status_*` family; `Field` message uses `status_*` or `neutral_foreground_2.default` | Covered by the completeness test |
+| Focus | ring | `ColorScheme::focus_ring` | Tested at 3:1 on surface, dim surface and neutral fills (the ring is drawn outside the control) |
+
+`control_states_are_complete_and_consistent` (fluent-core) asserts that every
+control family defines all five states, text is readable on enabled fills, the
+disabled foreground differs from enabled, status borders are visible, and the
+focus ring is visible, in all five themes.
 
 ## Effects and geometry aliases
 
