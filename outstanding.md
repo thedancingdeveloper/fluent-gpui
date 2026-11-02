@@ -1,6 +1,6 @@
 # Outstanding Work
 
-Last updated: 2026-11-01
+Last updated: 2026-11-02
 
 ---
 
@@ -17,37 +17,36 @@ Supported platforms are Windows and Linux only. macOS is out of scope.
 
 ## VideoFrame Backend Support
 
-Status: **not yet re-applied (WI-1348, WI-1434)**. The `alloc_video_texture`, `paint_video_frame` and `free_video_texture` APIs are not present in the vendored `gpui`. The earlier low-level streaming-frame path was written against a renderer that is no longer vendored.
+Status: **re-applied on both backends, not runtime-validated** (WI-1348 Linux, WI-1434 Windows). The patches are `video-frames` and `video-frames-directx` in `vendor/zed/PATCHES.md`.
 
-The intended API contract, to be re-applied:
+The API in the vendored `gpui`:
 
-- `Window::alloc_video_texture(width, height) -> Result<VideoTextureId>`
-- `Window::paint_video_frame(id, bounds, rgba8_data) -> Result<()>`
+- `Window::alloc_video_texture(width, height) -> VideoTextureId`
+- `Window::upload_video_frame(id, pixels) -> Result<()>`
+- `Window::paint_video_frame(bounds, corner_radii, id)`
 - `Window::free_video_texture(id)`
 
-The data contract is tightly packed RGBA8 matching the allocation size. Texture ids are generation-checked so stale or freed ids are rejected or skipped instead of aliasing newly allocated textures.
+The data contract is tightly packed RGBA8 matching the allocation size. Ids are never reused, so a freed id stays stale and is rejected. `upload_video_frame` rejects a zero or over-8192 dimension, and the wgpu renderer skips a frame shorter than `w*h*4`. `fluent-primitives` wraps this as `VideoSurface`.
 
 ### Current Support Matrix
 
 | Platform/backend | Status | Notes |
 |------------------|--------|-------|
-| Linux / wgpu (`gpui_wgpu`) | Not yet re-applied (WI-1348) | No video texture path in the vendored tree |
-| Windows / DirectX (`gpui_windows`) | Not yet re-applied (WI-1434) | No video texture path in the vendored tree |
+| Linux / wgpu (`gpui_wgpu`) | Applied (WI-1348), not runtime-validated | Standalone `Rgba8Unorm` texture per id; `video_frame` pass |
+| Windows / DirectX (`gpui_windows`) | Applied (WI-1434), **unverified on Windows** | Checked with `cargo check`/`clippy` for the Windows GNU target on Linux only; HLSL not compiled, not run |
 | GPUI test platform | Unsupported by design | Test platform returns unsupported for video texture allocation |
 
 ### Validation Example
 
-The former video-frame example no longer exists. It is to be recreated with WI-1348. It should allocate a 256x144 texture, upload changing RGBA frames, paint to a 512x288 canvas, and free the texture on view release.
+`vendor/zed/crates/gpui/examples/video_frame.rs` (patch `video-frames`). It has not been run on a GPU in this repository's records.
 
 ### Remaining VideoFrame Work
 
-1. Re-apply the `gpui` video-frame API and rewrite the Linux renderer path on `gpui_wgpu` (WI-1348).
-2. Re-apply the DirectX video-frame patch onto `gpui_windows` (WI-1434).
-3. Run the validation example on Linux and on Windows with GPU acceleration.
-4. Validate invalid frame sizes and stale ids under runtime renderer conditions.
-5. Validate alpha/opacity behaviour against normal image/sprite compositing.
-6. Validate repeated allocate/upload/free/reallocate cycles for GPU resource leaks.
-7. Validate device-loss recreation on Windows after real device reset conditions.
+1. Run the example on Linux and on Windows with GPU acceleration.
+2. Validate invalid frame sizes and stale ids under runtime renderer conditions.
+3. Validate alpha/opacity behaviour against normal image/sprite compositing.
+4. Validate repeated allocate/upload/free/reallocate cycles for GPU resource leaks.
+5. Validate device-loss recreation on Windows after real device reset conditions.
 
 ---
 

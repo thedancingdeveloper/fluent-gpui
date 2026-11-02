@@ -161,8 +161,8 @@ Target:
 
 Current implementation:
 
-- `Window::alloc_video_texture`, `Window::paint_video_frame`, and `Window::free_video_texture` are not yet re-applied to the vendored `gpui` (WI-1348 for Linux `gpui_wgpu`, WI-1434 for Windows DirectX).
-- The validation example is to be recreated with WI-1348.
+- `Window::alloc_video_texture`, `upload_video_frame`, `paint_video_frame` and `free_video_texture` are applied to the vendored `gpui` for Linux `gpui_wgpu` (WI-1348) and Windows DirectX (WI-1434). Neither is runtime-validated; the Windows path is unverified.
+- The validation example is `vendor/zed/crates/gpui/examples/video_frame.rs`.
 
 ---
 
@@ -186,7 +186,7 @@ Current implementation:
 | Loading skeletons | `Skeleton`, `SkeletonRow`, `Skeleton::wrap` | Implemented |
 | Tabular numbers | `FluentTextExt::tabular_nums()` | Implemented |
 | Backdrop blur | `gpui::backdrop_blur` | Not yet re-applied (WI-1349) |
-| Video-frame surfaces | `VideoTextureId` APIs | Not yet re-applied (WI-1348, WI-1434) |
+| Video-frame surfaces | `VideoTextureId` APIs | Applied on wgpu and DirectX (WI-1348, WI-1434); not runtime-validated |
 | Web visual parity | Web backend | Future |
 
 ---
