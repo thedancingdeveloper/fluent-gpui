@@ -664,6 +664,33 @@ fn main() {
                         )
                     })
                 })
+                .tab("Connection", |t| {
+                    t.group("Session", |g| {
+                        g.large_button("Connect", "icons/add.svg", |_, _, _| {})
+                            .large_button("Disconnect", "icons/clear.svg", |_, _, _| {})
+                            .separator()
+                            .toggle_button(
+                                "Full screen",
+                                "icons/dark_theme.svg",
+                                false,
+                                |_, _, _, _| {},
+                            )
+                    })
+                    .group("Display", |g| {
+                        g.button("Fit to window", "icons/search.svg", |_, _, _| {})
+                            .button("Actual size", "icons/search.svg", |_, _, _| {})
+                    })
+                    .group("Clipboard", |g| {
+                        g.stack(|s| {
+                            s.button("Send text", "icons/paste.svg", |_, _, _| {})
+                                .button("Copy remote", "icons/copy.svg", |_, _, _| {})
+                        })
+                    })
+                    .group("Tools", |g| {
+                        g.large_button("Screenshot", "icons/folder_open.svg", |_, _, _| {})
+                            .icon_button("icons/search.svg", "Find host", |_, _, _| {})
+                    })
+                })
                 .contextual_tab("Session", true, |t| {
                     t.group("Terminal", |g| {
                         g.large_button("Clear", "icons/clear.svg", |_, _, _| {})

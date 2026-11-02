@@ -3,7 +3,8 @@ use fluent_core::{
     TypographyTokens,
 };
 use gpui::{
-    div, prelude::*, px, svg, ClickEvent, Context, FontWeight, IntoElement, Render, Window,
+    div, prelude::*, px, svg, App, ClickEvent, Context, FocusHandle, FontWeight, IntoElement,
+    Render, Role, SharedString, Toggled, WeakEntity, Window,
 };
 
 use crate::defs::{
@@ -17,6 +18,42 @@ struct RibbonRenderTokens<'a> {
     radii: RadiiTokens,
     typography: TypographyTokens,
     components: ComponentTokens,
+    bar: WeakEntity<RibbonBar>,
+}
+
+/// Run a ribbon command and record it as the bar's last invoked command.
+fn invoke(
+    bar: &WeakEntity<RibbonBar>,
+    label: &SharedString,
+    app: &mut App,
+    run: impl FnOnce(&mut App),
+) {
+    run(app);
+    let label = label.clone();
+    bar.update(app, |bar, cx| {
+        bar.last_command = Some(label);
+        cx.notify();
+    })
+    .ok();
+}
+
+/// True for the keys that activate a focused button.
+fn is_activation_key(key: &str) -> bool {
+    matches!(key, "enter" | "space")
+}
+
+/// The tab index a navigation key moves to, or `None` for any other key.
+fn tab_nav_target(key: &str, current: usize, count: usize) -> Option<usize> {
+    if count == 0 {
+        return None;
+    }
+    match key {
+        "left" => Some((current + count - 1) % count),
+        "right" => Some((current + 1) % count),
+        "home" => Some(0),
+        "end" => Some(count - 1),
+        _ => None,
+    }
 }
 
 /// The ribbon bar — the primary command surface of a FluentGUI application.
@@ -46,6 +83,9 @@ pub struct RibbonBar {
     /// When true, only the tab strip is shown; the content row is hidden.
     pub collapsed: bool,
     overflow_open: bool,
+    /// Label of the most recently invoked command; shown as status feedback.
+    last_command: Option<SharedString>,
+    tab_handles: Vec<FocusHandle>,
 }
 
 impl RibbonBar {
@@ -57,6 +97,8 @@ impl RibbonBar {
             active_tab: 0,
             collapsed: false,
             overflow_open: false,
+            last_command: None,
+            tab_handles: vec![],
         }
     }
 
@@ -99,6 +141,11 @@ impl RibbonBar {
                 self.active_tab = 0;
             }
         }
+    }
+
+    /// Label of the most recently invoked command, if any.
+    pub fn last_command(&self) -> Option<&SharedString> {
+        self.last_command.as_ref()
     }
 
     /// Update the `selected` state of a toggle button by path.
@@ -150,9 +197,26 @@ impl RibbonBar {
                 icon,
                 on_click,
             } => {
-                let cb = on_click.clone();
+                let (cb, key_cb) = (on_click.clone(), on_click.clone());
+                let (bar, key_bar, label_c, key_label) = (
+                    tokens.bar.clone(),
+                    tokens.bar.clone(),
+                    label.clone(),
+                    label.clone(),
+                );
                 div()
                     .id(("rli", (gidx * 100 + iidx) as u64))
+                    .debug_selector(move || format!("ribbon-item-{gidx}-{iidx}"))
+                    .role(Role::Button)
+                    .aria_label(label.clone())
+                    .tab_index(0)
+                    .on_key_down(move |ev, win, app| {
+                        if is_activation_key(ev.keystroke.key.as_str()) {
+                            invoke(&key_bar, &key_label, app, |app| {
+                                key_cb(&ClickEvent::default(), win, app)
+                            });
+                        }
+                    })
                     .h_full()
                     .min_w(px(48.0))
                     .flex()
@@ -164,7 +228,9 @@ impl RibbonBar {
                     .cursor_pointer()
                     .rounded(px(radii.sm))
                     .hover(move |s| s.bg(btn_hover_bg))
-                    .on_click(move |ev, win, app| cb(ev, win, app))
+                    .on_click(move |ev, win, app| {
+                        invoke(&bar, &label_c, app, |app| cb(ev, win, app))
+                    })
                     .child(
                         svg()
                             .path(icon.clone())
@@ -185,10 +251,26 @@ impl RibbonBar {
                 icon,
                 on_click,
             } => {
-                let cb = on_click.clone();
+                let (cb, key_cb) = (on_click.clone(), on_click.clone());
+                let (bar, key_bar, label_c, key_label) = (
+                    tokens.bar.clone(),
+                    tokens.bar.clone(),
+                    label.clone(),
+                    label.clone(),
+                );
                 let icon_empty = icon.is_empty();
                 div()
                     .id(("rbi", (gidx * 100 + iidx) as u64))
+                    .role(Role::Button)
+                    .aria_label(label.clone())
+                    .tab_index(0)
+                    .on_key_down(move |ev, win, app| {
+                        if is_activation_key(ev.keystroke.key.as_str()) {
+                            invoke(&key_bar, &key_label, app, |app| {
+                                key_cb(&ClickEvent::default(), win, app)
+                            });
+                        }
+                    })
                     .flex()
                     .flex_row()
                     .items_center()
@@ -199,7 +281,9 @@ impl RibbonBar {
                     .cursor_pointer()
                     .rounded(px(radii.sm))
                     .hover(move |s| s.bg(btn_hover_bg))
-                    .on_click(move |ev, win, app| cb(ev, win, app))
+                    .on_click(move |ev, win, app| {
+                        invoke(&bar, &label_c, app, |app| cb(ev, win, app))
+                    })
                     .when(!icon_empty, |d| {
                         d.child(
                             svg()
@@ -217,10 +301,30 @@ impl RibbonBar {
                     .into_any_element()
             }
 
-            RibbonItemDef::IconButton { icon, on_click, .. } => {
-                let cb = on_click.clone();
+            RibbonItemDef::IconButton {
+                icon,
+                tooltip,
+                on_click,
+            } => {
+                let (cb, key_cb) = (on_click.clone(), on_click.clone());
+                let (bar, key_bar, label_c, key_label) = (
+                    tokens.bar.clone(),
+                    tokens.bar.clone(),
+                    tooltip.clone(),
+                    tooltip.clone(),
+                );
                 div()
                     .id(("rib", (gidx * 100 + iidx) as u64))
+                    .role(Role::Button)
+                    .aria_label(tooltip.clone())
+                    .tab_index(0)
+                    .on_key_down(move |ev, win, app| {
+                        if is_activation_key(ev.keystroke.key.as_str()) {
+                            invoke(&key_bar, &key_label, app, |app| {
+                                key_cb(&ClickEvent::default(), win, app)
+                            });
+                        }
+                    })
                     .size(px(components.ribbon_small_icon_size + spacing.md))
                     .flex()
                     .items_center()
@@ -228,7 +332,9 @@ impl RibbonBar {
                     .cursor_pointer()
                     .rounded(px(radii.sm))
                     .hover(move |s| s.bg(btn_hover_bg))
-                    .on_click(move |ev, win, app| cb(ev, win, app))
+                    .on_click(move |ev, win, app| {
+                        invoke(&bar, &label_c, app, |app| cb(ev, win, app))
+                    })
                     .child(
                         svg()
                             .path(icon.clone())
@@ -247,9 +353,31 @@ impl RibbonBar {
                 let is_sel = *selected;
                 let new_state = !is_sel;
                 let bg = if is_sel { selected_bg } else { colors.subtle };
-                let cb: RibbonToggleCallback = on_click.clone();
+                let (cb, key_cb): (RibbonToggleCallback, RibbonToggleCallback) =
+                    (on_click.clone(), on_click.clone());
+                let (bar, key_bar, label_c, key_label) = (
+                    tokens.bar.clone(),
+                    tokens.bar.clone(),
+                    label.clone(),
+                    label.clone(),
+                );
                 div()
                     .id(("rtb", (gidx * 100 + iidx) as u64))
+                    .role(Role::Button)
+                    .aria_label(label.clone())
+                    .aria_toggled(if is_sel {
+                        Toggled::True
+                    } else {
+                        Toggled::False
+                    })
+                    .tab_index(0)
+                    .on_key_down(move |ev, win, app| {
+                        if is_activation_key(ev.keystroke.key.as_str()) {
+                            invoke(&key_bar, &key_label, app, |app| {
+                                key_cb(new_state, &ClickEvent::default(), win, app)
+                            });
+                        }
+                    })
                     .flex()
                     .flex_row()
                     .items_center()
@@ -260,7 +388,9 @@ impl RibbonBar {
                     .cursor_pointer()
                     .rounded(px(radii.sm))
                     .hover(move |s| s.bg(hover_bg))
-                    .on_click(move |ev, win, app| cb(new_state, ev, win, app))
+                    .on_click(move |ev, win, app| {
+                        invoke(&bar, &label_c, app, |app| cb(new_state, ev, win, app))
+                    })
                     .child(
                         svg()
                             .path(icon.clone())
@@ -340,6 +470,9 @@ impl RibbonBar {
             .child(group.name.clone());
 
         div()
+            .id(("rib-group", gidx as u64))
+            .role(Role::Group)
+            .aria_label(group.name.clone())
             .flex()
             .flex_col()
             .px(px(spacing.xs))
@@ -401,6 +534,7 @@ impl Render for RibbonBar {
             radii,
             typography,
             components,
+            bar: cx.entity().downgrade(),
         };
 
         let active = self.active_tab;
@@ -441,7 +575,42 @@ impl Render for RibbonBar {
         let on_neutral = colors.on_neutral;
         let on_accent = colors.on_accent;
 
+        // Visible tabs in strip order: normal first, then visible contextual.
+        let tab_names: Vec<SharedString> = normal_tab_names
+            .iter()
+            .cloned()
+            .chain(visible_ctx.iter().map(|(n, _)| n.clone()))
+            .collect();
+        let tab_count = tab_names.len();
+        while self.tab_handles.len() < tab_count {
+            self.tab_handles.push(cx.focus_handle());
+        }
+        self.tab_handles.truncate(tab_count);
+        let tab_handles = self.tab_handles.clone();
+        let tab_keys = {
+            let handles = tab_handles.clone();
+            let bar = cx.entity().downgrade();
+            move |idx: usize| {
+                let (handles, bar) = (handles.clone(), bar.clone());
+                move |ev: &gpui::KeyDownEvent, win: &mut Window, app: &mut App| {
+                    if let Some(next) = tab_nav_target(ev.keystroke.key.as_str(), idx, tab_count) {
+                        bar.update(app, |bar, cx| {
+                            bar.active_tab = next;
+                            bar.overflow_open = false;
+                            cx.notify();
+                        })
+                        .ok();
+                        handles[next].focus(win, app);
+                        app.stop_propagation();
+                    }
+                }
+            }
+        };
+
         let mut tab_strip = div()
+            .id("rib-tab-strip")
+            .role(Role::TabList)
+            .aria_orientation(gpui::accesskit::Orientation::Horizontal)
             .flex()
             .flex_row()
             .items_end() // align to bottom so underlines sit at the same baseline
@@ -474,6 +643,16 @@ impl Render for RibbonBar {
             tab_strip = tab_strip.child(
                 div()
                     .id(("rib-tab", i as u64))
+                    .debug_selector(move || format!("ribbon-tab-{i}"))
+                    .role(Role::Tab)
+                    .aria_label(name.clone())
+                    .aria_selected(is_active)
+                    .aria_position_in_set(i + 1)
+                    .aria_size_of_set(tab_count)
+                    .track_focus(&tab_handles[i])
+                    .tab_index(0)
+                    .tab_stop(is_active)
+                    .on_key_down(tab_keys(i))
                     .relative()
                     .px(px(spacing.lg))
                     .py(px(4.0))
@@ -540,6 +719,15 @@ impl Render for RibbonBar {
                 ctx_strip = ctx_strip.child(
                     div()
                         .id(("rib-ctx-tab", global_idx as u64))
+                        .role(Role::Tab)
+                        .aria_label(name.clone())
+                        .aria_selected(is_active)
+                        .aria_position_in_set(global_idx + 1)
+                        .aria_size_of_set(tab_count)
+                        .track_focus(&tab_handles[global_idx])
+                        .tab_index(0)
+                        .tab_stop(is_active)
+                        .on_key_down(tab_keys(global_idx))
                         .relative()
                         .px(px(spacing.lg))
                         .py(px(4.0))
@@ -581,11 +769,46 @@ impl Render for RibbonBar {
         } else {
             "icons/chevron_up.svg"
         };
+        let status = self.last_command.clone();
         tab_strip = tab_strip
             .child(div().flex_1()) // spacer
+            .when_some(status, |d, label| {
+                d.child(
+                    div()
+                        .id("rib-status")
+                        .role(Role::Status)
+                        .aria_label(SharedString::from(format!("Last command: {label}")))
+                        .self_center()
+                        .px(px(spacing.sm))
+                        .text_size(px(typography.caption.size))
+                        .text_color(colors.on_subtle_disabled)
+                        .child(label),
+                )
+            })
             .child(
                 div()
                     .id("rib-collapse")
+                    .role(Role::Button)
+                    .aria_label(if collapsed {
+                        "Expand the ribbon"
+                    } else {
+                        "Collapse the ribbon"
+                    })
+                    .aria_expanded(!collapsed)
+                    .tab_index(0)
+                    .on_key_down({
+                        let bar = cx.entity().downgrade();
+                        move |ev, _, app| {
+                            if is_activation_key(ev.keystroke.key.as_str()) {
+                                bar.update(app, |bar, cx| {
+                                    bar.collapsed = !bar.collapsed;
+                                    bar.overflow_open = false;
+                                    cx.notify();
+                                })
+                                .ok();
+                            }
+                        }
+                    })
                     .size(px(components.ribbon_tab_height))
                     .flex()
                     .items_center()
@@ -626,6 +849,8 @@ impl Render for RibbonBar {
             let hidden_groups = active_groups[visible_count..].to_vec();
 
             let mut content_row = div()
+                .id("rib-content")
+                .role(Role::TabPanel)
                 .relative()
                 .flex()
                 .flex_row()
@@ -655,6 +880,28 @@ impl Render for RibbonBar {
                 content_row = content_row.child(
                     div()
                         .id("rib-overflow")
+                        .role(Role::Button)
+                        .aria_label("More commands")
+                        .aria_expanded(self.overflow_open)
+                        .tab_index(0)
+                        .on_key_down({
+                            let bar = cx.entity().downgrade();
+                            move |ev, _, app| {
+                                if is_activation_key(ev.keystroke.key.as_str()) {
+                                    bar.update(app, |bar, cx| {
+                                        bar.overflow_open = !bar.overflow_open;
+                                        cx.notify();
+                                    })
+                                    .ok();
+                                } else if ev.keystroke.key == "escape" {
+                                    bar.update(app, |bar, cx| {
+                                        bar.overflow_open = false;
+                                        cx.notify();
+                                    })
+                                    .ok();
+                                }
+                            }
+                        })
                         .h(px(components.ribbon_content_button_height))
                         .min_w(px(overflow_button_width))
                         .flex()
@@ -690,6 +937,9 @@ impl Render for RibbonBar {
                         cx.notify();
                     });
                     let mut overflow_menu = div()
+                        .id("rib-overflow-menu")
+                        .role(Role::List)
+                        .aria_label("More commands")
                         .absolute()
                         .top(px(components.ribbon_content_button_height
                             + components.ribbon_group_label_height))
@@ -735,5 +985,95 @@ impl Render for RibbonBar {
         }
 
         bar
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{cell::Cell, rc::Rc};
+
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::TestAppContext;
+
+    use super::*;
+
+    #[test]
+    fn tab_navigation_wraps_and_jumps() {
+        assert_eq!(tab_nav_target("right", 2, 3), Some(0));
+        assert_eq!(tab_nav_target("left", 0, 3), Some(2));
+        assert_eq!(tab_nav_target("home", 2, 3), Some(0));
+        assert_eq!(tab_nav_target("end", 0, 3), Some(2));
+        assert_eq!(tab_nav_target("a", 0, 3), None);
+        assert_eq!(tab_nav_target("right", 0, 0), None);
+    }
+
+    fn build(cx: &mut Context<RibbonBar>, hits: Rc<Cell<usize>>) -> RibbonBar {
+        RibbonBar::new(cx)
+            .tab("Home", move |t| {
+                t.group("Actions", move |g| {
+                    let h = hits.clone();
+                    g.large_button("Run", "", move |_, _, _| h.set(h.get() + 1))
+                        .toggle_button("Wrap", "", true, |_, _, _, _| {})
+                })
+            })
+            .tab("View", |t| {
+                t.group("Zoom", |g| g.button("In", "", |_, _, _| {}))
+            })
+            .contextual_tab("Session", false, |t| {
+                t.group("Terminal", |g| g.button("Clear", "", |_, _, _| {}))
+            })
+    }
+
+    #[gpui::test]
+    fn exposes_tablist_tab_group_and_button_semantics(cx: &mut TestAppContext) {
+        let (_bar, vcx) = open_fluent_test_window(cx, |_, cx| build(cx, Rc::default()));
+        let joined = vcx.accessibility_snapshot().join("\n");
+        assert!(joined.contains("TabList"), "{joined}");
+        assert!(joined.contains("Tab \"Home\""), "{joined}");
+        assert!(joined.contains("Tab \"View\""), "{joined}");
+        assert!(!joined.contains("Session"), "{joined}");
+        assert!(joined.contains("TabPanel"), "{joined}");
+        assert!(joined.contains("Group \"Actions\""), "{joined}");
+        assert!(joined.contains("Button \"Run\""), "{joined}");
+        assert!(joined.contains("Button \"Wrap\""), "{joined}");
+    }
+
+    #[gpui::test]
+    fn arrow_keys_move_between_tabs(cx: &mut TestAppContext) {
+        let (bar, vcx) = open_fluent_test_window(cx, |_, cx| build(cx, Rc::default()));
+        vcx.click_selector("ribbon-tab-0");
+        vcx.type_keys("right");
+        assert_eq!(bar.read_with(vcx, |b, _| b.active_tab), 1);
+        vcx.type_keys("right");
+        assert_eq!(bar.read_with(vcx, |b, _| b.active_tab), 0);
+        vcx.type_keys("end");
+        assert_eq!(bar.read_with(vcx, |b, _| b.active_tab), 1);
+    }
+
+    #[gpui::test]
+    fn contextual_tab_appears_when_made_visible(cx: &mut TestAppContext) {
+        let (bar, vcx) = open_fluent_test_window(cx, |_, cx| build(cx, Rc::default()));
+        bar.update(vcx, |b, cx| {
+            b.set_contextual_visible("Session", true);
+            cx.notify();
+        });
+        let joined = vcx.accessibility_snapshot().join("\n");
+        assert!(joined.contains("Tab \"Session\""), "{joined}");
+    }
+
+    #[gpui::test]
+    fn keyboard_invocation_runs_command_and_records_feedback(cx: &mut TestAppContext) {
+        let hits = Rc::new(Cell::new(0));
+        let (bar, vcx) = open_fluent_test_window(cx, |_, cx| build(cx, hits.clone()));
+        vcx.click_selector("ribbon-item-0-0"); // click focuses the button
+        assert_eq!(hits.get(), 1);
+        vcx.type_keys("space enter");
+        assert_eq!(hits.get(), 3);
+        assert_eq!(
+            bar.read_with(vcx, |b, _| b.last_command().cloned()),
+            Some("Run".into())
+        );
+        let joined = vcx.accessibility_snapshot().join("\n");
+        assert!(joined.contains("Last command: Run"), "{joined}");
     }
 }
