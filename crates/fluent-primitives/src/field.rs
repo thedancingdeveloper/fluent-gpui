@@ -175,7 +175,7 @@ impl RenderOnce for Field {
         let colors = &theme.colors;
         let spacing = &theme.spacing;
         let typography = &theme.typography;
-        let rtl = cx.global::<LayoutDirection>().is_rtl();
+        let rtl = LayoutDirection::current(cx).is_rtl();
 
         let message_color = match self.validation_state {
             FieldValidationState::Error => colors.status_error,

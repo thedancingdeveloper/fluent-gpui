@@ -1,4 +1,4 @@
-use fluent_core::{LayoutDirection, LayoutDirectionProvider as _, ThemeProvider as _};
+use fluent_core::{LayoutDirection, ThemeProvider as _};
 use gpui::{
     prelude::*, px, size, svg, App, Hsla, IntoElement, RenderOnce, SharedString, Transformation,
     Window,
@@ -82,7 +82,7 @@ impl RenderOnce for Icon {
             .path(self.path.clone())
             .size(icon_size)
             .text_color(color);
-        if cx.layout_direction() == LayoutDirection::Rtl && is_directional_icon(&self.path) {
+        if LayoutDirection::current(cx).is_rtl() && is_directional_icon(&self.path) {
             icon = icon.with_transformation(Transformation::scale(size(-1.0, 1.0)));
         }
         icon
