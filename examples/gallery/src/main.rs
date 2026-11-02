@@ -1,5 +1,4 @@
 use fluent_app::{FluentApp, TitleBar};
-use gpui::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_layout::{
     Breadcrumb, BreadcrumbItem, DataCell, DataColumn, DataRow, DataStatusKind, DataTable,
     DataTableState, DockPanel, DockPosition, Drawer, DrawerMode, DrawerPosition, DrawerSize,
@@ -14,6 +13,7 @@ use fluent_primitives::{
     TerminalView, TerminalViewEvent, ToggleButton, VideoScaling, VideoSurface, VideoSurfaceEvent,
 };
 use fluent_ribbon::RibbonBar;
+use gpui::{LayoutDirection, Theme, ThemeProvider as _};
 
 mod families;
 use families::{DemoViews, FamilyHost, FamilyNav};

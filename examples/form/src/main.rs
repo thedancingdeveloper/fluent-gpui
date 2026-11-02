@@ -1,11 +1,11 @@
 use fluent_app::FluentApp;
+use fluent_core::gpui::{
+    div, prelude::*, px, ClickEvent, Context, Entity, IntoElement, Render, SharedString, Window,
+};
 use fluent_core::ThemeProvider as _;
 use fluent_primitives::{
     Button, ButtonAppearance, Checkbox, CheckboxState, Divider, Dropdown, Label, LabelSize, Switch,
     TextInput,
-};
-use fluent_core::gpui::{
-    div, prelude::*, px, ClickEvent, Context, Entity, IntoElement, Render, SharedString, Window,
 };
 
 struct FormDemo {

@@ -1,7 +1,7 @@
 use fluent_app::FluentApp;
+use fluent_core::gpui::{div, prelude::*, px, ClickEvent, Context, IntoElement, Render, Window};
 use fluent_core::ThemeProvider as _;
 use fluent_primitives::{Button, ButtonAppearance, Label, LabelSize};
-use fluent_core::gpui::{div, prelude::*, px, ClickEvent, Context, IntoElement, Render, Window};
 
 struct Counter {
     count: u32,

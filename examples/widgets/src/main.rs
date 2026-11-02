@@ -1,4 +1,7 @@
 use fluent_app::FluentApp;
+use fluent_core::gpui::{
+    div, prelude::*, px, App, Context, Entity, IntoElement, Render, SharedString, Window,
+};
 use fluent_core::ThemeProvider as _;
 use fluent_layout::{
     set_tree_checked, ContextMenuItem, DataCellAlign, DataColumn, DataRow, DataSortDirection,
@@ -12,7 +15,6 @@ use fluent_primitives::{
     Searchbox, Spinner, Switch, TextInput, Textarea, ToggleButton, TokenInput,
     TokenInputSuggestion, TokenInputToken, Tooltip,
 };
-use fluent_core::gpui::{div, prelude::*, px, App, Context, Entity, IntoElement, Render, SharedString, Window};
 
 struct WidgetGallery {
     check: CheckboxState,
