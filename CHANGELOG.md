@@ -11,6 +11,7 @@ per crate.
 ---
 
 ## Unreleased
+- fluent-primitives, fluent-layout, gallery: ProgressBar value text (default percentage) and Spinner label for assistive tech, ConnectionBadge Status role, MessageBar Alert/Status roles plus a recovery `action`, and an rtbit download-progress gallery story; animations already honour `reduce_motion` (WI-3016).
 - fluent-ribbon: RibbonBar exposes TabList, Tab, TabPanel, Group and Button roles with names, selected/toggled/expanded state, arrow/Home/End tab navigation, Enter/Space command activation, overflow semantics and a last-command status; gallery gains an rdpapp-style Connection tab (WI-3015).
 - fluent-layout, gallery: DataStatusKind loading/empty/no-results/error states with Status/Alert roles for DataTable (new NoResults state) and Tree (`status`, auto empty and no-match), plus rtbit and rdpapp gallery stories (WI-3012).
 - fluent-core, fluent-primitives, fluent-layout, gallery: add `LayoutDirection::current/set/toggle/pick` as the single direction API, route components through it, and add an Arabic/Hebrew RTL demo to the gallery (WI-3010).

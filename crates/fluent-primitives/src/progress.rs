@@ -1,7 +1,7 @@
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, relative, Animation, AnimationExt as _, App, Div, ElementId, Hsla,
-    IntoElement, RenderOnce, Role, Stateful, Window,
+    IntoElement, RenderOnce, Role, SharedString, Stateful, Window,
 };
 
 const MEDIUM_HEIGHT: f32 = 4.0;
@@ -28,6 +28,7 @@ pub struct ProgressBar {
     indeterminate: bool,
     height: f32,
     status: ProgressStatus,
+    value_text: Option<SharedString>,
 }
 
 impl ProgressBar {
@@ -39,12 +40,20 @@ impl ProgressBar {
             indeterminate: false,
             height: MEDIUM_HEIGHT,
             status: ProgressStatus::Neutral,
+            value_text: None,
         }
     }
 
     /// Animate a segment across the track instead of showing a fixed value.
     pub fn indeterminate(mut self) -> Self {
         self.indeterminate = true;
+        self
+    }
+
+    /// Human-readable value announced by assistive technology, e.g.
+    /// `"412 of 900 MB"`. Defaults to a percentage for determinate bars.
+    pub fn value_text(mut self, text: impl Into<SharedString>) -> Self {
+        self.value_text = Some(text.into());
         self
     }
 
@@ -90,6 +99,10 @@ fn clamp_value(value: f32) -> f32 {
     }
 }
 
+fn default_value_text(value: f32) -> String {
+    format!("{}%", (value * 100.0).round() as u32)
+}
+
 fn a11y_base(id: ElementId, value: f32, indeterminate: bool) -> Stateful<Div> {
     let progress = div()
         .id(id)
@@ -100,7 +113,9 @@ fn a11y_base(id: ElementId, value: f32, indeterminate: bool) -> Stateful<Div> {
     if indeterminate {
         progress
     } else {
-        progress.aria_numeric_value(value.into())
+        progress
+            .aria_numeric_value(value.into())
+            .aria_value(default_value_text(value))
     }
 }
 
@@ -143,8 +158,11 @@ impl RenderOnce for ProgressBar {
                 .into_any_element()
         };
 
-        a11y_base(self.id, self.value, self.indeterminate)
-            .relative()
+        let mut base = a11y_base(self.id, self.value, self.indeterminate);
+        if let (Some(text), false) = (self.value_text, self.indeterminate) {
+            base = base.aria_value(text);
+        }
+        base.relative()
             .w_full()
             .h(px(self.height))
             .overflow_hidden()
@@ -164,6 +182,11 @@ mod tests {
         assert_eq!(ProgressBar::new(0.4).value, 0.4);
         assert_eq!(ProgressBar::new(1.25).value, 1.0);
         assert_eq!(ProgressBar::new(f32::NAN).value, 0.0);
+    }
+
+    #[test]
+    fn default_value_text_is_percentage() {
+        assert_eq!(default_value_text(0.456), "46%");
     }
 
     #[test]

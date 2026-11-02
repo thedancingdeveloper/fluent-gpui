@@ -1,6 +1,6 @@
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, prelude::*, px, svg, App, ClickEvent, IntoElement, RenderOnce, SharedString, Window,
+    div, prelude::*, px, svg, App, ClickEvent, IntoElement, RenderOnce, Role, SharedString, Window,
 };
 
 type DismissHandler = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
@@ -21,6 +21,7 @@ pub struct MessageBar {
     title: Option<SharedString>,
     message: SharedString,
     on_dismiss: Option<DismissHandler>,
+    action: Option<(SharedString, DismissHandler)>,
 }
 
 impl MessageBar {
@@ -30,6 +31,7 @@ impl MessageBar {
             title: None,
             message: message.into(),
             on_dismiss: None,
+            action: None,
         }
     }
 
@@ -40,6 +42,16 @@ impl MessageBar {
 
     pub fn title(mut self, title: impl Into<SharedString>) -> Self {
         self.title = Some(title.into());
+        self
+    }
+
+    /// A recovery affordance such as "Retry", shown after the message.
+    pub fn action(
+        mut self,
+        label: impl Into<SharedString>,
+        f: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.action = Some((label.into(), Box::new(f)));
         self
     }
 
@@ -93,7 +105,13 @@ impl RenderOnce for MessageBar {
                 .child(self.message),
         );
 
+        let role = match self.intent {
+            MessageIntent::Error | MessageIntent::Warning => Role::Alert,
+            _ => Role::Status,
+        };
         let mut root = div()
+            .id("message-bar")
+            .role(role)
             .flex()
             .flex_row()
             .items_start()
@@ -105,6 +123,27 @@ impl RenderOnce for MessageBar {
             .border_color(border)
             .child(div().w(px(3.0)).rounded(px(radii.pill)).bg(accent))
             .child(text.flex_1());
+
+        if let Some((label, on_action)) = self.action {
+            let hover = colors.subtle_hover;
+            root = root.child(
+                div()
+                    .id("message-action")
+                    .flex_none()
+                    .px(px(spacing.sm))
+                    .py(px(2.0))
+                    .rounded(px(radii.sm))
+                    .role(Role::Button)
+                    .aria_label(label.clone())
+                    .cursor_pointer()
+                    .text_size(px(typography.body.size))
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .text_color(accent)
+                    .hover(move |s| s.bg(hover))
+                    .on_click(move |ev, win, app| on_action(ev, win, app))
+                    .child(label),
+            );
+        }
 
         if let Some(on_dismiss) = self.on_dismiss {
             root = root.child(
