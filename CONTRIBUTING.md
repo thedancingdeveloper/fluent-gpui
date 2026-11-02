@@ -182,6 +182,35 @@ Where they run:
 - **GPU runtime validation** (WI-1438, WI-1439) is manual, on the approved
   hosts (desktop-tlk1gff for DirectX 11), and recorded on the work item.
 
+### Headless screenshots on Linux (spike, WI-2913)
+
+Answer: probably yes, but not yet proven here. Verified by reading, not by a run.
+
+- `VisualTestContext` and `VisualTestPlatform` are not the path. The platform
+  file says "macOS-only for now" and wraps a real window platform, so it needs a
+  display.
+- The path that exists is `HeadlessAppContext` plus
+  `gpui_platform::current_headless_renderer()`, which returns
+  `gpui_wgpu::WgpuHeadlessRenderer` on Linux and Windows. It renders to an
+  offscreen texture and reads it back (`window.render_to_image()`,
+  `HeadlessAppContext::capture_screenshot`). No window, compositor or X/Wayland
+  is involved. Needs `gpui` and `gpui_platform` with `test-support`
+  (`fluent-test-utils` already enables the gpui one).
+- It picks any wgpu adapter, software ones included, and needs RGBA8 or BGRA8
+  render + copy-src support. So CI needs a software Vulkan driver
+  (`mesa-vulkan-drivers`, lavapipe) on the runner.
+- The vendored crates are excluded from the workspace, so
+  `cargo test -p gpui_wgpu` cannot run their `headless_renderer_*` tests.
+  A fluent-side test is the way to exercise it.
+- The dev host used for the spike has no Vulkan ICD and no `/dev/dri`, so no
+  pixels were captured.
+
+Follow-ups: (1) a `fluent-test-utils` helper that builds a `HeadlessAppContext`
+with `CosmicTextSystem` and the headless renderer, with a smoke test that
+renders a quad; (2) install lavapipe in the CI Linux job and run (1);
+(3) only if (1) and (2) pass, move baselines off `scripts/screenshots.sh`.
+Until then screenshots stay display-only.
+
 ### Toolchain
 
 The Rust toolchain is pinned in `rust-toolchain.toml` (channel, plus
