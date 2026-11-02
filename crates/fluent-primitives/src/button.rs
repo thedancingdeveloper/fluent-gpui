@@ -285,7 +285,7 @@ impl RenderOnce for Button {
 mod tests {
     use std::{cell::Cell, rc::Rc};
 
-    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use fluent_test_utils::{assert_a11y_node, open_fluent_test_window, FluentInteractionExt as _};
     use gpui::{Context, InputEvent as _, KeyUpEvent, Keystroke, Render, TestAppContext};
 
     use super::*;
@@ -371,9 +371,7 @@ mod tests {
     #[gpui::test]
     fn accessibility_snapshot_reports_button(cx: &mut TestAppContext) {
         let snap = snapshot(cx, || Button::new("b").label("Save").into_any_element());
-        assert_eq!(
-            snap,
-            vec!["Window".to_string(), "Button \"Save\"".to_string()]
-        );
+        assert_eq!(snap.len(), 2, "{snap:?}");
+        assert_a11y_node(&snap, "Button", Some("Save"), &[]);
     }
 }

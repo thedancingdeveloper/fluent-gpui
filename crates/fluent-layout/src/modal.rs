@@ -494,7 +494,9 @@ mod tests {
     use std::cell::Cell;
     use std::rc::Rc;
 
-    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use fluent_test_utils::{
+        open_fluent_test_window, FluentAssertExt as _, FluentInteractionExt as _,
+    };
     use gpui::{point, px, Modifiers, TestAppContext};
 
     use super::*;
@@ -688,8 +690,7 @@ mod tests {
         cx.update(|_, cx| Dialog::new("D").show(ModalSize::Fit, cx));
         cx.run_until_parked();
 
-        cx.type_keys("tab shift-tab");
-        cx.assert_not_focused(&opener);
+        cx.assert_keys_yield("tab shift-tab", |cx| cx.is_focused(&opener), false);
         assert_eq!(stack_len(cx), 1);
 
         cx.type_keys("escape");
