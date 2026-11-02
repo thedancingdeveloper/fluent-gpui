@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::data_status::{status_block, DataStatusKind};
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, App, ClickEvent, IntoElement, KeyDownEvent, RenderOnce, Role,
@@ -84,6 +85,8 @@ pub enum DataTableState {
     Ready,
     Loading(SharedString),
     Empty(SharedString),
+    /// Rows exist but the active filter hides them all.
+    NoResults(SharedString),
     Error(SharedString),
 }
 
@@ -240,6 +243,11 @@ impl DataTable {
 
     pub fn empty_message(mut self, message: impl Into<SharedString>) -> Self {
         self.state = DataTableState::Empty(message.into());
+        self
+    }
+
+    pub fn no_results_message(mut self, message: impl Into<SharedString>) -> Self {
+        self.state = DataTableState::NoResults(message.into());
         self
     }
 
@@ -514,38 +522,18 @@ impl RenderOnce for DataTable {
 
         root = root.child(header);
 
-        match &self.state {
-            DataTableState::Loading(message)
-            | DataTableState::Empty(message)
-            | DataTableState::Error(message) => {
-                let color = match &self.state {
-                    DataTableState::Error(_) => colors.status_error,
-                    _ => colors.on_subtle,
-                };
-                return root.child(
-                    div()
-                        .min_h(px(components.menu_item_height * 3.0))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .text_size(px(typography.body.size))
-                        .text_color(color)
-                        .child(message.clone()),
-                );
-            }
+        let status = match &self.state {
+            DataTableState::Loading(m) => Some((DataStatusKind::Loading, m.clone())),
+            DataTableState::Empty(m) => Some((DataStatusKind::Empty, m.clone())),
+            DataTableState::NoResults(m) => Some((DataStatusKind::NoResults, m.clone())),
+            DataTableState::Error(m) => Some((DataStatusKind::Error, m.clone())),
             DataTableState::Ready if rows.is_empty() => {
-                return root.child(
-                    div()
-                        .min_h(px(components.menu_item_height * 3.0))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .text_size(px(typography.body.size))
-                        .text_color(colors.on_subtle_disabled)
-                        .child("No rows"),
-                );
+                Some((DataStatusKind::Empty, "No rows".into()))
             }
-            DataTableState::Ready => {}
+            DataTableState::Ready => None,
+        };
+        if let Some((kind, message)) = status {
+            return root.child(status_block("data-table-status", kind, message, cx));
         }
 
         let mut body = div().id("data-table-body").flex().flex_col();

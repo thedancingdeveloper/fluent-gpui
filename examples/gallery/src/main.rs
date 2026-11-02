@@ -1,8 +1,9 @@
 use fluent_app::{FluentApp, TitleBar};
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_layout::{
-    DockPanel, DockPosition, MenuBar, ModalStack, Pane, PaneConstraints, PaneGroup, TabItem,
-    TabStrip, Workspace,
+    DataCell, DataColumn, DataRow, DataStatusKind, DataTable, DataTableState, DockPanel,
+    DockPosition, MenuBar, ModalStack, Pane, PaneConstraints, PaneGroup, TabItem, TabStrip, Tree,
+    TreeItem, Workspace,
 };
 use fluent_primitives::{
     Avatar, Button, ButtonAppearance, Checkbox, CounterBadge, CounterBadgeAppearance,
@@ -19,6 +20,97 @@ use gpui::{div, prelude::*, rgb, Context, Entity, IntoElement, Render, SharedStr
 
 struct GalleryRoot {
     workspace: gpui::Entity<Workspace>,
+}
+
+/// Data-heavy screens in every non-ready state: an rtbit torrent list and an
+/// rdpapp connection tree.
+struct DataStatesDemo;
+
+impl DataStatesDemo {
+    fn torrents(state: DataTableState, full: bool) -> DataTable {
+        let mut table = DataTable::new()
+            .columns([
+                DataColumn::new("name", "Name"),
+                DataColumn::new("progress", "Progress").width(90.0),
+                DataColumn::new("down", "Down").width(90.0),
+            ])
+            .state(state);
+        if full {
+            table = table.rows([
+                DataRow::new(
+                    "t1",
+                    [
+                        DataCell::new("ubuntu-24.04.iso"),
+                        DataCell::new("62%"),
+                        DataCell::new("4.1 MB/s"),
+                    ],
+                ),
+                DataRow::new(
+                    "t2",
+                    [
+                        DataCell::new("debian-12.img"),
+                        DataCell::new("100%"),
+                        DataCell::new("0 B/s"),
+                    ],
+                ),
+            ]);
+        }
+        table
+    }
+}
+
+impl Render for DataStatesDemo {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        let label = |t: &'static str| div().text_size(gpui::px(12.0)).child(t);
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .p_3()
+            .child(label("rtbit torrents: ready"))
+            .child(Self::torrents(DataTableState::Ready, true))
+            .child(label("rtbit torrents: loading"))
+            .child(Self::torrents(
+                DataTableState::Loading("Loading torrents…".into()),
+                false,
+            ))
+            .child(label("rtbit torrents: empty"))
+            .child(Self::torrents(
+                DataTableState::Empty("No torrents. Add a magnet link to start.".into()),
+                false,
+            ))
+            .child(label("rtbit torrents: no results"))
+            .child(Self::torrents(
+                DataTableState::NoResults("No torrents match \"ubuntu\".".into()),
+                false,
+            ))
+            .child(label("rtbit torrents: error"))
+            .child(Self::torrents(
+                DataTableState::Error(
+                    "Cannot reach the rtbit session (connection refused).".into(),
+                ),
+                false,
+            ))
+            .child(label(
+                "rdpapp connections: ready / filter with no match / error",
+            ))
+            .child(
+                Tree::new().item(
+                    TreeItem::new("prod", "Production")
+                        .expanded(true)
+                        .child(TreeItem::new("srv1", "srv-01.corp")),
+                ),
+            )
+            .child(
+                Tree::new()
+                    .item(
+                        TreeItem::new("prod", "Production")
+                            .child(TreeItem::new("srv1", "srv-01.corp")),
+                    )
+                    .filter("zzz"),
+            )
+            .child(Tree::new().status(DataStatusKind::Error, "Could not load the connection list."))
+    }
 }
 
 struct CounterBadgeDemo;
@@ -597,7 +689,14 @@ fn main() {
             ts.add_tab(TabItem::new("settings").label("Settings").closable(true));
             ts
         });
-        let split_list = cx.new(TerminalDemo::new);
+        let terminal_demo = cx.new(TerminalDemo::new);
+        let data_states = cx.new(|_| DataStatesDemo);
+        let split_list = cx.new(|_| {
+            PaneGroup::vertical()
+                .first(terminal_demo.into())
+                .second(data_states.into())
+                .ratio(0.4)
+        });
         let badge_demo = cx.new(|_| CounterBadgeDemo);
         let matrix_demo = cx.new(|_| ThemeMatrixDemo);
         let persona_demo = cx.new(|_| PersonaDemo);
