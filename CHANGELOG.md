@@ -11,6 +11,7 @@ per crate.
 ---
 
 ## Unreleased
+- fluent-layout: nested modals — Escape and backdrop click dismiss the topmost modal only, non-dismissible dialogs ignore both, focus stays trapped until the stack empties; contract documented on ModalStack (WI-3014).
 - fluent-layout: Toolbar exposes Toolbar and Button roles with accessible names, toggled state and overflow expansion (WI-3007).
 - fluent-primitives: add TextInput interaction tests for grapheme-safe cursor movement, selection and UTF-16 offsets (WI-3011).
 - fluent-core, gallery: extend high-contrast AAA token tests to brand, subtle and status pairs; add success, warning and focus-ring states to the gallery theme matrix (WI-3009).

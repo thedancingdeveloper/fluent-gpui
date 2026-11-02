@@ -68,8 +68,9 @@ impl Dialog {
     }
 
     pub fn show(self, size: ModalSize, cx: &mut App) {
+        let dismissible = self.dismissible;
         let entity = cx.new(|_| DialogView { dialog: self });
-        ModalStack::push(entity.into(), size, cx);
+        ModalStack::push_with(entity.into(), size, dismissible, cx);
     }
 }
 
