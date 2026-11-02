@@ -208,3 +208,95 @@ impl Render for ToastHost {
         div().absolute().inset_0().child(deferred(stack))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use fluent_test_utils::open_fluent_test_window;
+    use gpui::TestAppContext;
+
+    use super::*;
+
+    fn host(cx: &mut TestAppContext) -> &mut gpui::VisualTestContext {
+        let (_, cx) = open_fluent_test_window(cx, |_, cx| {
+            ToastStack::init(cx);
+            ToastHost::new(cx)
+        });
+        cx
+    }
+
+    fn ids(cx: &mut gpui::VisualTestContext) -> Vec<String> {
+        cx.update(|_, cx| {
+            cx.global::<ToastStack>()
+                .entries
+                .iter()
+                .map(|t| t.id.to_string())
+                .collect()
+        })
+    }
+
+    #[gpui::test]
+    fn auto_dismisses_after_timeout_on_fake_clock(cx: &mut TestAppContext) {
+        let cx = host(cx);
+        cx.update(|_, cx| ToastStack::push(Toast::new("a", "hi"), cx));
+        assert_eq!(ids(cx), ["a"]);
+        cx.executor().advance_clock(Duration::from_secs(4));
+        cx.run_until_parked();
+        assert_eq!(ids(cx), ["a"], "still shown before the 5s default");
+        cx.executor().advance_clock(Duration::from_secs(2));
+        cx.run_until_parked();
+        assert!(ids(cx).is_empty());
+    }
+
+    #[gpui::test]
+    fn persistent_toast_never_auto_dismisses(cx: &mut TestAppContext) {
+        let cx = host(cx);
+        cx.update(|_, cx| ToastStack::push(Toast::new("p", "hi").persistent(), cx));
+        cx.executor().advance_clock(Duration::from_secs(3600));
+        cx.run_until_parked();
+        assert_eq!(ids(cx), ["p"]);
+    }
+
+    #[gpui::test]
+    fn custom_timeout_and_independent_expiry(cx: &mut TestAppContext) {
+        let cx = host(cx);
+        cx.update(|_, cx| {
+            ToastStack::push(Toast::new("short", "x").timeout(Duration::from_secs(1)), cx);
+            ToastStack::push(Toast::new("long", "y").timeout(Duration::from_secs(10)), cx);
+        });
+        cx.executor().advance_clock(Duration::from_secs(2));
+        cx.run_until_parked();
+        assert_eq!(ids(cx), ["long"]);
+    }
+
+    #[gpui::test]
+    fn manual_dismiss_and_clear(cx: &mut TestAppContext) {
+        let cx = host(cx);
+        cx.update(|_, cx| {
+            ToastStack::push(Toast::new("a", "x").persistent(), cx);
+            ToastStack::push(Toast::new("b", "y").persistent(), cx);
+            ToastStack::dismiss("a", cx);
+        });
+        assert_eq!(ids(cx), ["b"]);
+        cx.update(|_, cx| ToastStack::clear(cx));
+        assert!(ids(cx).is_empty());
+    }
+
+    #[gpui::test]
+    fn same_id_replaces_and_max_entries_evicts_oldest(cx: &mut TestAppContext) {
+        let cx = host(cx);
+        cx.update(|_, cx| {
+            ToastStack::push(Toast::new("a", "1").persistent(), cx);
+            ToastStack::push(Toast::new("a", "2").persistent(), cx);
+        });
+        assert_eq!(ids(cx), ["a"]);
+        cx.update(|_, cx| {
+            ToastStack::set_max_entries(2, cx);
+            for id in ["b", "c"] {
+                ToastStack::push(Toast::new(id, "m").persistent(), cx);
+            }
+        });
+        assert_eq!(ids(cx), ["b", "c"]);
+    }
+}

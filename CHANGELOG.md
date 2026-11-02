@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- fluent-layout: interaction tests for ModalStack/ModalHost, Dialog, Flyout, Popover and Toast (backdrop dismissal, input blocking, toast timeout on the fake clock); `debug_selector`s on dialog and modal buttons (WI-2911).
 - fluent-layout: DataTable keyboard navigation: Up/Down/Home/End/PageUp/PageDown move the active row and scroll it into view, Space selects, Shift extends via `on_row_extend`, Enter activates (WI-2921).
 - fluent-primitives, fluent-layout: RadioGroup, TabStrip and Toolbar are one tab stop with arrow-key roving focus (arrows also select in RadioGroup and TabStrip), Home/End jump (WI-2920).
 - fluent-primitives: Button, IconButton, ToggleButton, Checkbox, Switch, RadioGroup and Dropdown take `tab_index`, handle Tab/Shift-Tab, and show the Fluent 2 focus stroke for keyboard focus only (WI-2919).

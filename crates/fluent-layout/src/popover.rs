@@ -63,3 +63,40 @@ impl RenderOnce for Popover {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{point, px, TestAppContext};
+
+    use super::*;
+
+    struct Host {
+        open: bool,
+    }
+
+    impl gpui::Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+            div().size_full().child(
+                Popover::new(
+                    point(px(40.), px(40.)),
+                    div().size(px(50.)).debug_selector(|| "pop-content".into()),
+                )
+                .open(self.open),
+            )
+        }
+    }
+
+    #[gpui::test]
+    fn renders_only_while_open(cx: &mut TestAppContext) {
+        let (host, cx) = open_fluent_test_window(cx, |_, _| Host { open: true });
+        cx.run_until_parked();
+        assert!(cx.selector_bounds("pop-content").is_some());
+        host.update(cx, |h, cx| {
+            h.open = false;
+            cx.notify();
+        });
+        cx.run_until_parked();
+        assert!(cx.selector_bounds("pop-content").is_none());
+    }
+}
