@@ -92,6 +92,19 @@ impl Theme {
         }
     }
 
+    /// Construct the high-contrast theme (Fluent 2 / Windows system-colour mapping:
+    /// Canvas, CanvasText, Highlight, GrayText, ButtonFace). Strokes replace fills.
+    pub fn high_contrast() -> Self {
+        Self {
+            brightness: Brightness::Dark,
+            colors: ColorScheme::high_contrast(),
+            spacing: SpacingTokens::default(),
+            radii: RadiiTokens::default(),
+            typography: TypographyTokens::default(),
+            components: ComponentTokens::default(),
+        }
+    }
+
     /// Switch to dark theme at runtime. All subscribed views re-render automatically.
     pub fn apply_dark(cx: &mut App) {
         cx.set_global(Theme::dark());
@@ -110,6 +123,11 @@ impl Theme {
     /// Switch to Ember theme at runtime.
     pub fn apply_ember(cx: &mut App) {
         cx.set_global(Theme::ember());
+    }
+
+    /// Switch to the high-contrast theme at runtime.
+    pub fn apply_high_contrast(cx: &mut App) {
+        cx.set_global(Theme::high_contrast());
     }
 
     /// Toggle between dark and light.
