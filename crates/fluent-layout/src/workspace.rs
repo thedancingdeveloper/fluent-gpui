@@ -46,7 +46,7 @@ impl Workspace {
     /// Prepend a built-in "File" menu with an Exit item that calls `cx.quit()`.
     ///
     /// Pass `app_name` to label the menu "File" (ignored for now; reserved for
-    /// future "About <app>" or per-platform behaviour).
+    /// future `About <app>` or per-platform behaviour).
     pub fn with_file_menu(mut self, _app_name: impl Into<SharedString>) -> Self {
         self.app_name_for_file_menu = Some("File".into());
         self

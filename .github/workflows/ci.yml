@@ -40,6 +40,41 @@ jobs:
         shell: bash
         run: scripts/ci-nextest.sh
 
+  examples-and-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Install Linux system libraries
+        # gpui's Linux backend (x11rb/xkbcommon/wayland/blade/font-kit) links
+        # these; the list follows zed's script/linux apt packages.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxcb1-dev libx11-xcb-dev libxkbcommon-dev libxkbcommon-x11-dev \
+            libwayland-dev libvulkan-dev libfontconfig-dev libfreetype-dev
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a
+      - name: Build every example package
+        run: >-
+          cargo build
+          -p demo_app
+          -p form
+          -p gallery
+          -p hello_world
+          -p screenshots
+          -p widgets
+      - name: Build fluent crate documentation
+        env:
+          RUSTDOCFLAGS: -Dwarnings
+        run: >-
+          cargo doc --no-deps
+          -p fluent-app
+          -p fluent-core
+          -p fluent-layout
+          -p fluent-primitives
+          -p fluent-ribbon
+          -p fluent-test-utils
+
   # Only crates/fluent-* may use gpui (CONTRIBUTING.md §2).
   layering:
     runs-on: ubuntu-latest
@@ -70,7 +105,7 @@ jobs:
   # The one required check: Windows and Linux tests plus every guard.
   ci:
     if: always()
-    needs: [test, layering, deny, zed-rev]
+    needs: [test, examples-and-docs, layering, deny, zed-rev]
     runs-on: ubuntu-latest
     steps:
       - name: All jobs passed
