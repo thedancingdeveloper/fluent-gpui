@@ -1171,6 +1171,20 @@ impl WaylandConnection {
                             }
                         }
                     }
+                    XDPEvent::HighContrast(high_contrast) => {
+                        if let Some(client) = client.0.upgrade() {
+                            let client = client.borrow_mut();
+                            let mut common = client.common.borrow_mut();
+                            if common.high_contrast != high_contrast {
+                                common.high_contrast = high_contrast;
+                                if let Some(callback) =
+                                    common.callbacks.high_contrast_changed.as_mut()
+                                {
+                                    callback();
+                                }
+                            }
+                        }
+                    }
                     XDPEvent::ButtonLayout(layout_str) => {
                         if let Some(client) = client.0.upgrade() {
                             let layout = WindowButtonLayout::parse(&layout_str)

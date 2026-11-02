@@ -135,7 +135,11 @@ impl Theme {
     /// Register the dark theme as the active global. Call once during app startup.
     pub fn init(cx: &mut App) {
         LayoutDirection::init(cx);
-        cx.set_global(Theme::dark());
+        if cx.high_contrast() {
+            cx.set_global(Theme::high_contrast());
+        } else {
+            cx.set_global(Theme::dark());
+        }
     }
 
     /// Construct the Midnight theme (deep navy darks + violet accent).

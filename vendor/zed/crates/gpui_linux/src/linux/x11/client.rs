@@ -613,6 +613,18 @@ impl X11Client {
                                 window.window.set_appearance(appearance);
                             }
                         }
+                        XDPEvent::HighContrast(high_contrast) => {
+                            client.with_common(|common| {
+                                if common.high_contrast != high_contrast {
+                                    common.high_contrast = high_contrast;
+                                    if let Some(callback) =
+                                        common.callbacks.high_contrast_changed.as_mut()
+                                    {
+                                        callback();
+                                    }
+                                }
+                            });
+                        }
                         XDPEvent::ButtonLayout(layout_str) => {
                             let layout = WindowButtonLayout::parse(&layout_str)
                                 .log_err()
