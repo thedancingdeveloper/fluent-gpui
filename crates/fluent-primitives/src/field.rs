@@ -3,6 +3,8 @@ use gpui::{
     div, prelude::*, px, AnyElement, App, Entity, IntoElement, RenderOnce, SharedString, Window,
 };
 
+use crate::InfoLabel;
+
 /// An input a [`Field`] can name and describe for assistive technology.
 ///
 /// [`Field::input`] pushes the field's label (the accessible name) and its
@@ -68,6 +70,7 @@ pub enum FieldValidationState {
 #[derive(IntoElement)]
 pub struct Field {
     label: Option<SharedString>,
+    info_label: Option<Entity<InfoLabel>>,
     required: bool,
     helper_text: Option<SharedString>,
     validation_message: Option<SharedString>,
@@ -81,6 +84,7 @@ impl Field {
     pub fn new(control: impl IntoElement) -> Self {
         Self {
             label: None,
+            info_label: None,
             required: false,
             helper_text: None,
             validation_message: None,
@@ -107,6 +111,17 @@ impl Field {
 
     pub fn label(mut self, label: impl Into<SharedString>) -> Self {
         self.label = Some(label.into());
+        self.info_label = None;
+        self
+    }
+
+    /// Use an [`InfoLabel`] as this field's visible label.
+    ///
+    /// Its text remains the input's accessible name while its info button
+    /// opens the supplementary explanation.
+    pub fn info_label(mut self, label: Entity<InfoLabel>) -> Self {
+        self.label = None;
+        self.info_label = Some(label);
         self
     }
 
@@ -139,12 +154,22 @@ impl Field {
 
 impl RenderOnce for Field {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let accessible_label = self
+            .info_label
+            .as_ref()
+            .map(|label| label.read(cx).text())
+            .or_else(|| self.label.clone());
         if let Some(apply) = self.semantics {
             let description = self
                 .validation_message
                 .clone()
                 .or_else(|| self.helper_text.clone());
-            apply(self.label.clone(), description, self.validation_state, cx);
+            apply(
+                accessible_label.clone(),
+                description,
+                self.validation_state,
+                cx,
+            );
         }
         let theme = cx.theme();
         let colors = &theme.colors;
@@ -161,7 +186,7 @@ impl RenderOnce for Field {
 
         let mut body = div().flex().flex_col().gap(px(spacing.xs)).w_full();
 
-        let label_el = self.label.map(|label| {
+        let label_el = accessible_label.map(|label| {
             let mut label_row = div()
                 .flex()
                 .when(rtl, |row| row.flex_row_reverse())
@@ -170,8 +195,13 @@ impl RenderOnce for Field {
                 .gap(px(spacing.xs))
                 .text_size(px(typography.body.size))
                 .line_height(px(typography.body.line_height))
-                .text_color(colors.on_neutral)
-                .child(label);
+                .text_color(colors.on_neutral);
+
+            label_row = if let Some(info_label) = self.info_label {
+                label_row.child(info_label)
+            } else {
+                label_row.child(label)
+            };
 
             if self.required {
                 label_row = label_row.child(
@@ -289,7 +319,7 @@ mod tests {
     use gpui::{Entity, TestAppContext, VisualTestContext};
 
     use super::*;
-    use crate::{Combobox, Searchbox, TextInput, Textarea, TokenInput};
+    use crate::{Combobox, InfoLabel, Searchbox, TextInput, Textarea, TokenInput};
 
     struct ValidationProbe {
         state: Rc<RefCell<FieldValidationState>>,
@@ -299,6 +329,11 @@ mod tests {
         probe: Entity<ValidationProbe>,
     }
 
+    struct InfoLabelHost {
+        input: Entity<TextInput>,
+        label: Entity<InfoLabel>,
+    }
+
     impl gpui::Render for ValidationHost {
         fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
             Field::input(self.probe.clone())
@@ -306,6 +341,12 @@ mod tests {
                 .required(true)
                 .helper_text("Host or IP address")
                 .validation(FieldValidationState::Warning, "Connection is unverified")
+        }
+    }
+
+    impl gpui::Render for InfoLabelHost {
+        fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+            Field::input(self.input.clone()).info_label(self.label.clone())
         }
     }
 
@@ -410,6 +451,21 @@ mod tests {
 
         vcx.update(|window, cx| window.draw(cx).clear(cx));
         assert_eq!(*state.borrow(), FieldValidationState::Warning);
+    }
+
+    #[gpui::test]
+    fn field_accepts_info_label_and_preserves_accessible_name(cx: &mut TestAppContext) {
+        let (_, vcx) = open_fluent_test_window(cx, |_, cx| InfoLabelHost {
+            input: cx.new(|_| TextInput::new()),
+            label: cx.new(|_| InfoLabel::new("server-info", "Server", "Where requests are sent.")),
+        });
+
+        vcx.update(|window, cx| window.draw(cx).clear(cx));
+        assert!(vcx
+            .accessibility_snapshot()
+            .iter()
+            .any(|node| node == "TextInput \"Server\""));
+        assert!(vcx.selector_bounds("server-info").is_some());
     }
 
     #[test]
