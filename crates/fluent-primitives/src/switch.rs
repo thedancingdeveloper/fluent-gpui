@@ -1,3 +1,4 @@
+use crate::focus::FluentFocus as _;
 use fluent_core::ThemeProvider as _;
 use gpui::{div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, Window};
 
@@ -10,6 +11,7 @@ pub struct Switch {
     id: ElementId,
     on: bool,
     disabled: bool,
+    tab_index: Option<isize>,
     on_click: Option<Box<dyn Fn(bool, &ClickEvent, &mut Window, &mut App) + 'static>>,
 }
 
@@ -19,12 +21,19 @@ impl Switch {
             id: id.into(),
             on: false,
             disabled: false,
+            tab_index: None,
             on_click: None,
         }
     }
 
     pub fn on(mut self, on: bool) -> Self {
         self.on = on;
+        self
+    }
+
+    /// Explicit position in the Tab order (lower first). Defaults to document order.
+    pub fn tab_index(mut self, index: isize) -> Self {
+        self.tab_index = Some(index);
         self
     }
 
@@ -69,6 +78,8 @@ impl RenderOnce for Switch {
         };
 
         let disabled = self.disabled;
+        let tab_index = self.tab_index;
+        let focus_ring = colors.stroke_accent;
         let new_state = !self.on;
         let on_click = self.on_click;
 
@@ -90,7 +101,11 @@ impl RenderOnce for Switch {
             .relative();
 
         if !disabled {
-            el = el.focusable().tab_stop(true).cursor_pointer();
+            el = el
+                .focusable()
+                .tab_stop(true)
+                .fluent_focus(tab_index, focus_ring)
+                .cursor_pointer();
         }
 
         if let Some(handler) = on_click.filter(|_| !disabled) {

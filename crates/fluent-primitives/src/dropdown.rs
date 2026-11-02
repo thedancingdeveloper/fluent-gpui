@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 
+use crate::focus::FluentFocus as _;
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
     anchored, canvas, deferred, div, point, prelude::*, px, svg, Anchor, App, Bounds, ClickEvent,
@@ -28,6 +29,7 @@ pub struct Dropdown {
     selected: Option<SharedString>,
     placeholder: SharedString,
     disabled: bool,
+    tab_index: Option<isize>,
     options: Vec<DropdownOption>,
     open: bool,
     closing: bool,
@@ -46,6 +48,7 @@ impl Dropdown {
             selected: None,
             placeholder: "Select...".into(),
             disabled: false,
+            tab_index: None,
             options: vec![],
             open: false,
             closing: false,
@@ -65,6 +68,12 @@ impl Dropdown {
 
     pub fn placeholder(mut self, text: impl Into<SharedString>) -> Self {
         self.placeholder = text.into();
+        self
+    }
+
+    /// Explicit position in the Tab order (lower first). Defaults to document order.
+    pub fn tab_index(mut self, index: isize) -> Self {
+        self.tab_index = Some(index);
         self
     }
 
@@ -226,6 +235,8 @@ impl Render for Dropdown {
 
         let theme = cx.theme();
         let colors = theme.colors.clone();
+        let tab_index = self.tab_index;
+        let focus_ring = colors.stroke_accent;
         let radii = theme.radii;
         let spacing = theme.spacing;
         let typography = theme.typography;
@@ -257,6 +268,7 @@ impl Render for Dropdown {
             .debug_selector(|| "dropdown-trigger".into())
             .focusable()
             .tab_stop(true)
+            .fluent_focus(tab_index, focus_ring)
             .on_key_down(
                 cx.listener(|dropdown: &mut Dropdown, ev: &KeyDownEvent, _, cx| {
                     dropdown.handle_key(ev, cx);
