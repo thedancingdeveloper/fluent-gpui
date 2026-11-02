@@ -1,5 +1,5 @@
 use fluent_app::{FluentApp, TitleBar};
-use fluent_core::ThemeProvider as _;
+use fluent_core::{Theme, ThemeProvider as _};
 use fluent_layout::{
     DockPanel, DockPosition, MenuBar, ModalStack, Pane, PaneConstraints, PaneGroup, TabItem,
     TabStrip, Workspace,
@@ -309,8 +309,18 @@ fn main() {
                             })
                     })
                     .group("View", |g| {
-                        g.toggle_button("Dark", "icons/dark_theme.svg", true, |_, _, _, _| {})
-                            .toggle_button("Light", "icons/light_theme.svg", false, |_, _, _, _| {})
+                        g.toggle_button("Dark", "icons/dark_theme.svg", true, |_, _, _, cx| {
+                            Theme::apply_dark(cx)
+                        })
+                        .toggle_button("Light", "icons/light_theme.svg", false, |_, _, _, cx| {
+                            Theme::apply_light(cx)
+                        })
+                        .toggle_button(
+                            "High contrast",
+                            "icons/dark_theme.svg",
+                            false,
+                            |_, _, _, cx| Theme::apply_high_contrast(cx),
+                        )
                     })
                 })
                 .tab("Edit", |t| {
