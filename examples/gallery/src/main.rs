@@ -8,9 +8,9 @@ use fluent_layout::{
 use fluent_primitives::{
     Avatar, Button, ButtonAppearance, Checkbox, CounterBadge, CounterBadgeAppearance,
     DateTimeLocale, DateTimePicker, DateTimeValue, InputCapture, InputCaptureEvent, Link,
-    LinkAppearance, Persona, PersonaSize, PresenceBadgeState, ProgressBar, Spinner, Switch,
-    TerminalCell, TerminalGrid, TerminalView, TerminalViewEvent, ToggleButton, VideoScaling,
-    VideoSurface, VideoSurfaceEvent,
+    LinkAppearance, Persona, PersonaSize, PresenceBadgeState, ProgressBar, Slider, SpinButton,
+    Spinner, Switch, TerminalCell, TerminalGrid, TerminalView, TerminalViewEvent, ToggleButton,
+    VideoScaling, VideoSurface, VideoSurfaceEvent,
 };
 use fluent_ribbon::RibbonBar;
 
@@ -403,6 +403,90 @@ impl Render for GalleryRoot {
 }
 
 // ---------------------------------------------------------------------------
+// Slider and SpinButton demo: caller-owned values, every state
+// ---------------------------------------------------------------------------
+
+struct RangeInputDemo {
+    volume: f64,
+    vertical: f64,
+    threads: f64,
+    opacity: f64,
+}
+
+impl Render for RangeInputDemo {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let colors = cx.theme().colors.clone();
+        let entity = cx.entity();
+        let set = |f: fn(&mut RangeInputDemo, f64)| {
+            let entity = entity.clone();
+            move |v: f64, _: &mut Window, cx: &mut gpui::App| {
+                entity.update(cx, |d, cx| {
+                    f(d, v);
+                    cx.notify();
+                })
+            }
+        };
+        div()
+            .size_full()
+            .p_3()
+            .flex()
+            .flex_col()
+            .gap_3()
+            .bg(colors.surface)
+            .text_color(colors.on_neutral)
+            .child("Slider and SpinButton: click a control, then use the keys")
+            .child(format!("Volume {}", self.volume))
+            .child(
+                Slider::new("gallery-slider")
+                    .label("Volume")
+                    .value(self.volume)
+                    .step(5.0)
+                    .on_change(set(|d, v| d.volume = v)),
+            )
+            .child(
+                Slider::new("gallery-slider-disabled")
+                    .label("Disabled")
+                    .value(30.0)
+                    .disabled(true),
+            )
+            .child(
+                Slider::new("gallery-slider-vertical")
+                    .label("Vertical")
+                    .vertical()
+                    .length(120.0)
+                    .range(0.0, 1.0)
+                    .step(0.1)
+                    .value(self.vertical)
+                    .on_change(set(|d, v| d.vertical = v)),
+            )
+            .child(
+                SpinButton::new("gallery-spin")
+                    .label("Threads")
+                    .range(1.0, 16.0)
+                    .value(self.threads)
+                    .format(|v| format!("{v} threads"))
+                    .on_change(set(|d, v| d.threads = v)),
+            )
+            .child(
+                SpinButton::new("gallery-spin-percent")
+                    .label("Opacity")
+                    .range(0.0, 100.0)
+                    .step(10.0)
+                    .value(self.opacity)
+                    .format(|v| format!("{v}%"))
+                    .parse(|t| t.trim_end_matches('%').trim().parse().ok())
+                    .on_change(set(|d, v| d.opacity = v)),
+            )
+            .child(
+                SpinButton::new("gallery-spin-disabled")
+                    .label("Disabled")
+                    .value(4.0)
+                    .disabled(true),
+            )
+    }
+}
+
+// ---------------------------------------------------------------------------
 // InputCapture demo: click (or focus + Enter) to grab, Escape or Ctrl+Alt to release
 // ---------------------------------------------------------------------------
 
@@ -760,6 +844,12 @@ fn main() {
         let input_demo = cx.new(InputCaptureDemo::new);
         let terminal_demo = cx.new(TerminalDemo::new);
         let video_demo = cx.new(VideoDemo::new);
+        let range_demo = cx.new(|_| RangeInputDemo {
+            volume: 40.0,
+            vertical: 0.5,
+            threads: 4.0,
+            opacity: 80.0,
+        });
         let matrix_demo = cx.new(|_| ThemeMatrixDemo);
         let rtl_demo = cx.new(|cx| {
             cx.observe_global::<LayoutDirection>(|_, cx| cx.notify())
@@ -770,7 +860,7 @@ fn main() {
             FamilyHost::new(DemoViews {
                 status: vec![badge_demo.into(), persona_demo.into(), download_demo.into()],
                 data: vec![data_states.into()],
-                date_input: vec![date_demo.into(), input_demo.into()],
+                date_input: vec![date_demo.into(), input_demo.into(), range_demo.into()],
                 media: vec![terminal_demo.into(), video_demo.into()],
                 theme: vec![matrix_demo.into(), rtl_demo.into()],
             })
