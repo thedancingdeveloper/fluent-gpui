@@ -378,6 +378,13 @@ impl TokenInput {
                 }
             }
             "escape" => self.close_popup(cx),
+            "down" if modifiers.alt => {
+                if !self.filtered_suggestions().is_empty() {
+                    self.open = true;
+                    self.highlighted = 0;
+                    cx.notify();
+                }
+            }
             "down" => {
                 let len = self.filtered_suggestions().len();
                 if len > 0 {
@@ -390,6 +397,36 @@ impl TokenInput {
                 if !self.filtered_suggestions().is_empty() {
                     self.open = true;
                     self.highlighted = self.highlighted.saturating_sub(1);
+                    cx.notify();
+                }
+            }
+            "home" => {
+                if !self.filtered_suggestions().is_empty() {
+                    self.open = true;
+                    self.highlighted = 0;
+                    cx.notify();
+                }
+            }
+            "end" => {
+                let len = self.filtered_suggestions().len();
+                if len > 0 {
+                    self.open = true;
+                    self.highlighted = len - 1;
+                    cx.notify();
+                }
+            }
+            "pageup" => {
+                if !self.filtered_suggestions().is_empty() {
+                    self.open = true;
+                    self.highlighted = self.highlighted.saturating_sub(5);
+                    cx.notify();
+                }
+            }
+            "pagedown" => {
+                let len = self.filtered_suggestions().len();
+                if len > 0 {
+                    self.open = true;
+                    self.highlighted = (self.highlighted + 5).min(len - 1);
                     cx.notify();
                 }
             }
