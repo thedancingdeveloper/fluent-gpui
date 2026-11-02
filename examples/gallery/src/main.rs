@@ -1,18 +1,18 @@
 use fluent_app::{FluentApp, TitleBar};
+use fluent_core::gpui::{div, prelude::*, Context, IntoElement, Render, Window};
 use fluent_core::ThemeProvider as _;
 use fluent_layout::{
     DockPanel, DockPosition, MenuBar, ModalStack, Pane, PaneConstraints, PaneGroup, TabItem,
     TabStrip, Workspace,
 };
 use fluent_ribbon::RibbonBar;
-use gpui::{div, prelude::*, Context, IntoElement, Render, Window};
 
 // ---------------------------------------------------------------------------
 // Root gallery view — wires the full shell together
 // ---------------------------------------------------------------------------
 
 struct GalleryRoot {
-    workspace: gpui::Entity<Workspace>,
+    workspace: fluent_core::gpui::Entity<Workspace>,
 }
 
 impl Render for GalleryRoot {
@@ -26,7 +26,7 @@ impl Render for GalleryRoot {
 // ---------------------------------------------------------------------------
 
 struct PlaceholderView {
-    label: gpui::SharedString,
+    label: fluent_core::gpui::SharedString,
 }
 
 impl Render for PlaceholderView {
@@ -102,7 +102,7 @@ fn main() {
         });
 
         // Main pane with a tab strip
-        let tab_strip = cx.new(|cx: &mut gpui::Context<TabStrip>| {
+        let tab_strip = cx.new(|cx: &mut fluent_core::gpui::Context<TabStrip>| {
             let mut ts = TabStrip::new(cx);
             ts.add_tab(TabItem::new("dashboard").label("Dashboard").closable(true));
             ts.add_tab(TabItem::new("settings").label("Settings").closable(true));
