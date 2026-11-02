@@ -11,6 +11,7 @@ per crate.
 ---
 
 ## Unreleased
+- fluent-primitives: AccessKit semantics for TextInput, Textarea, Searchbox, Combobox and TokenInput (textbox/searchbox/combobox roles with value; masked TextInput is a password input and exposes no value); `Field::input` sets the input's accessible name from the label and description from the validation message (WI-2917).
 - fluent-primitives: Button, IconButton, ToggleButton, Checkbox, Switch and RadioGroup expose AccessKit roles, names and toggled state; Checkbox, Switch, RadioGroup and IconButton gain `label()` (WI-2916)
 - fluent-layout: DataTable interaction tests: header click sort asc/desc, ctrl/shift click multi-select, selection kept by row key across a data refresh (WI-2910).
 - fluent-layout: interaction tests for DockPanel collapse, SettingsNav selection, Pane tab switching, Toolbar dispatch and Workspace docks; `debug_selector`s on dock close and settings-nav items (WI-2912).
