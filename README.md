@@ -12,7 +12,7 @@ fluent-gpui is not affiliated with, endorsed by or sponsored by Microsoft.
 > GPUI copy with a filtered snapshot of current Zed `main` under
 > `vendor/zed/crates/*` (Zed `ba63a022c9a2`). The vendoring has landed; the
 > named estate patches are listed in `vendor/zed/PATCHES.md`. Backdrop blur
-> (WI-1349) is not re-applied yet, and video frames are not validated at
+> (WI-1349) is re-applied but not yet visually validated (WI-1438), and video frames are not validated at
 > runtime. Sections below describe the 3.x consumer contract; where
 > something does not exist yet, it says so.
 
