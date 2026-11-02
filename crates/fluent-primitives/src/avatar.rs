@@ -44,6 +44,10 @@ impl Avatar {
         self.size = size;
         self
     }
+
+    pub(crate) fn size_value(&self) -> f32 {
+        self.size
+    }
 }
 
 impl RenderOnce for Avatar {
