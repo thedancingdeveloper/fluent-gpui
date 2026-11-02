@@ -86,7 +86,7 @@ impl RenderOnce for Link {
 
         let disabled = self.disabled;
         let tab_index = self.tab_index;
-        let focus_ring = colors.stroke_accent;
+        let focus_ring = colors.focus_ring;
         let on_click = self.on_click;
         let label = self.label;
         let debug_id = self.id.to_string();

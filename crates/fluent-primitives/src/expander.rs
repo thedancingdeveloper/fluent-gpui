@@ -127,7 +127,7 @@ impl RenderOnce for Expander {
             "icons/chevron_right.svg"
         };
         let hover_bg = colors.subtle_hover;
-        let focus_border = colors.stroke_accent;
+        let focus_border = colors.focus_ring;
 
         let mut header = header_base(self.id, self.title.clone(), expanded)
             .flex()
