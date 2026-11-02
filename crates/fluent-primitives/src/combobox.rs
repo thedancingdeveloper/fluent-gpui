@@ -36,6 +36,8 @@ pub struct Combobox {
     motion_epoch: u64,
     highlighted: usize,
     focus_handle: Option<FocusHandle>,
+    a11y_name: Option<SharedString>,
+    a11y_description: Option<SharedString>,
     drop_origin: Point<Pixels>,
     trigger_bounds: Arc<Mutex<Option<Bounds<Pixels>>>>,
     observing_theme: bool,
@@ -56,6 +58,8 @@ impl Default for Combobox {
             motion_epoch: 0,
             highlighted: 0,
             focus_handle: None,
+            a11y_name: None,
+            a11y_description: None,
             drop_origin: point(px(0.0), px(0.0)),
             trigger_bounds: Arc::new(Mutex::new(None)),
             observing_theme: false,
@@ -67,6 +71,13 @@ impl Default for Combobox {
 impl Combobox {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// The accessible name announced by assistive technology. A [`crate::Field`]
+    /// label overrides it.
+    pub fn accessible_name(mut self, name: impl Into<SharedString>) -> Self {
+        self.a11y_name = Some(name.into());
+        self
     }
 
     pub fn options(mut self, options: impl IntoIterator<Item = ComboboxOption>) -> Self {
@@ -324,7 +335,8 @@ impl Render for Combobox {
         .absolute()
         .inset_0();
 
-        let mut root = div()
+        let root = div()
+            .id(("combobox", cx.entity_id().as_u64()))
             .debug_selector(|| "combobox-trigger".into())
             .key_context("Combobox")
             .track_focus(&focus_handle)
@@ -375,6 +387,17 @@ impl Render for Combobox {
                     .text_color(fg),
             )
             .child(measure_trigger);
+        let mut root = crate::field::input_semantics(
+            root,
+            crate::field::InputSemantics {
+                role: gpui::accesskit::Role::ComboBox,
+                name: &self.a11y_name,
+                description: &self.a11y_description,
+                value: Some(SharedString::from(self.query.clone())),
+                placeholder: Some(self.placeholder.clone()),
+            },
+        )
+        .aria_expanded(self.open && !self.disabled);
 
         if self.open && !self.disabled {
             let close_listener = cx.listener(|combo: &mut Combobox, _, _, cx| {
@@ -490,6 +513,17 @@ impl Render for Combobox {
         }
 
         root
+    }
+}
+
+impl crate::FieldControl for Combobox {
+    fn set_field_semantics(
+        &mut self,
+        name: Option<SharedString>,
+        description: Option<SharedString>,
+    ) {
+        self.a11y_name = name;
+        self.a11y_description = description;
     }
 }
 

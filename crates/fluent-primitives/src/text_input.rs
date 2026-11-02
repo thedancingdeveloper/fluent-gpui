@@ -21,6 +21,8 @@ pub struct TextInput {
     /// value is still stored and returned by `text()`; only the visual is hidden.
     masked: bool,
     focus_handle: Option<FocusHandle>,
+    a11y_name: Option<SharedString>,
+    a11y_description: Option<SharedString>,
     selected_range: Range<usize>,
     selection_reversed: bool,
     marked_range: Option<Range<usize>>,
@@ -41,6 +43,8 @@ impl Default for TextInput {
             error: false,
             masked: false,
             focus_handle: None,
+            a11y_name: None,
+            a11y_description: None,
             selected_range: 0..0,
             selection_reversed: false,
             marked_range: None,
@@ -57,6 +61,13 @@ impl Default for TextInput {
 impl TextInput {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// The accessible name announced by assistive technology. A [`crate::Field`]
+    /// label overrides it.
+    pub fn accessible_name(mut self, name: impl Into<SharedString>) -> Self {
+        self.a11y_name = Some(name.into());
+        self
     }
 
     pub fn value(mut self, value: impl Into<SharedString>) -> Self {
@@ -798,7 +809,8 @@ impl Render for TextInput {
             colors.stroke_neutral
         };
 
-        div()
+        let root = div()
+            .id(("text-input", cx.entity_id().as_u64()))
             .key_context("TextInput")
             .track_focus(&focus_handle)
             .cursor(if self.disabled {
@@ -841,7 +853,33 @@ impl Render for TextInput {
                     }))
                     .bg(indicator),
             )
-            .child(TextElement { input: cx.entity() })
+            .child(TextElement { input: cx.entity() });
+        // A masked input is a password field: it reports no value.
+        crate::field::input_semantics(
+            root,
+            crate::field::InputSemantics {
+                role: if self.masked {
+                    gpui::accesskit::Role::PasswordInput
+                } else {
+                    gpui::accesskit::Role::TextInput
+                },
+                name: &self.a11y_name,
+                description: &self.a11y_description,
+                value: (!self.masked).then(|| SharedString::from(self.value.clone())),
+                placeholder: Some(self.placeholder.clone()),
+            },
+        )
+    }
+}
+
+impl crate::FieldControl for TextInput {
+    fn set_field_semantics(
+        &mut self,
+        name: Option<SharedString>,
+        description: Option<SharedString>,
+    ) {
+        self.a11y_name = name;
+        self.a11y_description = description;
     }
 }
 
