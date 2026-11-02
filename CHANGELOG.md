@@ -11,7 +11,7 @@ per crate.
 ---
 
 ## Unreleased
-
+- fluent-primitives: Button, IconButton, ToggleButton, Checkbox, Switch and RadioGroup expose AccessKit roles, names and toggled state; Checkbox, Switch, RadioGroup and IconButton gain `label()` (WI-2916)
 - fluent-layout: DataTable interaction tests: header click sort asc/desc, ctrl/shift click multi-select, selection kept by row key across a data refresh (WI-2910).
 - fluent-layout: interaction tests for DockPanel collapse, SettingsNav selection, Pane tab switching, Toolbar dispatch and Workspace docks; `debug_selector`s on dock close and settings-nav items (WI-2912).
 - fluent-layout: interaction tests for ModalStack/ModalHost, Dialog, Flyout, Popover and Toast (backdrop dismissal, input blocking, toast timeout on the fake clock); `debug_selector`s on dialog and modal buttons (WI-2911).

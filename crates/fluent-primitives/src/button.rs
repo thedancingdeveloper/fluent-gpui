@@ -1,8 +1,8 @@
 use crate::focus::FluentFocus as _;
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, prelude::*, px, App, ClickEvent, ElementId, Hsla, IntoElement, RenderOnce, SharedString,
-    Window,
+    div, prelude::*, px, App, ClickEvent, ElementId, Hsla, IntoElement, RenderOnce, Role,
+    SharedString, Window,
 };
 
 /// Visual style of a `Button`.
@@ -227,6 +227,8 @@ impl RenderOnce for Button {
         let mut el = div()
             .id(self.id)
             .debug_selector(move || debug_id)
+            .role(Role::Button)
+            .when_some(label.clone(), |d, name| d.aria_label(name))
             .flex()
             .flex_row()
             .items_center()
@@ -348,5 +350,30 @@ mod tests {
         let (clicks, cx) = open(cx, true);
         cx.click_selector("button");
         assert_eq!(clicks.get(), 0);
+    }
+
+    struct A11yHost(Box<dyn Fn() -> gpui::AnyElement>);
+
+    impl Render for A11yHost {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            (self.0)()
+        }
+    }
+
+    fn snapshot(
+        cx: &mut TestAppContext,
+        build: impl Fn() -> gpui::AnyElement + 'static,
+    ) -> Vec<String> {
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| A11yHost(Box::new(build)));
+        cx.accessibility_snapshot()
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_button(cx: &mut TestAppContext) {
+        let snap = snapshot(cx, || Button::new("b").label("Save").into_any_element());
+        assert_eq!(
+            snap,
+            vec!["Window".to_string(), "Button \"Save\"".to_string()]
+        );
     }
 }

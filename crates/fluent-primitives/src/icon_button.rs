@@ -1,7 +1,8 @@
 use crate::focus::FluentFocus as _;
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, SharedString, Window,
+    div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, Role, SharedString,
+    Window,
 };
 
 use crate::button::{ButtonAppearance, ButtonSize};
@@ -14,6 +15,7 @@ use crate::button::{ButtonAppearance, ButtonSize};
 pub struct IconButton {
     id: ElementId,
     icon: SharedString,
+    label: Option<SharedString>,
     appearance: ButtonAppearance,
     size: ButtonSize,
     disabled: bool,
@@ -26,12 +28,20 @@ impl IconButton {
         Self {
             id: id.into(),
             icon: icon.into(),
+            label: None,
             appearance: ButtonAppearance::Subtle,
             size: ButtonSize::Normal,
             disabled: false,
             tab_index: None,
             on_click: None,
         }
+    }
+
+    /// The accessible name. An icon-only button has no visible text, so set
+    /// this; without it the name falls back to the icon file's stem.
+    pub fn label(mut self, label: impl Into<SharedString>) -> Self {
+        self.label = Some(label.into());
+        self
     }
 
     pub fn appearance(mut self, appearance: ButtonAppearance) -> Self {
@@ -62,6 +72,12 @@ impl IconButton {
         self.on_click = Some(Box::new(handler));
         self
     }
+}
+
+/// Fallback accessible name: the icon path's file stem (`icons/search.svg` -> `search`).
+fn icon_name(icon: &str) -> SharedString {
+    let file = icon.rsplit('/').next().unwrap_or(icon);
+    file.split('.').next().unwrap_or(file).to_string().into()
 }
 
 impl RenderOnce for IconButton {
@@ -106,11 +122,14 @@ impl RenderOnce for IconButton {
         let tab_index = self.tab_index;
         let focus_ring = colors.stroke_accent;
         let on_click = self.on_click;
+        let name = self.label.unwrap_or_else(|| icon_name(&self.icon));
 
         let debug_id = self.id.to_string();
         let mut el = div()
             .id(self.id)
             .debug_selector(move || debug_id)
+            .role(Role::Button)
+            .aria_label(name)
             .flex()
             .items_center()
             .justify_center()
@@ -204,5 +223,45 @@ mod tests {
         let (clicks, cx) = open(cx, true);
         cx.click_selector("icon-button");
         assert_eq!(clicks.get(), 0);
+    }
+
+    struct A11yHost(Box<dyn Fn() -> gpui::AnyElement>);
+
+    impl Render for A11yHost {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            (self.0)()
+        }
+    }
+
+    fn snapshot(
+        cx: &mut TestAppContext,
+        build: impl Fn() -> gpui::AnyElement + 'static,
+    ) -> Vec<String> {
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| A11yHost(Box::new(build)));
+        cx.accessibility_snapshot()
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_labelled_icon_button(cx: &mut TestAppContext) {
+        let snap = snapshot(cx, || {
+            IconButton::new("b", "icons/search.svg")
+                .label("Search")
+                .into_any_element()
+        });
+        assert_eq!(
+            snap,
+            vec!["Window".to_string(), "Button \"Search\"".to_string()]
+        );
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_names_unlabelled_icon_button_from_icon(cx: &mut TestAppContext) {
+        let snap = snapshot(cx, || {
+            IconButton::new("b", "icons/search.svg").into_any_element()
+        });
+        assert_eq!(
+            snap,
+            vec!["Window".to_string(), "Button \"search\"".to_string()]
+        );
     }
 }

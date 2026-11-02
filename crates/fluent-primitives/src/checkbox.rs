@@ -1,6 +1,9 @@
 use crate::focus::FluentFocus as _;
 use fluent_core::ThemeProvider as _;
-use gpui::{div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, Window};
+use gpui::{
+    div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, Role, SharedString,
+    Toggled, Window,
+};
 
 /// Three-state checkbox value.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -19,6 +22,7 @@ pub enum CheckboxState {
 pub struct Checkbox {
     id: ElementId,
     state: CheckboxState,
+    label: Option<SharedString>,
     disabled: bool,
     tab_index: Option<isize>,
     on_click: Option<Box<dyn Fn(CheckboxState, &ClickEvent, &mut Window, &mut App) + 'static>>,
@@ -29,10 +33,18 @@ impl Checkbox {
         Self {
             id: id.into(),
             state: CheckboxState::Unchecked,
+            label: None,
             disabled: false,
             tab_index: None,
             on_click: None,
         }
+    }
+
+    /// The accessible name. The checkbox draws no text of its own, so set this
+    /// to the text of the label shown beside it.
+    pub fn label(mut self, label: impl Into<SharedString>) -> Self {
+        self.label = Some(label.into());
+        self
     }
 
     pub fn state(mut self, state: CheckboxState) -> Self {
@@ -107,6 +119,7 @@ impl RenderOnce for Checkbox {
         let focus_ring = colors.stroke_accent;
         let current = self.state;
         let on_click = self.on_click;
+        let label = self.label;
 
         let next_state = match current {
             CheckboxState::Unchecked | CheckboxState::Indeterminate => CheckboxState::Checked,
@@ -117,6 +130,13 @@ impl RenderOnce for Checkbox {
         let mut el = div()
             .id(self.id)
             .debug_selector(move || debug_id)
+            .role(Role::CheckBox)
+            .aria_toggled(match current {
+                CheckboxState::Unchecked => Toggled::False,
+                CheckboxState::Checked => Toggled::True,
+                CheckboxState::Indeterminate => Toggled::Mixed,
+            })
+            .when_some(label, |d, name| d.aria_label(name))
             .size(px(18.0))
             .rounded(px(radii.sm))
             .bg(box_bg)
@@ -244,5 +264,51 @@ mod tests {
             host.read_with(cx, |host, _| host.state),
             CheckboxState::Unchecked
         );
+    }
+
+    struct A11yHost(Box<dyn Fn() -> gpui::AnyElement>);
+
+    impl Render for A11yHost {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            (self.0)()
+        }
+    }
+
+    fn snapshot(
+        cx: &mut TestAppContext,
+        build: impl Fn() -> gpui::AnyElement + 'static,
+    ) -> Vec<String> {
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| A11yHost(Box::new(build)));
+        cx.accessibility_snapshot()
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_checkbox_state(cx: &mut TestAppContext) {
+        for state in [
+            CheckboxState::Unchecked,
+            CheckboxState::Checked,
+            CheckboxState::Indeterminate,
+        ] {
+            let snap = snapshot(cx, move || {
+                Checkbox::new("c")
+                    .label("Agree")
+                    .state(state)
+                    .into_any_element()
+            });
+            assert_eq!(
+                snap,
+                vec![
+                    "Window".to_string(),
+                    format!(
+                        "CheckBox \"Agree\" [toggled={}]",
+                        match state {
+                            CheckboxState::Unchecked => "False",
+                            CheckboxState::Checked => "True",
+                            CheckboxState::Indeterminate => "Mixed",
+                        }
+                    )
+                ]
+            );
+        }
     }
 }
