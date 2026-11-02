@@ -24,9 +24,22 @@ pub enum ModalSize {
 // ---------------------------------------------------------------------------
 
 /// The global modal stack — accessed via `ModalStack::global(cx)`.
+///
+/// # Nested-overlay contract
+///
+/// - **Escape** is owned by the topmost modal: it pops that modal only, and the
+///   key is consumed so nothing below (or a parent handler) also reacts.
+/// - **Outside click** on the backdrop pops the topmost modal only; clicks never
+///   reach the layer below.
+/// - A modal pushed with `dismissible == false` ignores both Escape and backdrop
+///   clicks; only its own actions close it.
+/// - **Focus** is trapped inside the host while any modal is open (Tab does not
+///   leave). The opener's focus is captured when the first modal opens and
+///   restored only when the stack empties; popping an upper modal keeps focus in
+///   the host so the modal underneath stays the active layer.
 pub struct ModalStack {
-    /// Type-erased modal views, bottom to top.
-    entries: Vec<(AnyView, ModalSize)>,
+    /// Type-erased modal views and their dismissibility, bottom to top.
+    entries: Vec<(AnyView, ModalSize, bool)>,
 }
 
 impl Global for ModalStack {}
@@ -38,7 +51,22 @@ impl ModalStack {
 
     /// Push a new modal onto the stack.
     pub fn push(view: AnyView, size: ModalSize, cx: &mut gpui::App) {
-        cx.global_mut::<ModalStack>().entries.push((view, size));
+        Self::push_with(view, size, true, cx);
+    }
+
+    /// Push a modal, choosing whether Escape and backdrop clicks may dismiss it.
+    pub fn push_with(view: AnyView, size: ModalSize, dismissible: bool, cx: &mut gpui::App) {
+        cx.global_mut::<ModalStack>()
+            .entries
+            .push((view, size, dismissible));
+    }
+
+    /// Pop the top modal only if it is dismissible (Escape / backdrop policy).
+    fn pop_if_dismissible(cx: &mut gpui::App) {
+        let stack = cx.global_mut::<ModalStack>();
+        if stack.entries.last().is_some_and(|e| e.2) {
+            stack.entries.pop();
+        }
     }
 
     /// Pop the top modal.
@@ -93,7 +121,7 @@ impl Render for ModalHost {
         let colors = theme.colors.clone();
         let radii = theme.radii;
 
-        let stack: Vec<(AnyView, ModalSize)> = cx
+        let stack: Vec<(AnyView, ModalSize, bool)> = cx
             .try_global::<ModalStack>()
             .map(|ms| ms.entries.clone())
             .unwrap_or_default();
@@ -115,7 +143,12 @@ impl Render for ModalHost {
             self.had_modal = true;
         }
 
-        let (top_view, top_size) = stack.last().unwrap().clone();
+        // Keep focus inside the host when an upper modal closes over a lower one.
+        if !self.focus_handle.contains_focused(window, cx) {
+            window.focus(&self.focus_handle, cx);
+        }
+
+        let (top_view, top_size, _) = stack.last().unwrap().clone();
 
         let backdrop_color = {
             let mut c = colors.surface_dim;
@@ -142,7 +175,7 @@ impl Render for ModalHost {
             .on_key_down(|event, window, cx| match event.keystroke.key.as_str() {
                 "escape" => {
                     cx.stop_propagation();
-                    ModalStack::pop(cx);
+                    ModalStack::pop_if_dismissible(cx);
                 }
                 "tab" => {
                     cx.stop_propagation();
@@ -161,7 +194,7 @@ impl Render for ModalHost {
             .bg(backdrop_color)
             .on_mouse_down(MouseButton::Left, |_, _, cx| {
                 cx.stop_propagation();
-                ModalStack::pop(cx);
+                ModalStack::pop_if_dismissible(cx);
             })
             .child(
                 div()
@@ -669,5 +702,51 @@ mod tests {
         cx.update(|_, cx| Dialog::new("D").dismissible(false).show(ModalSize::Fit, cx));
         cx.run_until_parked();
         assert!(cx.selector_bounds("dialog-dismiss").is_none());
+    }
+
+    #[gpui::test]
+    fn nested_escape_pops_top_only_and_keeps_focus_trapped(cx: &mut TestAppContext) {
+        let clicks = Rc::new(Cell::new(0));
+        let c = clicks.clone();
+        let (root, cx) = open_fluent_test_window(cx, move |_, cx| {
+            cx.set_global(ModalStack { entries: vec![] });
+            Root {
+                host: cx.new(ModalHost::new),
+                clicks: c,
+                opener: cx.focus_handle(),
+            }
+        });
+        let opener = root.read_with(cx, |root, _| root.opener.clone());
+        cx.update(|window, cx| window.focus(&opener, cx));
+        cx.update(|_, cx| {
+            Dialog::new("one").show(ModalSize::Fit, cx);
+            Dialog::new("two").show(ModalSize::Fit, cx);
+        });
+        cx.run_until_parked();
+        assert_eq!(stack_len(cx), 2);
+
+        cx.type_keys("escape");
+        assert_eq!(stack_len(cx), 1, "escape pops only the top modal");
+        cx.assert_not_focused(&opener);
+
+        cx.type_keys("escape");
+        assert_eq!(stack_len(cx), 0);
+        cx.assert_focused(&opener);
+    }
+
+    #[gpui::test]
+    fn non_dismissible_top_ignores_escape_and_backdrop(cx: &mut TestAppContext) {
+        let (_, cx) = root(cx);
+        cx.update(|_, cx| {
+            Dialog::new("base").show(ModalSize::Fit, cx);
+            Dialog::new("locked")
+                .dismissible(false)
+                .show(ModalSize::Fit, cx);
+        });
+        cx.run_until_parked();
+        cx.type_keys("escape");
+        assert_eq!(stack_len(cx), 2);
+        cx.click_at(point(px(2.), px(2.)), MouseButton::Left, Modifiers::none());
+        assert_eq!(stack_len(cx), 2);
     }
 }
