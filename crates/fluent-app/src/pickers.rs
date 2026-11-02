@@ -308,4 +308,57 @@ mod tests {
 
         assert_eq!(task.await.unwrap(), None);
     }
+
+    #[gpui::test]
+    async fn cancelled_file_picker_returns_none(cx: &mut TestAppContext) {
+        let task = cx.update(|cx| cx.spawn(async move |cx| open_file(cx, &[]).await));
+        cx.run_until_parked();
+        cx.simulate_path_prompt_response(|options| {
+            assert!(options.files);
+            assert!(!options.directories);
+            assert!(!options.multiple);
+            None
+        });
+
+        assert_eq!(task.await.unwrap(), None);
+    }
+
+    #[gpui::test]
+    async fn save_picker_preserves_cancellation_and_applies_preferred_extension(
+        cx: &mut TestAppContext,
+    ) {
+        let cancelled = cx.update(|cx| {
+            cx.spawn(async move |cx| {
+                save_file(
+                    cx,
+                    Path::new("/tmp"),
+                    Some("report"),
+                    &[ExtensionFilter::new("Text", ["txt"])],
+                )
+                .await
+            })
+        });
+        cx.run_until_parked();
+        assert!(cx.did_prompt_for_new_path());
+        cx.simulate_new_path_selection(|path| {
+            assert_eq!(path, Path::new("/tmp"));
+            None
+        });
+        assert_eq!(cancelled.await.unwrap(), None);
+
+        let selected = cx.update(|cx| {
+            cx.spawn(async move |cx| {
+                save_file(
+                    cx,
+                    Path::new("/tmp"),
+                    Some("report"),
+                    &[ExtensionFilter::new("Text", ["txt"])],
+                )
+                .await
+            })
+        });
+        cx.run_until_parked();
+        cx.simulate_new_path_selection(|_| Some(PathBuf::from("report")));
+        assert_eq!(selected.await.unwrap(), Some(PathBuf::from("report.txt")));
+    }
 }
