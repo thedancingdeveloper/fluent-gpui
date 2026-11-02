@@ -8,6 +8,8 @@ use gpui::{
 
 use crate::menu_tree::{self, MenuRenderEnv};
 
+pub use crate::menu_tree::is_context_menu_key;
+
 #[allow(clippy::type_complexity)]
 #[derive(Clone)]
 pub enum ContextMenuItem {
@@ -183,6 +185,50 @@ impl ContextMenuItem {
             Self::Separator => false,
         }
     }
+}
+
+/// Wraps `child` so Shift+F10 or the Menu key, pressed while focus is inside
+/// it, calls `on_open` with the point just below the wrapper's bottom-left
+/// corner, where a keyboard-opened [`ContextMenu`] should appear.
+///
+/// Wrap the focusable element itself so the point sits at the focused element.
+pub fn context_menu_key_target(
+    id: impl Into<gpui::ElementId>,
+    child: impl IntoElement,
+    on_open: impl Fn(Point<gpui::Pixels>, &mut Window, &mut App) + 'static,
+) -> impl IntoElement {
+    let bounds: Arc<std::sync::Mutex<Option<gpui::Bounds<gpui::Pixels>>>> = Arc::default();
+    let tracker = bounds.clone();
+    div()
+        .id(id)
+        .relative()
+        .on_key_down(move |ev: &KeyDownEvent, window, cx| {
+            if !is_context_menu_key(&ev.keystroke) {
+                return;
+            }
+            let Some(b) = bounds.lock().ok().and_then(|g| *g) else {
+                return;
+            };
+            cx.stop_propagation();
+            on_open(
+                gpui::point(b.origin.x, b.origin.y + b.size.height),
+                window,
+                cx,
+            );
+        })
+        .child(child)
+        .child(
+            gpui::canvas(
+                move |b, _, _| {
+                    if let Ok(mut slot) = tracker.lock() {
+                        *slot = Some(b);
+                    }
+                },
+                |_, _, _, _| {},
+            )
+            .absolute()
+            .inset_0(),
+        )
 }
 
 pub struct ContextMenu {
@@ -370,8 +416,25 @@ impl ContextMenu {
             "right" => self.enter_submenu(cx),
             "left" => self.leave_submenu(cx),
             "return" | "space" => self.invoke_selected(window, cx),
-            _ => {}
+            _ => {
+                if let Some(ch) = menu_tree::typed_access_char(&ev.keystroke) {
+                    self.press_access_key(ch, window, cx);
+                }
+            }
         }
+    }
+
+    /// Selects and activates the item in the open level whose access key is `ch`.
+    fn press_access_key(&mut self, ch: char, window: &mut Window, cx: &mut Context<Self>) {
+        let parent = menu_tree::parent_path(&self.selected_path);
+        let current = self.selected_path.last().copied();
+        let Some(path) = menu_tree::find_access_key(&self.items, &parent, ch, current) else {
+            return;
+        };
+        self.selected_path = path;
+        self.open_path = parent;
+        self.invoke_selected(window, cx);
+        cx.notify();
     }
 
     fn render_menu(
@@ -446,7 +509,7 @@ impl ContextMenu {
                     }
 
                     row = row.child(menu_tree::icon_slot(icon.clone(), fg, env));
-                    row = row.child(div().flex_1().child(label.clone()));
+                    row = row.child(div().flex_1().child(menu_tree::label_element(label, true)));
                     if let Some(shortcut) = shortcut.clone() {
                         row = row.child(
                             div()
@@ -521,7 +584,7 @@ impl ContextMenu {
                                 .size(px(env.components.popup_icon_slot))
                                 .child(check),
                         )
-                        .child(div().flex_1().child(label.clone())),
+                        .child(div().flex_1().child(menu_tree::label_element(label, true))),
                     );
                     row_top += env.components.menu_item_height;
                 }
@@ -582,7 +645,7 @@ impl ContextMenu {
                                         .bg(fg),
                                 ),
                         )
-                        .child(div().flex_1().child(label.clone())),
+                        .child(div().flex_1().child(menu_tree::label_element(label, true))),
                     );
                     row_top += env.components.menu_item_height;
                 }
@@ -617,12 +680,14 @@ impl ContextMenu {
                     }
 
                     row = row.child(menu_tree::icon_slot(icon.clone(), fg, env));
-                    row = row.child(div().flex_1().child(label.clone())).child(
-                        svg()
-                            .path("icons/chevron_right.svg")
-                            .size(px(12.0))
-                            .text_color(fg),
-                    );
+                    row = row
+                        .child(div().flex_1().child(menu_tree::label_element(label, true)))
+                        .child(
+                            svg()
+                                .path("icons/chevron_right.svg")
+                                .size(px(12.0))
+                                .text_color(fg),
+                        );
                     menu = menu.child(row);
 
                     if !disabled && menu_tree::path_starts_with(&self.open_path, &path) {
@@ -713,7 +778,7 @@ impl Render for ContextMenu {
 mod tests {
     use std::time::Duration;
 
-    use fluent_test_utils::init_fluent_test;
+    use fluent_test_utils::{init_fluent_test, open_fluent_test_window, FluentInteractionExt as _};
     use gpui::{point, px, TestAppContext};
 
     use super::*;
@@ -768,5 +833,66 @@ mod tests {
             assert_eq!(menu.selected_path, vec![1]);
             assert!(menu.open_path.is_empty());
         });
+    }
+
+    #[gpui::test]
+    fn access_key_invokes_item_in_open_menu(cx: &mut TestAppContext) {
+        let hits = std::rc::Rc::new(std::cell::Cell::new(0));
+        let h = hits.clone();
+        let (_menu, cx) = open_fluent_test_window(cx, move |_, _| {
+            ContextMenu::build(point(px(0.0), px(0.0)))
+                .action("&Copy", |_, _, _| {})
+                .action("&Paste", move |_, _, _| h.set(h.get() + 1))
+        });
+        cx.run_until_parked();
+
+        cx.type_keys("p");
+        assert_eq!(hits.get(), 1);
+    }
+
+    struct KeyTargetView {
+        opened: Option<Point<gpui::Pixels>>,
+        focus: FocusHandle,
+    }
+
+    impl Render for KeyTargetView {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let this = cx.entity().downgrade();
+            div().p(px(20.0)).child(context_menu_key_target(
+                "target",
+                div()
+                    .id("field")
+                    .debug_selector(|| "field".into())
+                    .track_focus(&self.focus)
+                    .w(px(100.0))
+                    .h(px(30.0)),
+                move |pos, _, cx| {
+                    this.update(cx, |view, _| view.opened = Some(pos)).ok();
+                },
+            ))
+        }
+    }
+
+    #[gpui::test]
+    fn shift_f10_and_menu_key_open_at_focused_element(cx: &mut TestAppContext) {
+        let (view, cx) = open_fluent_test_window(cx, |_, cx| KeyTargetView {
+            opened: None,
+            focus: cx.focus_handle(),
+        });
+        let focus = view.read_with(cx, |view, _| view.focus.clone());
+        cx.update(|window, cx| window.focus(&focus, cx));
+        cx.run_until_parked();
+        let bounds = cx.selector_bounds("field").expect("field painted");
+
+        cx.type_keys("f10");
+        view.read_with(cx, |view, _| assert!(view.opened.is_none()));
+
+        cx.type_keys("shift-f10");
+        let expected = point(bounds.origin.x, bounds.origin.y + bounds.size.height);
+        view.read_with(cx, |view, _| assert_eq!(view.opened, Some(expected)));
+
+        view.update(cx, |view, _| view.opened = None);
+        cx.type_keys("menu");
+        view.read_with(cx, |view, _| assert_eq!(view.opened, Some(expected)));
     }
 }

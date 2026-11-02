@@ -1,7 +1,7 @@
 use fluent_core::{
     ColorScheme, ComponentTokens, RadiiTokens, SpacingTokens, Theme, TypographyTokens,
 };
-use gpui::{div, prelude::*, px, svg, AnyElement, ElementId, SharedString};
+use gpui::{div, prelude::*, px, svg, AnyElement, ElementId, Keystroke, SharedString};
 
 use crate::context_menu::ContextMenuItem;
 
@@ -22,6 +22,113 @@ impl MenuRenderEnv {
             radii: theme.radii,
             components: theme.components,
         }
+    }
+}
+
+/// Splits a menu label into its display text and access key.
+///
+/// `&` marks the access key (`"&File"` shows "File" with F underlined); `&&`
+/// is a literal ampersand. Returns the display text and the access key's
+/// `(byte offset, char)` within it.
+pub(crate) fn parse_label(label: &str) -> (String, Option<(usize, char)>) {
+    let mut display = String::with_capacity(label.len());
+    let mut key = None;
+    let mut chars = label.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '&' {
+            match chars.peek().copied() {
+                Some('&') => {
+                    chars.next();
+                    display.push('&');
+                }
+                Some(next) if key.is_none() && !next.is_whitespace() => {
+                    key = Some((display.len(), next));
+                }
+                _ => {}
+            }
+        } else {
+            display.push(c);
+        }
+    }
+    (display, key)
+}
+
+pub(crate) fn access_key(label: &str) -> Option<char> {
+    parse_label(label)
+        .1
+        .map(|(_, c)| c.to_lowercase().next().unwrap_or(c))
+}
+
+/// Label text with the access key underlined when `show_underline` is set.
+pub(crate) fn label_element(label: &str, show_underline: bool) -> AnyElement {
+    let (display, key) = parse_label(label);
+    match key {
+        Some((at, c)) if show_underline => {
+            let end = at + c.len_utf8();
+            div()
+                .flex()
+                .flex_row()
+                .child(display[..at].to_string())
+                .child(div().underline().child(display[at..end].to_string()))
+                .child(display[end..].to_string())
+                .into_any_element()
+        }
+        _ => div().child(display).into_any_element(),
+    }
+}
+
+fn item_label(item: &ContextMenuItem) -> Option<&SharedString> {
+    match item {
+        ContextMenuItem::Action { label, .. }
+        | ContextMenuItem::Checkbox { label, .. }
+        | ContextMenuItem::Radio { label, .. }
+        | ContextMenuItem::Submenu { label, .. } => Some(label),
+        ContextMenuItem::Separator => None,
+    }
+}
+
+/// Finds the enabled sibling under `parent` whose access key is `ch`,
+/// cycling from just after `current` so repeated presses visit each match.
+pub(crate) fn find_access_key(
+    items: &[ContextMenuItem],
+    parent: &[usize],
+    ch: char,
+    current: Option<usize>,
+) -> Option<Vec<usize>> {
+    let ch = ch.to_lowercase().next().unwrap_or(ch);
+    let siblings = items_at_parent(items, parent)?;
+    let start = current.map_or(0, |c| c + 1);
+    (0..siblings.len())
+        .map(|offset| (start + offset) % siblings.len())
+        .find(|&idx| {
+            let item = &siblings[idx];
+            item.enabled() && item_label(item).and_then(|l| access_key(l)) == Some(ch)
+        })
+        .map(|idx| {
+            let mut path = parent.to_vec();
+            path.push(idx);
+            path
+        })
+}
+
+/// The access character of an unmodified or Alt-only keystroke.
+pub(crate) fn typed_access_char(keystroke: &Keystroke) -> Option<char> {
+    let m = &keystroke.modifiers;
+    if m.control || m.platform || m.function {
+        return None;
+    }
+    let mut chars = keystroke.key.chars();
+    let c = chars.next()?;
+    (chars.next().is_none() && c.is_alphanumeric()).then_some(c)
+}
+
+/// Shift+F10 or the dedicated Menu key.
+pub fn is_context_menu_key(keystroke: &Keystroke) -> bool {
+    let m = &keystroke.modifiers;
+    match keystroke.key.as_str() {
+        "menu" => !m.control && !m.alt && !m.platform,
+        "f10" => m.shift && !m.control && !m.alt && !m.platform,
+        _ => false,
     }
 }
 
@@ -282,6 +389,40 @@ mod tests {
         assert!(enabled_item_at_path(&items, &[0]).is_none());
         assert!(enabled_item_at_path(&items, &[1, 0]).is_none());
         assert!(items_at_parent(&items, &[1]).is_none());
+    }
+
+    #[test]
+    fn parses_access_keys() {
+        assert_eq!(parse_label("&File"), ("File".into(), Some((0, 'F'))));
+        assert_eq!(parse_label("Save &As"), ("Save As".into(), Some((5, 'A'))));
+        assert_eq!(parse_label("Tom && Jerry"), ("Tom & Jerry".into(), None));
+        assert_eq!(parse_label("Plain"), ("Plain".into(), None));
+        assert_eq!(access_key("E&xit"), Some('x'));
+    }
+
+    #[test]
+    fn access_keys_cycle_among_enabled_siblings() {
+        let items = vec![
+            item("&Save"),
+            item("S&ave as").disabled(true),
+            item("Se&nd"),
+            item("&Sync"),
+        ];
+        assert_eq!(find_access_key(&items, &[], 's', None), Some(vec![0]));
+        assert_eq!(find_access_key(&items, &[], 'S', Some(0)), Some(vec![3]));
+        assert_eq!(find_access_key(&items, &[], 's', Some(3)), Some(vec![0]));
+        assert_eq!(find_access_key(&items, &[], 'a', None), None);
+        assert_eq!(find_access_key(&items, &[], 'n', None), Some(vec![2]));
+    }
+
+    #[test]
+    fn recognises_context_menu_keys() {
+        assert!(is_context_menu_key(&Keystroke::parse("shift-f10").unwrap()));
+        assert!(is_context_menu_key(&Keystroke::parse("menu").unwrap()));
+        assert!(!is_context_menu_key(&Keystroke::parse("f10").unwrap()));
+        assert!(!is_context_menu_key(
+            &Keystroke::parse("ctrl-menu").unwrap()
+        ));
     }
 
     #[test]

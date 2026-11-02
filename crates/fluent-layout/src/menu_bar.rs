@@ -3,8 +3,8 @@ use std::sync::{Arc, Mutex};
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
     anchored, canvas, deferred, div, point, prelude::*, px, svg, App, Bounds, ClickEvent, Context,
-    FocusHandle, IntoElement, KeyDownEvent, MouseButton, Pixels, Render, SharedString, WeakEntity,
-    Window,
+    FocusHandle, IntoElement, KeyDownEvent, MouseButton, Pixels, Render, SharedString,
+    Subscription, WeakEntity, WeakFocusHandle, Window, WindowId,
 };
 
 use crate::context_menu::ContextMenuItem;
@@ -86,11 +86,37 @@ pub struct MenuBar {
     open_path: Vec<usize>,
     focus_handle: FocusHandle,
     trigger_bounds: Vec<Arc<Mutex<Option<Bounds<Pixels>>>>>,
+    window_id: Option<WindowId>,
+    prior_focus: Option<WeakFocusHandle>,
+    _key_subscriptions: Vec<Subscription>,
 }
 
 impl MenuBar {
     pub fn new(cx: &mut Context<Self>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
+
+        // Window-wide keys: F10 and Alt+<access key> (intercepted so they work
+        // wherever focus is), and a lone Alt tap (observed on release).
+        let weak = cx.entity().downgrade();
+        let intercept = cx.intercept_keystrokes({
+            move |ev, window, cx| {
+                let consumed = weak
+                    .update(cx, |bar, cx| bar.global_key(&ev.keystroke, window, cx))
+                    .unwrap_or(false);
+                if consumed {
+                    cx.stop_propagation();
+                }
+            }
+        });
+        let observe = cx.observe_keystrokes(|bar, ev, window, cx| {
+            if ev.keystroke.key == "alt"
+                && bar.in_window(window)
+                && !bar.focus_handle.is_focused(window)
+            {
+                bar.activate(window, cx);
+            }
+        });
+
         Self {
             menus: vec![],
             open_index: None,
@@ -101,6 +127,79 @@ impl MenuBar {
             open_path: Vec::new(),
             focus_handle: cx.focus_handle().tab_stop(true),
             trigger_bounds: Vec::new(),
+            window_id: None,
+            prior_focus: None,
+            _key_subscriptions: vec![intercept, observe],
+        }
+    }
+
+    fn in_window(&self, window: &Window) -> bool {
+        self.window_id == Some(window.window_handle().window_id())
+    }
+
+    /// Moves focus to the menu bar, highlighting the first menu, as F10 or a
+    /// tap of Alt does. Escape returns focus to where it was.
+    pub fn activate(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.menus.is_empty() {
+            return;
+        }
+        if !self.focus_handle.is_focused(window) {
+            self.prior_focus = window.focused(cx).map(|h| h.downgrade());
+            window.focus(&self.focus_handle, cx);
+        }
+        if self.open_index.is_none() {
+            self.active_index = 0;
+        }
+        cx.notify();
+    }
+
+    /// F10 and Alt+<access key>, from anywhere in the window. Returns whether
+    /// the keystroke was consumed.
+    fn global_key(
+        &mut self,
+        keystroke: &gpui::Keystroke,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if !self.in_window(window) || self.menus.is_empty() || self.closing {
+            return false;
+        }
+        let m = &keystroke.modifiers;
+        if keystroke.key == "f10" && !m.shift && !m.alt && !m.control && !m.platform {
+            if self.focus_handle.is_focused(window) {
+                self.dismiss(window, cx);
+            } else {
+                self.activate(window, cx);
+            }
+            return true;
+        }
+        if m.alt && !self.focus_handle.is_focused(window) {
+            if let Some(idx) = self.top_level_for_key(keystroke) {
+                self.activate(window, cx);
+                self.open_menu(idx, false);
+                cx.notify();
+                return true;
+            }
+        }
+        false
+    }
+
+    fn top_level_for_key(&self, keystroke: &gpui::Keystroke) -> Option<usize> {
+        let ch = menu_tree::typed_access_char(keystroke)?
+            .to_lowercase()
+            .next()?;
+        let start = self.active_index + 1;
+        (0..self.menus.len())
+            .map(|offset| (start + offset) % self.menus.len())
+            .find(|&idx| menu_tree::access_key(&self.menus[idx].label) == Some(ch))
+    }
+
+    /// Closes any open menu and hands focus back to where it came from.
+    fn dismiss(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.close(cx);
+        match self.prior_focus.take().and_then(|h| h.upgrade()) {
+            Some(prior) => window.focus(&prior, cx),
+            None => window.blur(cx),
         }
     }
 
@@ -294,7 +393,14 @@ impl MenuBar {
         }
 
         match ev.keystroke.key.as_str() {
-            "escape" => self.close(cx),
+            "escape" => {
+                if self.open_index.is_some() {
+                    self.close(cx);
+                } else {
+                    self.dismiss(window, cx);
+                }
+            }
+            "f10" if !ev.keystroke.modifiers.shift => self.dismiss(window, cx),
             "left" => {
                 if self.selected_path.len() > 1 {
                     self.leave_submenu(cx);
@@ -339,7 +445,43 @@ impl MenuBar {
                     cx.notify();
                 }
             }
-            _ => {}
+            _ => {
+                if let Some(ch) = menu_tree::typed_access_char(&ev.keystroke) {
+                    self.press_access_key(ch, &ev.keystroke, window, cx);
+                }
+            }
+        }
+    }
+
+    /// An access key typed while the bar has focus: with a menu open (and no
+    /// Alt) it picks an item at the open level, otherwise it opens a menu.
+    fn press_access_key(
+        &mut self,
+        ch: char,
+        keystroke: &gpui::Keystroke,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !keystroke.modifiers.alt && !self.closing {
+            if let Some(open_idx) = self.open_index {
+                let parent = menu_tree::parent_path(&self.selected_path);
+                let current = self.selected_path.last().copied();
+                let found = self
+                    .menus
+                    .get(open_idx)
+                    .and_then(|menu| menu_tree::find_access_key(&menu.items, &parent, ch, current));
+                if let Some(path) = found {
+                    self.selected_path = path;
+                    self.open_path = parent;
+                    self.invoke_selected(window, cx);
+                    cx.notify();
+                }
+                return;
+            }
+        }
+        if let Some(idx) = self.top_level_for_key(keystroke) {
+            self.open_menu(idx, false);
+            cx.notify();
         }
     }
 
@@ -414,7 +556,7 @@ impl MenuBar {
                     }
                     row = row
                         .child(menu_tree::icon_slot(icon.clone(), fg, env))
-                        .child(div().flex_1().child(label.clone()));
+                        .child(div().flex_1().child(menu_tree::label_element(label, true)));
                     if let Some(shortcut) = shortcut.clone() {
                         row = row.child(
                             div()
@@ -488,7 +630,7 @@ impl MenuBar {
                                 .size(px(env.components.popup_icon_slot))
                                 .child(check),
                         )
-                        .child(div().flex_1().child(label.clone())),
+                        .child(div().flex_1().child(menu_tree::label_element(label, true))),
                     );
                     row_top += env.components.menu_item_height;
                 }
@@ -548,7 +690,7 @@ impl MenuBar {
                                         .bg(fg),
                                 ),
                         )
-                        .child(div().flex_1().child(label.clone())),
+                        .child(div().flex_1().child(menu_tree::label_element(label, true))),
                     );
                     row_top += env.components.menu_item_height;
                 }
@@ -583,7 +725,7 @@ impl MenuBar {
                     }
                     menu = menu.child(
                         row.child(menu_tree::icon_slot(icon.clone(), fg, env))
-                            .child(div().flex_1().child(label.clone()))
+                            .child(div().flex_1().child(menu_tree::label_element(label, true)))
                             .child(
                                 svg()
                                     .path("icons/chevron_right.svg")
@@ -631,6 +773,8 @@ impl Render for MenuBar {
         let self_weak = cx.entity().downgrade();
         let open_idx = self.open_index;
         let active_idx = self.active_index.min(self.menus.len().saturating_sub(1));
+        self.window_id = Some(window.window_handle().window_id());
+        let show_access_keys = open_idx.is_some() || self.focus_handle.is_focused(window);
 
         let bar_bg = colors.surface_dim;
         let trigger_hover_bg = colors.subtle_hover;
@@ -703,7 +847,7 @@ impl Render for MenuBar {
                         })
                         .ok();
                 })
-                .child(label)
+                .child(menu_tree::label_element(&label, show_access_keys))
                 .child(tracker);
 
             triggers_row = triggers_row.child(trigger);
@@ -787,8 +931,8 @@ impl Render for MenuBar {
 mod tests {
     use std::time::Duration;
 
-    use fluent_test_utils::init_fluent_test;
-    use gpui::TestAppContext;
+    use fluent_test_utils::{init_fluent_test, open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Entity, TestAppContext};
 
     use super::*;
 
@@ -873,5 +1017,127 @@ mod tests {
             assert_eq!(bar.trigger_bounds.len(), 1);
             assert_eq!(bar.menus[0].items.len(), 1);
         });
+    }
+
+    fn keyboard_bar<'a>(
+        cx: &'a mut TestAppContext,
+        hits: std::rc::Rc<std::cell::RefCell<Vec<&'static str>>>,
+    ) -> (Entity<MenuBar>, &'a mut gpui::VisualTestContext) {
+        let h = hits.clone();
+        let h2 = hits.clone();
+        open_fluent_test_window(cx, move |_, cx| {
+            MenuBar::new(cx)
+                .menu(
+                    "&File",
+                    vec![
+                        ContextMenuItem::submenu(
+                            "&Recent",
+                            vec![ContextMenuItem::action("Doc", move |_, _, _| {
+                                h.borrow_mut().push("doc")
+                            })],
+                        ),
+                        ContextMenuItem::action("E&xit", move |_, _, _| {
+                            h2.borrow_mut().push("exit")
+                        }),
+                    ],
+                )
+                .menu(
+                    "&Edit",
+                    vec![ContextMenuItem::action("&Undo", move |_, _, _| {
+                        hits.borrow_mut().push("undo")
+                    })],
+                )
+        })
+    }
+
+    #[gpui::test]
+    fn f10_focuses_bar_and_arrows_traverse_menus(cx: &mut TestAppContext) {
+        let hits = Default::default();
+        let (bar, cx) = keyboard_bar(cx, hits);
+        let handle = bar.read_with(cx, |bar, _| bar.focus_handle.clone());
+        cx.assert_nothing_focused();
+
+        cx.type_keys("f10");
+        cx.assert_focused(&handle);
+        bar.read_with(cx, |bar, _| assert_eq!(bar.open_index, None));
+
+        cx.type_keys("down");
+        bar.read_with(cx, |bar, _| {
+            assert_eq!(bar.open_index, Some(0));
+            assert_eq!(bar.selected_path, vec![0]);
+        });
+
+        cx.type_keys("right");
+        bar.read_with(cx, |bar, _| {
+            assert_eq!(bar.open_path, vec![0]);
+            assert_eq!(bar.selected_path, vec![0, 0]);
+        });
+
+        cx.type_keys("left");
+        bar.read_with(cx, |bar, _| assert_eq!(bar.selected_path, vec![0]));
+
+        cx.type_keys("down right");
+        bar.read_with(cx, |bar, _| {
+            assert_eq!(
+                bar.open_index,
+                Some(1),
+                "right on a leaf moves to the next menu"
+            );
+        });
+    }
+
+    #[gpui::test]
+    fn access_keys_open_menus_and_invoke_items(cx: &mut TestAppContext) {
+        let hits: std::rc::Rc<std::cell::RefCell<Vec<&'static str>>> = Default::default();
+        let (bar, cx) = keyboard_bar(cx, hits.clone());
+
+        cx.type_keys("f10 e");
+        bar.read_with(cx, |bar, _| assert_eq!(bar.open_index, Some(1)));
+        cx.type_keys("u");
+        assert_eq!(*hits.borrow(), vec!["undo"]);
+
+        cx.executor().advance_clock(Duration::from_millis(200));
+        cx.type_keys("f f");
+        bar.read_with(cx, |bar, _| assert_eq!(bar.open_index, Some(0)));
+        cx.type_keys("r");
+        bar.read_with(cx, |bar, _| assert_eq!(bar.selected_path, vec![0, 0]));
+        cx.type_keys("left x");
+        assert_eq!(*hits.borrow(), vec!["undo", "exit"]);
+    }
+
+    #[gpui::test]
+    fn alt_access_key_opens_menu_from_anywhere(cx: &mut TestAppContext) {
+        let (bar, cx) = keyboard_bar(cx, Default::default());
+        let handle = bar.read_with(cx, |bar, _| bar.focus_handle.clone());
+
+        cx.type_keys("alt-e");
+        cx.assert_focused(&handle);
+        bar.read_with(cx, |bar, _| {
+            assert_eq!(bar.open_index, Some(1));
+            assert_eq!(bar.selected_path, vec![0]);
+        });
+    }
+
+    #[gpui::test]
+    fn tapping_alt_focuses_bar(cx: &mut TestAppContext) {
+        let (bar, cx) = keyboard_bar(cx, Default::default());
+        let handle = bar.read_with(cx, |bar, _| bar.focus_handle.clone());
+
+        cx.type_keys("alt");
+        cx.assert_focused(&handle);
+    }
+
+    #[gpui::test]
+    fn escape_closes_menu_then_f10_dismisses_bar(cx: &mut TestAppContext) {
+        let (bar, cx) = keyboard_bar(cx, Default::default());
+        let handle = bar.read_with(cx, |bar, _| bar.focus_handle.clone());
+
+        cx.type_keys("f10 down escape");
+        cx.executor().advance_clock(Duration::from_millis(200));
+        bar.read_with(cx, |bar, _| assert_eq!(bar.open_index, None));
+        cx.assert_focused(&handle);
+
+        cx.type_keys("f10");
+        cx.assert_not_focused(&handle);
     }
 }
