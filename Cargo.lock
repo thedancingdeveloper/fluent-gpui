@@ -1563,6 +1563,7 @@ version = "2.0.2"
 dependencies = [
  "fluent-core",
  "fluent-primitives",
+ "fluent-test-utils",
  "gpui",
 ]
 
