@@ -57,7 +57,26 @@ pub fn with_alpha(color: Hsla, alpha: f32) -> Hsla {
 /// Token names follow the Fluent 2 design token vocabulary where possible.
 /// See <https://fluent2.microsoft.design/color> for specification.
 #[derive(Clone, Debug)]
+pub struct NeutralColorStates {
+    pub default: Hsla,
+    pub hover: Hsla,
+    pub pressed: Hsla,
+    pub selected: Hsla,
+    pub disabled: Hsla,
+}
+
+#[derive(Clone, Debug)]
 pub struct ColorScheme {
+    pub neutral_foreground_1: NeutralColorStates,
+    pub neutral_foreground_2: NeutralColorStates,
+    pub neutral_foreground_3: NeutralColorStates,
+    pub neutral_background_1: NeutralColorStates,
+    pub neutral_background_2: NeutralColorStates,
+    pub neutral_background_3: NeutralColorStates,
+    pub neutral_stroke_1: NeutralColorStates,
+    pub neutral_stroke_2: NeutralColorStates,
+    pub neutral_stroke_3: NeutralColorStates,
+
     // --- Fill backgrounds (interactive elements: buttons, inputs, etc.) ---
     /// Neutral fill — default state (Fluent: colorNeutralBackground3)
     pub neutral: Hsla,
@@ -183,10 +202,51 @@ fn hex(v: u32) -> Hsla {
     gpui::rgb(v).into()
 }
 
+fn states(
+    default: u32,
+    hover: u32,
+    pressed: u32,
+    selected: u32,
+    disabled: u32,
+) -> NeutralColorStates {
+    color_states(
+        hex(default),
+        hex(hover),
+        hex(pressed),
+        hex(selected),
+        hex(disabled),
+    )
+}
+
+fn color_states(
+    default: Hsla,
+    hover: Hsla,
+    pressed: Hsla,
+    selected: Hsla,
+    disabled: Hsla,
+) -> NeutralColorStates {
+    NeutralColorStates {
+        default,
+        hover,
+        pressed,
+        selected,
+        disabled,
+    }
+}
+
 impl ColorScheme {
     /// Fluent 2 dark colour scheme.
     pub fn dark() -> Self {
         Self {
+            neutral_foreground_1: states(0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0x5C5C5C),
+            neutral_foreground_2: states(0xDEDEDE, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0x5C5C5C),
+            neutral_foreground_3: states(0xADADAD, 0xD6D6D6, 0xD6D6D6, 0xD6D6D6, 0x5C5C5C),
+            neutral_background_1: states(0x1C1C1C, 0x3D3D3D, 0x1F1F1F, 0x383838, 0x1C1C1C),
+            neutral_background_2: states(0x141414, 0x333333, 0x141414, 0x2E2E2E, 0x1C1C1C),
+            neutral_background_3: states(0x272727, 0x303030, 0x0A0A0A, 0x2D2D2D, 0x1C1C1C),
+            neutral_stroke_1: states(0x666666, 0x757575, 0x6B6B6B, 0x707070, 0x404040),
+            neutral_stroke_2: states(0x525252, 0x525252, 0x525252, 0x525252, 0x404040),
+            neutral_stroke_3: states(0x383838, 0x383838, 0x383838, 0x383838, 0x404040),
             // --- Fills ---
             neutral: hex(0x272727),
             neutral_hover: hex(0x303030),
@@ -261,6 +321,15 @@ impl ColorScheme {
     /// Fluent 2 light colour scheme.
     pub fn light() -> Self {
         Self {
+            neutral_foreground_1: states(0x242424, 0x242424, 0x242424, 0x242424, 0xBDBDBD),
+            neutral_foreground_2: states(0x424242, 0x242424, 0x242424, 0x242424, 0xBDBDBD),
+            neutral_foreground_3: states(0x616161, 0x424242, 0x424242, 0x424242, 0xBDBDBD),
+            neutral_background_1: states(0xFFFFFF, 0xF5F5F5, 0xE0E0E0, 0xEBEBEB, 0xF5F5F5),
+            neutral_background_2: states(0xF0F0F0, 0xE8E8E8, 0xDBDBDB, 0xE3E3E3, 0xF5F5F5),
+            neutral_background_3: states(0xF0F0F0, 0xE8E8E8, 0xD6D6D6, 0xE3E3E3, 0xF5F5F5),
+            neutral_stroke_1: states(0xD1D1D1, 0xC7C7C7, 0xB3B3B3, 0xBDBDBD, 0xE0E0E0),
+            neutral_stroke_2: states(0xC7C7C7, 0xE0E0E0, 0xE0E0E0, 0xE0E0E0, 0xE0E0E0),
+            neutral_stroke_3: states(0xEBEBEB, 0xF0F0F0, 0xF0F0F0, 0xF0F0F0, 0xE0E0E0),
             // --- Fills ---
             neutral: hex(0xF0F0F0),
             neutral_hover: hex(0xE8E8E8),
@@ -335,6 +404,15 @@ impl ColorScheme {
     /// Midnight colour scheme — deep navy darks with a vivid violet accent.
     pub fn midnight() -> Self {
         Self {
+            neutral_foreground_1: states(0xC9D8F0, 0xE0ECFF, 0xE0ECFF, 0xE0ECFF, 0x3D4D66),
+            neutral_foreground_2: states(0xA8BBDA, 0xC9D8F0, 0xC9D8F0, 0xC9D8F0, 0x3D4D66),
+            neutral_foreground_3: states(0x7890B5, 0xA8BBDA, 0xA8BBDA, 0xA8BBDA, 0x3D4D66),
+            neutral_background_1: states(0x080E1A, 0x10192B, 0x040810, 0x0F1723, 0x0A1020),
+            neutral_background_2: states(0x040810, 0x0F1723, 0x020408, 0x0A1020, 0x0A1020),
+            neutral_background_3: states(0x0F1723, 0x1A2540, 0x0A1020, 0x142035, 0x0A1020),
+            neutral_stroke_1: states(0x1E2D48, 0x294064, 0x192540, 0x223654, 0x141E33),
+            neutral_stroke_2: states(0x192540, 0x192540, 0x192540, 0x192540, 0x141E33),
+            neutral_stroke_3: states(0x0F1A30, 0x0F1A30, 0x0F1A30, 0x0F1A30, 0x141E33),
             // --- Fills ---
             neutral: hex(0x0F1723),
             neutral_hover: hex(0x1A2540),
@@ -408,6 +486,15 @@ impl ColorScheme {
     /// Ember colour scheme — warm dark browns with an amber/orange accent.
     pub fn ember() -> Self {
         Self {
+            neutral_foreground_1: states(0xF0E4CC, 0xFFF5E0, 0xFFF5E0, 0xFFF5E0, 0x5A4A30),
+            neutral_foreground_2: states(0xD4C09A, 0xF0E4CC, 0xF0E4CC, 0xF0E4CC, 0x5A4A30),
+            neutral_foreground_3: states(0xA99068, 0xD4C09A, 0xD4C09A, 0xD4C09A, 0x5A4A30),
+            neutral_background_1: states(0x181208, 0x231A0E, 0x100D05, 0x1E1508, 0x181208),
+            neutral_background_2: states(0x100D05, 0x1E1508, 0x0A0803, 0x181208, 0x181208),
+            neutral_background_3: states(0x1E1508, 0x2A1E0C, 0x181208, 0x251A0A, 0x181208),
+            neutral_stroke_1: states(0x4A3820, 0x604828, 0x3E2E18, 0x543F24, 0x2E2214),
+            neutral_stroke_2: states(0x3E2E18, 0x3E2E18, 0x3E2E18, 0x3E2E18, 0x2E2214),
+            neutral_stroke_3: states(0x281E10, 0x281E10, 0x281E10, 0x281E10, 0x2E2214),
             // --- Fills ---
             neutral: hex(0x1E1508),
             neutral_hover: hex(0x2A1E0C),
@@ -491,6 +578,15 @@ impl ColorScheme {
         let hyperlink = hex(0xFFFF00); // Hyperlink
         let hover = hex(0x262626);
         Self {
+            neutral_foreground_1: color_states(text, text, text, highlight_text, gray_text),
+            neutral_foreground_2: color_states(text, text, text, highlight_text, gray_text),
+            neutral_foreground_3: color_states(text, text, text, highlight_text, gray_text),
+            neutral_background_1: color_states(canvas, hover, highlight, highlight, canvas),
+            neutral_background_2: color_states(canvas, hover, highlight, highlight, canvas),
+            neutral_background_3: color_states(canvas, hover, highlight, highlight, canvas),
+            neutral_stroke_1: color_states(text, text, highlight, highlight, gray_text),
+            neutral_stroke_2: color_states(text, text, highlight, highlight, gray_text),
+            neutral_stroke_3: color_states(text, text, highlight, highlight, gray_text),
             neutral: canvas,
             neutral_hover: hover,
             neutral_disabled: canvas,
@@ -662,6 +758,86 @@ mod tests {
                 );
                 assert_eq!(token.a, 1.0, "{theme} theme token {name} is not opaque");
             }
+        }
+    }
+
+    #[test]
+    fn neutral_aliases_cover_every_state() {
+        for (theme, colors) in themes() {
+            let groups = [
+                ("foreground 1", &colors.neutral_foreground_1),
+                ("foreground 2", &colors.neutral_foreground_2),
+                ("foreground 3", &colors.neutral_foreground_3),
+                ("background 1", &colors.neutral_background_1),
+                ("background 2", &colors.neutral_background_2),
+                ("background 3", &colors.neutral_background_3),
+                ("stroke 1", &colors.neutral_stroke_1),
+                ("stroke 2", &colors.neutral_stroke_2),
+                ("stroke 3", &colors.neutral_stroke_3),
+            ];
+            for (group, states) in groups {
+                for (state, color) in [
+                    ("default", states.default),
+                    ("hover", states.hover),
+                    ("pressed", states.pressed),
+                    ("selected", states.selected),
+                    ("disabled", states.disabled),
+                ] {
+                    assert!(
+                        color.h.is_finite()
+                            && color.s.is_finite()
+                            && color.l.is_finite()
+                            && color.a.is_finite(),
+                        "{theme} {group} {state} is not initialized"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn neutral_alias_defaults_preserve_existing_names() {
+        for colors in themes().map(|(_, colors)| colors) {
+            assert_eq!(colors.neutral_foreground_1.default, colors.on_neutral);
+            assert_eq!(
+                colors.neutral_foreground_1.disabled,
+                colors.on_neutral_disabled
+            );
+            assert_eq!(
+                colors.neutral_foreground_1.selected,
+                colors.on_neutral_selected
+            );
+            assert_eq!(colors.neutral_foreground_2.default, colors.on_subtle);
+            assert_eq!(
+                colors.neutral_foreground_2.disabled,
+                colors.on_subtle_disabled
+            );
+            assert_eq!(
+                colors.neutral_foreground_2.selected,
+                colors.on_subtle_selected
+            );
+            assert_eq!(colors.neutral_background_1.default, colors.surface);
+            assert_eq!(colors.neutral_background_2.default, colors.surface_dim);
+            assert_eq!(colors.neutral_background_3.default, colors.neutral);
+            assert_eq!(colors.neutral_background_3.hover, colors.neutral_hover);
+            assert_eq!(
+                colors.neutral_background_3.disabled,
+                colors.neutral_disabled
+            );
+            assert_eq!(
+                colors.neutral_background_3.selected,
+                colors.neutral_selected
+            );
+            assert_eq!(colors.neutral_stroke_1.default, colors.stroke_neutral);
+            assert_eq!(
+                colors.neutral_stroke_1.disabled,
+                colors.stroke_neutral_disabled
+            );
+            assert_eq!(colors.neutral_stroke_2.default, colors.stroke_neutral_dim);
+            assert_eq!(
+                colors.neutral_stroke_3.default,
+                colors.stroke_neutral_subtle
+            );
         }
     }
 

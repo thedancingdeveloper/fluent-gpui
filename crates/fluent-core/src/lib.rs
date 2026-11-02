@@ -10,7 +10,7 @@ mod theme;
 mod typography;
 
 pub use async_resource::{AsyncResource, AsyncResourceState, ResourceRequest};
-pub use colors::{gradient_from_hue, hue_for, tint, with_alpha, ColorScheme};
+pub use colors::{gradient_from_hue, hue_for, tint, with_alpha, ColorScheme, NeutralColorStates};
 pub use components::ComponentTokens;
 pub use motion::{popup_motion_surface, MotionCurve, MotionTokens};
 pub use radii::RadiiTokens;
