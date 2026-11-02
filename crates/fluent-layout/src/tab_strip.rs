@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
-    div, prelude::*, px, svg, ClickEvent, Context, IntoElement, Render, SharedString, Window,
+    div, prelude::*, px, svg, ClickEvent, Context, FocusHandle, IntoElement, KeyDownEvent, Render,
+    SharedString, Window,
 };
 
 /// A single tab in a `TabStrip`.
@@ -47,6 +48,7 @@ impl TabItem {
 pub struct TabStrip {
     pub tabs: Vec<TabItem>,
     pub active: usize,
+    focus_handles: Vec<FocusHandle>,
     on_select: Option<Arc<dyn Fn(usize, &TabStrip, &mut Window, &mut Context<Self>) + 'static>>,
     on_close: Option<Arc<dyn Fn(usize, &TabStrip, &mut Window, &mut Context<Self>) + 'static>>,
 }
@@ -90,7 +92,15 @@ impl TabStrip {
 }
 
 impl Render for TabStrip {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        while self.focus_handles.len() < self.tabs.len() {
+            self.focus_handles.push(cx.focus_handle());
+        }
+        self.focus_handles.truncate(self.tabs.len());
+        let enabled = vec![true; self.tabs.len()];
+        let stop =
+            crate::roving::stop_index(window, &self.focus_handles, &enabled, Some(self.active));
+
         let theme = cx.theme();
         let colors = theme.colors.clone();
         let spacing = theme.spacing;
@@ -148,10 +158,28 @@ impl Render for TabStrip {
                 None
             };
 
+            let key_handler = cx.listener(move |ts: &mut TabStrip, ev: &KeyDownEvent, win, cx| {
+                let enabled = vec![true; ts.tabs.len()];
+                if let Some(next) = crate::roving::target(ev.keystroke.key.as_str(), i, &enabled) {
+                    ts.focus_handles[next].focus(win, cx);
+                    ts.active = next;
+                    if let Some(f) = &ts.on_select.clone() {
+                        f(next, ts, win, cx);
+                    }
+                    cx.stop_propagation();
+                    cx.notify();
+                }
+            });
+            let tab_handle = self.focus_handles[i].clone();
+
             let tab_bg = if is_active { active_bg } else { tab_strip_bg };
 
             let mut tab_el = div()
                 .id(("tab", (n_tabs as u64 * 100 + i as u64)))
+                .debug_selector(move || format!("tab-{i}"))
+                .track_focus(&tab_handle)
+                .tab_stop(stop == Some(i))
+                .on_key_down(key_handler)
                 .flex()
                 .flex_row()
                 .items_center()
@@ -209,7 +237,34 @@ impl Render for TabStrip {
 
 #[cfg(test)]
 mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::TestAppContext;
+
     use super::*;
+
+    fn strip(cx: &mut TestAppContext) -> (gpui::Entity<TabStrip>, &mut gpui::VisualTestContext) {
+        open_fluent_test_window(cx, |_, cx| {
+            let mut ts = TabStrip::new(cx);
+            for id in ["a", "b", "c"] {
+                ts.add_tab(TabItem::new(id).label(id));
+            }
+            ts
+        })
+    }
+
+    #[gpui::test]
+    fn arrows_select_and_home_end_jump(cx: &mut TestAppContext) {
+        let (ts, cx) = strip(cx);
+        cx.click_selector("tab-0");
+        cx.type_keys("right");
+        ts.read_with(cx, |t, _| assert_eq!(t.active, 1));
+        cx.type_keys("left left");
+        ts.read_with(cx, |t, _| assert_eq!(t.active, 2));
+        cx.type_keys("home");
+        ts.read_with(cx, |t, _| assert_eq!(t.active, 0));
+        cx.type_keys("end");
+        ts.read_with(cx, |t, _| assert_eq!(t.active, 2));
+    }
 
     #[test]
     fn remove_tab_before_active_preserves_active_tab_identity() {

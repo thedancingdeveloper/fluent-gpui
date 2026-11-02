@@ -14,6 +14,7 @@ pub mod modal;
 pub mod pane;
 pub mod pane_group;
 pub mod popover;
+mod roving;
 pub mod selectable_list;
 pub mod settings_nav;
 pub mod tab_strip;
