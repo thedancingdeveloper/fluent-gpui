@@ -1,3 +1,4 @@
+use crate::focus::FluentFocus as _;
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, App, ClickEvent, ElementId, Hsla, IntoElement, RenderOnce, SharedString,
@@ -50,6 +51,7 @@ pub struct Button {
     shape: ButtonShape,
     size: ButtonSize,
     disabled: bool,
+    tab_index: Option<isize>,
     on_click: Option<Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>>,
 }
 
@@ -63,6 +65,7 @@ impl Button {
             shape: ButtonShape::default(),
             size: ButtonSize::default(),
             disabled: false,
+            tab_index: None,
             on_click: None,
         }
     }
@@ -89,6 +92,12 @@ impl Button {
 
     pub fn size(mut self, size: ButtonSize) -> Self {
         self.size = size;
+        self
+    }
+
+    /// Explicit position in the Tab order (lower first). Defaults to document order.
+    pub fn tab_index(mut self, index: isize) -> Self {
+        self.tab_index = Some(index);
         self
     }
 
@@ -207,6 +216,8 @@ impl RenderOnce for Button {
         };
 
         let disabled = self.disabled;
+        let tab_index = self.tab_index;
+        let focus_ring = colors.stroke_accent;
         let on_click = self.on_click;
         let icon = self.icon;
         let label = self.label;
@@ -237,6 +248,7 @@ impl RenderOnce for Button {
             el = el
                 .focusable()
                 .tab_stop(true)
+                .fluent_focus(tab_index, focus_ring)
                 .cursor_pointer()
                 .hover(move |s| s.bg(bg_hover))
                 .active(move |s| s.bg(bg_active));

@@ -1,3 +1,4 @@
+use crate::focus::FluentFocus as _;
 use fluent_core::ThemeProvider as _;
 use gpui::{div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, Window};
 
@@ -19,6 +20,7 @@ pub struct Checkbox {
     id: ElementId,
     state: CheckboxState,
     disabled: bool,
+    tab_index: Option<isize>,
     on_click: Option<Box<dyn Fn(CheckboxState, &ClickEvent, &mut Window, &mut App) + 'static>>,
 }
 
@@ -28,6 +30,7 @@ impl Checkbox {
             id: id.into(),
             state: CheckboxState::Unchecked,
             disabled: false,
+            tab_index: None,
             on_click: None,
         }
     }
@@ -43,6 +46,12 @@ impl Checkbox {
         } else {
             CheckboxState::Unchecked
         };
+        self
+    }
+
+    /// Explicit position in the Tab order (lower first). Defaults to document order.
+    pub fn tab_index(mut self, index: isize) -> Self {
+        self.tab_index = Some(index);
         self
     }
 
@@ -94,6 +103,8 @@ impl RenderOnce for Checkbox {
         };
 
         let disabled = self.disabled;
+        let tab_index = self.tab_index;
+        let focus_ring = colors.stroke_accent;
         let current = self.state;
         let on_click = self.on_click;
 
@@ -119,6 +130,7 @@ impl RenderOnce for Checkbox {
             el = el
                 .focusable()
                 .tab_stop(true)
+                .fluent_focus(tab_index, focus_ring)
                 .cursor_pointer()
                 .hover(move |s| s.border_color(colors.stroke_accent));
         }
