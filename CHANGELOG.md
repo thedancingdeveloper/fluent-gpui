@@ -11,6 +11,8 @@ per crate.
 ---
 
 ## Unreleased
+
+- Layout: add Fluent 2 Breadcrumb and Pagination controls with overflow menus, current-item semantics, RTL separators, and keyboard-ready controls (WI-3036).
 - fluent-layout, gallery: Drawer with inline and overlay modes, RTL-aware start/end placement, size presets, reduced-motion-aware transitions, focus trapping and opener restoration (WI-3038).
 - Add the Windows/Linux platform parity matrix and native verification gap list ([WI-3043](https://vogt.sprooty.com/work/WI-3043)).
 - fluent-layout, gallery: virtualised expanded tree rows with keyboard-preserving navigation, lazy child loading states, and a 50,000-node gallery story (WI-3035).

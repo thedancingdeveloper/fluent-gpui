@@ -1,10 +1,10 @@
 use fluent_app::{FluentApp, TitleBar};
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_layout::{
-    DataCell, DataColumn, DataRow, DataStatusKind, DataTable, DataTableState, DockPanel,
-    DockPosition, Drawer, DrawerMode, DrawerPosition, DrawerSize, MenuBar, MessageBar,
-    MessageIntent, ModalStack, Pane, SelectableList, SelectableListItem, TabItem, TabStrip, Tree,
-    TreeItem, Workspace,
+    Breadcrumb, BreadcrumbItem, DataCell, DataColumn, DataRow, DataStatusKind, DataTable,
+    DataTableState, DockPanel, DockPosition, Drawer, DrawerMode, DrawerPosition, DrawerSize,
+    MenuBar, MessageBar, MessageIntent, ModalStack, Pagination, Pane, SelectableList,
+    SelectableListItem, TabItem, TabStrip, Tree, TreeItem, Workspace,
 };
 use fluent_primitives::{
     Avatar, Button, ButtonAppearance, Checkbox, CounterBadge, CounterBadgeAppearance,
@@ -340,6 +340,16 @@ impl Render for ThemeMatrixDemo {
             .bg(colors.surface)
             .text_color(colors.on_neutral)
             .child("Theme token matrix")
+            .child(
+                Breadcrumb::new(cx)
+                    .items([
+                        BreadcrumbItem::new("home", "Home"),
+                        BreadcrumbItem::new("library", "Library"),
+                        BreadcrumbItem::new("current", "Current"),
+                    ])
+                    .current(2),
+            )
+            .child(Pagination::new(4).page(1))
             .child("Neutral, accent, selected, disabled, status, border, and focus states")
             .child(
                 div()
