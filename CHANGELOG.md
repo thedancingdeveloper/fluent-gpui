@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- fluent-primitives, fluent-layout: RadioGroup, TabStrip and Toolbar are one tab stop with arrow-key roving focus (arrows also select in RadioGroup and TabStrip), Home/End jump (WI-2920).
 - fluent-primitives: Button, IconButton, ToggleButton, Checkbox, Switch, RadioGroup and Dropdown take `tab_index`, handle Tab/Shift-Tab, and show the Fluent 2 focus stroke for keyboard focus only (WI-2919).
 - Add interaction coverage for text-input editing and clipboard shortcuts, textarea newlines, and Escape-cleared searchboxes (WI-2909).
 - fluent-test-utils: add compact role, accessible-name and state snapshots of rendered AccessKit trees, with Expander coverage (WI-2915).
