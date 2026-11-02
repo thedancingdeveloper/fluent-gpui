@@ -9,7 +9,9 @@ use gpui::{
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum LinkAppearance {
     #[default]
+    /// The default option.
     Default,
+    /// The subtle option.
     Subtle,
 }
 
@@ -29,6 +31,7 @@ pub struct Link {
 }
 
 impl Link {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -40,11 +43,13 @@ impl Link {
         }
     }
 
+    /// Sets the appearance configuration for this control.
     pub fn appearance(mut self, appearance: LinkAppearance) -> Self {
         self.appearance = appearance;
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
@@ -56,6 +61,7 @@ impl Link {
         self
     }
 
+    /// Registers a handler for click events.
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -64,6 +70,7 @@ impl Link {
         self
     }
 
+    /// Returns the open url value.
     pub fn open_url(self, url: impl Into<SharedString>) -> Self {
         let url = url.into();
         self.on_click(move |_, _, cx| cx.open_url(&url))

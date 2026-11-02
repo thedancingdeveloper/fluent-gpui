@@ -18,6 +18,7 @@ pub struct Accordion {
 }
 
 impl Accordion {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -27,21 +28,25 @@ impl Accordion {
         }
     }
 
+    /// Sets the item configuration for this control.
     pub fn item(mut self, item: Expander) -> Self {
         self.items.push(item);
         self
     }
 
+    /// Sets the items configuration for this control.
     pub fn items(mut self, items: impl IntoIterator<Item = Expander>) -> Self {
         self.items = items.into_iter().collect();
         self
     }
 
+    /// Sets the multiple configuration for this control.
     pub fn multiple(mut self, multiple: bool) -> Self {
         self.multiple = multiple;
         self
     }
 
+    /// Sets the collapsible configuration for this control.
     pub fn collapsible(mut self, collapsible: bool) -> Self {
         self.collapsible = collapsible;
         self

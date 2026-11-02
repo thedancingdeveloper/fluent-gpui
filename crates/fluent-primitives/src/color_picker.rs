@@ -6,20 +6,27 @@ use gpui::{
     SharedString, Window,
 };
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// A Fluent primitive for representing color in an interface.
 pub struct Color {
+    /// The red value.
     pub red: u8,
+    /// The green value.
     pub green: u8,
+    /// The blue value.
     pub blue: u8,
 }
 impl Color {
+    /// The white constant.
     pub const WHITE: Self = Self {
         red: 255,
         green: 255,
         blue: 255,
     };
+    /// Formats the value for display or serialization.
     pub fn hex(self) -> String {
         format!("#{:02X}{:02X}{:02X}", self.red, self.green, self.blue)
     }
+    /// Parses an input value when it has a supported format.
     pub fn parse(s: &str) -> Option<Self> {
         let s = s.trim().strip_prefix('#').unwrap_or(s);
         (s.len() == 6)
@@ -33,6 +40,7 @@ impl Color {
     }
 }
 #[derive(Clone)]
+/// A Fluent primitive for representing color picker in an interface.
 pub struct ColorPicker {
     id: ElementId,
     color: Color,
@@ -41,6 +49,7 @@ pub struct ColorPicker {
     on_change: Option<ColorChange>,
 }
 impl ColorPicker {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -67,22 +76,27 @@ impl ColorPicker {
             on_change: None,
         }
     }
+    /// Returns the current value.
     pub fn value(mut self, c: Color) -> Self {
         self.color = c;
         self
     }
+    /// Sets the swatches configuration for this control.
     pub fn swatches(mut self, s: impl IntoIterator<Item = Color>) -> Self {
         self.swatches = s.into_iter().collect();
         self
     }
+    /// Returns the current label.
     pub fn label(mut self, s: impl Into<SharedString>) -> Self {
         self.label = s.into();
         self
     }
+    /// Registers a handler for change events.
     pub fn on_change(mut self, f: impl Fn(Color, &mut App) + 'static) -> Self {
         self.on_change = Some(std::rc::Rc::new(f));
         self
     }
+    /// Sets the hex value.
     pub fn set_hex(&mut self, value: &str) -> bool {
         if let Some(color) = Color::parse(value) {
             self.color = color;
@@ -91,6 +105,7 @@ impl ColorPicker {
             false
         }
     }
+    /// Adjusts one colour channel by the given amount, clamped to its valid range.
     pub fn nudge(&mut self, channel: &str, delta: i16) {
         let adjust = |v: u8| (v as i16).saturating_add(delta).clamp(0, 255) as u8;
         self.color = match channel {
@@ -110,6 +125,7 @@ impl ColorPicker {
         };
     }
 
+    /// Returns the current color.
     pub fn color(&self) -> Color {
         self.color
     }

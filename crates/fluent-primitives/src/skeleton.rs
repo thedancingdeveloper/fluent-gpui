@@ -18,6 +18,7 @@ pub struct Skeleton {
 }
 
 impl Skeleton {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -33,11 +34,13 @@ impl Skeleton {
         self
     }
 
+    /// Sets the h configuration for this control.
     pub fn h(mut self, height: f32) -> Self {
         self.height = height;
         self
     }
 
+    /// Sets the rounded configuration for this control.
     pub fn rounded(mut self, r: f32) -> Self {
         self.rounded = r;
         self
@@ -79,6 +82,7 @@ pub struct SkeletonRow {
 }
 
 impl SkeletonRow {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id_prefix: impl Into<SharedString>) -> Self {
         Self {
             id_prefix: id_prefix.into(),
@@ -86,6 +90,7 @@ impl SkeletonRow {
         }
     }
 
+    /// Sets the avatar size configuration for this control.
     pub fn avatar_size(mut self, size: f32) -> Self {
         self.avatar_size = size;
         self

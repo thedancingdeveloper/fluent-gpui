@@ -7,10 +7,15 @@ use crate::Avatar;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum PresenceBadgeState {
     #[default]
+    /// The available option.
     Available,
+    /// The busy option.
     Busy,
+    /// The away option.
     Away,
+    /// The offline option.
     Offline,
+    /// The do not disturb option.
     DoNotDisturb,
 }
 
@@ -22,6 +27,7 @@ pub struct PresenceBadge {
 }
 
 impl PresenceBadge {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(avatar: Avatar, state: PresenceBadgeState) -> Self {
         Self { avatar, state }
     }
@@ -57,7 +63,9 @@ impl RenderOnce for PresenceBadge {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum CounterBadgeAppearance {
     #[default]
+    /// The filled option.
     Filled,
+    /// The ghost option.
     Ghost,
 }
 
@@ -84,6 +92,7 @@ pub struct CounterBadge {
 }
 
 impl CounterBadge {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(count: u32) -> Self {
         Self {
             count,
@@ -94,21 +103,25 @@ impl CounterBadge {
         }
     }
 
+    /// Sets the overflow count configuration for this control.
     pub fn overflow_count(mut self, count: u32) -> Self {
         self.overflow_count = count.max(1);
         self
     }
 
+    /// Sets the show zero configuration for this control.
     pub fn show_zero(mut self, show: bool) -> Self {
         self.show_zero = show;
         self
     }
 
+    /// Sets the dot configuration for this control.
     pub fn dot(mut self, dot: bool) -> Self {
         self.dot = dot;
         self
     }
 
+    /// Sets the appearance configuration for this control.
     pub fn appearance(mut self, appearance: CounterBadgeAppearance) -> Self {
         self.appearance = appearance;
         self
@@ -181,12 +194,14 @@ pub struct Badge {
 }
 
 impl Badge {
+    /// Returns the count value.
     pub fn count(n: u32) -> Self {
         Self {
             variant: BadgeVariant::Count(n),
         }
     }
 
+    /// Returns the dot value.
     pub fn dot() -> Self {
         Self {
             variant: BadgeVariant::Dot,

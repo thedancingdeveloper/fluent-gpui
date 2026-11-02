@@ -2,6 +2,7 @@ use gpui::{actions, App, KeyBinding, KeyDownEvent, Window};
 
 actions!(fluent_primitives, [FocusNextControl, FocusPreviousControl]);
 
+/// Installs the standard Fluent focus-navigation key bindings.
 pub fn install_focus_keybindings(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("tab", FocusNextControl, None),

@@ -12,6 +12,7 @@ pub struct InfoLabel {
 }
 
 impl InfoLabel {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(
         id: impl Into<ElementId>,
         text: impl Into<SharedString>,
@@ -25,6 +26,7 @@ impl InfoLabel {
         }
     }
 
+    /// Returns the current text.
     pub fn text(&self) -> SharedString {
         self.text.clone()
     }

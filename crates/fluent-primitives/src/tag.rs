@@ -7,33 +7,48 @@ use gpui::{
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// Available tag appearance options for configuring the control.
 pub enum TagAppearance {
     #[default]
+    /// The neutral option.
     Neutral,
+    /// The accent option.
     Accent,
+    /// The informative option.
     Informative,
+    /// The success option.
     Success,
+    /// The warning option.
     Warning,
+    /// The danger option.
     Danger,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// Available tag shape options for configuring the control.
 pub enum TagShape {
     #[default]
+    /// The rounded option.
     Rounded,
+    /// The circular option.
     Circular,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// Available tag size options for configuring the control.
 pub enum TagSize {
+    /// The small option.
     Small,
     #[default]
+    /// The medium option.
     Medium,
+    /// The large option.
     Large,
 }
 
 #[allow(clippy::type_complexity)]
 #[derive(IntoElement)]
+/// A Fluent primitive for representing tag in an interface.
 pub struct Tag {
     id: ElementId,
     label: SharedString,
@@ -48,6 +63,7 @@ pub struct Tag {
 }
 
 impl Tag {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -62,34 +78,42 @@ impl Tag {
             on_select: None,
         }
     }
+    /// Sets the size configuration for this control.
     pub fn size(mut self, v: TagSize) -> Self {
         self.size = v;
         self
     }
+    /// Sets the shape configuration for this control.
     pub fn shape(mut self, v: TagShape) -> Self {
         self.shape = v;
         self
     }
+    /// Sets the appearance configuration for this control.
     pub fn appearance(mut self, v: TagAppearance) -> Self {
         self.appearance = v;
         self
     }
+    /// Returns the current selected.
     pub fn selected(mut self, v: bool) -> Self {
         self.selected = v;
         self
     }
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, v: bool) -> Self {
         self.disabled = v;
         self
     }
+    /// Sets the dismissible configuration for this control.
     pub fn dismissible(mut self, v: bool) -> Self {
         self.dismissible = v;
         self
     }
+    /// Registers a handler for dismiss events.
     pub fn on_dismiss(mut self, f: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static) -> Self {
         self.on_dismiss = Some(Rc::new(f));
         self
     }
+    /// Registers a handler for select events.
     pub fn on_select(
         mut self,
         f: impl Fn(bool, &ClickEvent, &mut Window, &mut App) + 'static,
@@ -167,12 +191,14 @@ impl RenderOnce for Tag {
 }
 
 #[derive(IntoElement)]
+/// A Fluent primitive for representing tag group in an interface.
 pub struct TagGroup {
     id: ElementId,
     children: Vec<Tag>,
     size: TagSize,
 }
 impl TagGroup {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -180,14 +206,17 @@ impl TagGroup {
             size: TagSize::Medium,
         }
     }
+    /// Sets the tags configuration for this control.
     pub fn tags(mut self, tags: impl IntoIterator<Item = Tag>) -> Self {
         self.children = tags.into_iter().collect();
         self
     }
+    /// Sets the tag configuration for this control.
     pub fn tag(mut self, tag: Tag) -> Self {
         self.children.push(tag);
         self
     }
+    /// Sets the size configuration for this control.
     pub fn size(mut self, size: TagSize) -> Self {
         self.size = size;
         self

@@ -373,7 +373,7 @@ impl Inner {
     }
 }
 
-/// Shows caller-supplied RGBA8 frames, scaled to fit or 1:1. See the [module docs](self).
+/// Shows caller-supplied RGBA8 frames, scaled to fit or 1:1.
 pub struct VideoSurface {
     inner: Rc<RefCell<Inner>>,
     scaling: VideoScaling,
@@ -389,8 +389,7 @@ impl VideoSurface {
         Self::with_backend(Backend::Gpu, cx)
     }
 
-    /// A surface that never touches video textures and paints a placeholder instead; see the
-    /// [module docs](self#tests-and-the-placeholder-backend).
+    /// A surface that never touches video textures and paints a placeholder instead.
     pub fn placeholder(cx: &mut Context<Self>) -> Self {
         Self::with_backend(Backend::Placeholder, cx)
     }

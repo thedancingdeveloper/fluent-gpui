@@ -11,9 +11,13 @@ use gpui::{pulsating_between, Animation};
 /// status dot pulses.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConnectionBadgeState {
+    /// The disconnected option.
     Disconnected,
+    /// The pairing option.
     Pairing,
+    /// The paired option.
     Paired,
+    /// The error option.
     Error,
 }
 
@@ -27,6 +31,7 @@ pub struct ConnectionBadge {
 }
 
 impl ConnectionBadge {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>, state: ConnectionBadgeState) -> Self {
         Self {
             id: id.into(),

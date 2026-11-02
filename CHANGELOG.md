@@ -12,6 +12,8 @@ per crate.
 
 ## Unreleased
 
+- fluent-primitives: deny missing public API documentation and document every exported control and supporting type (WI-2945).
+
 - docs: document DPI scaling conversion and resize behavior across Windows DirectX, Linux X11, and Linux Wayland, with native-run evidence requirements (WI-3061).
 - Layout: add Fluent 2 Breadcrumb and Pagination controls with overflow menus, current-item semantics, RTL separators, and keyboard-ready controls (WI-3036).
 - fluent-layout, gallery: Drawer with inline and overlay modes, RTL-aware start/end placement, size presets, reduced-motion-aware transitions, focus trapping and opener restoration (WI-3038).

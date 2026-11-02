@@ -37,6 +37,7 @@ impl Default for Searchbox {
 }
 
 impl Searchbox {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new() -> Self {
         Self::default()
     }
@@ -48,35 +49,42 @@ impl Searchbox {
         self
     }
 
+    /// Returns the current value.
     pub fn value(mut self, value: impl Into<SharedString>) -> Self {
         self.value = value.into().to_string();
         self
     }
 
+    /// Sets the placeholder configuration for this control.
     pub fn placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
         self.placeholder = placeholder.into();
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Registers a handler for change events.
     pub fn on_change(mut self, f: impl Fn(SharedString, &mut App) + 'static) -> Self {
         self.on_change = Some(Box::new(f));
         self
     }
 
+    /// Registers a handler for submit events.
     pub fn on_submit(mut self, f: impl Fn(SharedString, &mut App) + 'static) -> Self {
         self.on_submit = Some(Box::new(f));
         self
     }
 
+    /// Returns the current text.
     pub fn text(&self) -> &str {
         &self.value
     }
 
+    /// Sets the value value.
     pub fn set_value(&mut self, value: impl Into<SharedString>, cx: &mut Context<Self>) {
         self.value = value.into().to_string();
         cx.notify();

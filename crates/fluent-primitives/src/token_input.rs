@@ -10,13 +10,18 @@ use gpui::{
 use crate::{Chip, SuggestionItem, SuggestionPopover};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// A Fluent primitive for representing token input token in an interface.
 pub struct TokenInputToken {
+    /// The value value.
     pub value: SharedString,
+    /// The label value.
     pub label: SharedString,
+    /// The valid value.
     pub valid: bool,
 }
 
 impl TokenInputToken {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(value: impl Into<SharedString>, label: impl Into<SharedString>) -> Self {
         Self {
             value: value.into(),
@@ -25,11 +30,13 @@ impl TokenInputToken {
         }
     }
 
+    /// Sets the valid configuration for this control.
     pub fn valid(mut self, valid: bool) -> Self {
         self.valid = valid;
         self
     }
 
+    /// Sets the invalid configuration for this control.
     pub fn invalid(mut self) -> Self {
         self.valid = false;
         self
@@ -37,13 +44,18 @@ impl TokenInputToken {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// A Fluent primitive for representing token input suggestion in an interface.
 pub struct TokenInputSuggestion {
+    /// The value value.
     pub value: SharedString,
+    /// The label value.
     pub label: SharedString,
+    /// The detail value.
     pub detail: Option<SharedString>,
 }
 
 impl TokenInputSuggestion {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(value: impl Into<SharedString>, label: impl Into<SharedString>) -> Self {
         Self {
             value: value.into(),
@@ -52,6 +64,7 @@ impl TokenInputSuggestion {
         }
     }
 
+    /// Sets the detail configuration for this control.
     pub fn detail(mut self, detail: impl Into<SharedString>) -> Self {
         self.detail = Some(detail.into());
         self
@@ -59,6 +72,7 @@ impl TokenInputSuggestion {
 }
 
 #[allow(clippy::type_complexity)]
+/// A Fluent primitive for representing token input in an interface.
 pub struct TokenInput {
     tokens: Vec<TokenInputToken>,
     suggestions: Vec<TokenInputSuggestion>,
@@ -108,6 +122,7 @@ impl Default for TokenInput {
 }
 
 impl TokenInput {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new() -> Self {
         Self::default()
     }
@@ -119,16 +134,19 @@ impl TokenInput {
         self
     }
 
+    /// Sets the tokens configuration for this control.
     pub fn tokens(mut self, tokens: impl IntoIterator<Item = TokenInputToken>) -> Self {
         self.tokens = tokens.into_iter().collect();
         self
     }
 
+    /// Sets the token configuration for this control.
     pub fn token(mut self, value: impl Into<SharedString>, label: impl Into<SharedString>) -> Self {
         self.tokens.push(TokenInputToken::new(value, label));
         self
     }
 
+    /// Sets the suggestions configuration for this control.
     pub fn suggestions(
         mut self,
         suggestions: impl IntoIterator<Item = TokenInputSuggestion>,
@@ -137,6 +155,7 @@ impl TokenInput {
         self
     }
 
+    /// Sets the suggestion configuration for this control.
     pub fn suggestion(
         mut self,
         value: impl Into<SharedString>,
@@ -147,44 +166,53 @@ impl TokenInput {
         self
     }
 
+    /// Sets the placeholder configuration for this control.
     pub fn placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
         self.placeholder = placeholder.into();
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Sets the error configuration for this control.
     pub fn error(mut self, error: bool) -> Self {
         self.error = error;
         self
     }
 
+    /// Sets the allow freeform configuration for this control.
     pub fn allow_freeform(mut self, allow_freeform: bool) -> Self {
         self.allow_freeform = allow_freeform;
         self
     }
 
+    /// Registers a handler for change events.
     pub fn on_change(mut self, f: impl Fn(Vec<TokenInputToken>, &mut App) + 'static) -> Self {
         self.on_change = Some(Box::new(f));
         self
     }
 
+    /// Registers a handler for query change events.
     pub fn on_query_change(mut self, f: impl Fn(SharedString, &mut App) + 'static) -> Self {
         self.on_query_change = Some(Box::new(f));
         self
     }
 
+    /// Returns the current values.
     pub fn values(&self) -> &[TokenInputToken] {
         &self.tokens
     }
 
+    /// Returns the current query.
     pub fn query(&self) -> &str {
         &self.query
     }
 
+    /// Sets the tokens value.
     pub fn set_tokens(
         &mut self,
         tokens: impl IntoIterator<Item = TokenInputToken>,
@@ -214,6 +242,7 @@ impl TokenInput {
         self.open = false;
     }
 
+    /// Sets the suggestions value.
     pub fn set_suggestions(
         &mut self,
         suggestions: impl IntoIterator<Item = TokenInputSuggestion>,
@@ -226,6 +255,7 @@ impl TokenInput {
         cx.notify();
     }
 
+    /// Sets the query value.
     pub fn set_query(&mut self, query: impl Into<SharedString>, cx: &mut Context<Self>) {
         self.query = query.into().to_string();
         self.highlighted = 0;
@@ -234,6 +264,7 @@ impl TokenInput {
         cx.notify();
     }
 
+    /// Removes the requested token.
     pub fn remove_token(&mut self, index: usize, cx: &mut Context<Self>) {
         if index >= self.tokens.len() {
             return;

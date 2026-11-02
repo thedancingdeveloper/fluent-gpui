@@ -20,6 +20,7 @@ pub struct Switch {
 }
 
 impl Switch {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -38,6 +39,7 @@ impl Switch {
         self
     }
 
+    /// Sets the on configuration for this control.
     pub fn on(mut self, on: bool) -> Self {
         self.on = on;
         self
@@ -49,6 +51,7 @@ impl Switch {
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self

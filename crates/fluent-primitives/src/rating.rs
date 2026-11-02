@@ -7,6 +7,7 @@ use std::rc::Rc;
 
 #[allow(clippy::type_complexity)]
 #[derive(IntoElement)]
+/// A Fluent primitive for representing rating in an interface.
 pub struct Rating {
     id: ElementId,
     value: f64,
@@ -18,6 +19,7 @@ pub struct Rating {
     on_change: Option<Rc<dyn Fn(f64, &mut Window, &mut App) + 'static>>,
 }
 impl Rating {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -30,36 +32,44 @@ impl Rating {
             on_change: None,
         }
     }
+    /// Returns the current value.
     pub fn value(mut self, v: f64) -> Self {
         self.value = v;
         self
     }
+    /// Sets the max configuration for this control.
     pub fn max(mut self, v: u8) -> Self {
         self.max = v.max(1);
         self
     }
+    /// Sets the step configuration for this control.
     pub fn step(mut self, v: f64) -> Self {
         if v == 0.5 || v == 1. {
             self.step = v
         };
         self
     }
+    /// Sets the readonly configuration for this control.
     pub fn readonly(mut self, v: bool) -> Self {
         self.readonly = v;
         self
     }
+    /// Sets the interactive configuration for this control.
     pub fn interactive(mut self, v: bool) -> Self {
         self.readonly = !v;
         self
     }
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, v: bool) -> Self {
         self.disabled = v;
         self
     }
+    /// Returns the current label.
     pub fn label(mut self, v: impl Into<SharedString>) -> Self {
         self.label = Some(v.into());
         self
     }
+    /// Registers a handler for change events.
     pub fn on_change(mut self, f: impl Fn(f64, &mut Window, &mut App) + 'static) -> Self {
         self.on_change = Some(Rc::new(f));
         self

@@ -8,12 +8,16 @@ use gpui::{
 };
 
 #[derive(Clone, Debug)]
+/// A Fluent primitive for representing combobox option in an interface.
 pub struct ComboboxOption {
+    /// The value value.
     pub value: SharedString,
+    /// The label value.
     pub label: SharedString,
 }
 
 impl ComboboxOption {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(value: impl Into<SharedString>, label: impl Into<SharedString>) -> Self {
         Self {
             value: value.into(),
@@ -71,6 +75,7 @@ impl Default for Combobox {
 }
 
 impl Combobox {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new() -> Self {
         Self::default()
     }
@@ -82,11 +87,13 @@ impl Combobox {
         self
     }
 
+    /// Sets the options configuration for this control.
     pub fn options(mut self, options: impl IntoIterator<Item = ComboboxOption>) -> Self {
         self.options = options.into_iter().collect();
         self
     }
 
+    /// Sets the option configuration for this control.
     pub fn option(
         mut self,
         value: impl Into<SharedString>,
@@ -96,6 +103,7 @@ impl Combobox {
         self
     }
 
+    /// Returns the current selected.
     pub fn selected(mut self, value: impl Into<SharedString>) -> Self {
         let value = value.into();
         self.query = self
@@ -108,31 +116,37 @@ impl Combobox {
         self
     }
 
+    /// Sets the placeholder configuration for this control.
     pub fn placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
         self.placeholder = placeholder.into();
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Sets the freeform configuration for this control.
     pub fn freeform(mut self, freeform: bool) -> Self {
         self.freeform = freeform;
         self
     }
 
+    /// Returns the current query.
     pub fn query(mut self, query: impl Into<SharedString>) -> Self {
         self.query = query.into().to_string();
         self
     }
 
+    /// Registers a handler for select events.
     pub fn on_select(mut self, f: impl Fn(SharedString, &mut App) + 'static) -> Self {
         self.on_select = Some(Box::new(f));
         self
     }
 
+    /// Sets the selected value configuration for this control.
     pub fn selected_value(&self) -> Option<&SharedString> {
         self.value.as_ref()
     }

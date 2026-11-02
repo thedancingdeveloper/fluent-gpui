@@ -9,6 +9,7 @@ pub struct Tooltip {
 }
 
 impl Tooltip {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(text: impl Into<SharedString>) -> Self {
         Self {
             text: text.into(),
@@ -16,6 +17,7 @@ impl Tooltip {
         }
     }
 
+    /// Sets the trigger configuration for this control.
     pub fn trigger(mut self, trigger: impl IntoElement) -> Self {
         self.trigger = Some(trigger.into_any_element());
         self

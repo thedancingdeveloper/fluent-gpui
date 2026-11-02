@@ -6,11 +6,16 @@ use gpui::{
 /// Which step of the type ramp to use.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum LabelSize {
+    /// The caption option.
     Caption,
     #[default]
+    /// The body option.
     Body,
+    /// The subtitle option.
     Subtitle,
+    /// The title option.
     Title,
+    /// The display option.
     Display,
 }
 
@@ -29,6 +34,7 @@ pub struct Label {
 }
 
 impl Label {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(text: impl Into<SharedString>) -> Self {
         Self {
             text: text.into(),
@@ -39,11 +45,13 @@ impl Label {
         }
     }
 
+    /// Sets the size configuration for this control.
     pub fn size(mut self, size: LabelSize) -> Self {
         self.size = size;
         self
     }
 
+    /// Returns the current color.
     pub fn color(mut self, color: impl Into<Hsla>) -> Self {
         self.color = Some(color.into());
         self

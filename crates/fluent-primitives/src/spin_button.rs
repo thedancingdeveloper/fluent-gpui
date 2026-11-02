@@ -50,6 +50,7 @@ pub struct SpinButton {
 }
 
 impl SpinButton {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -66,6 +67,7 @@ impl SpinButton {
         }
     }
 
+    /// Returns the current value.
     pub fn value(mut self, value: f64) -> Self {
         self.value = value;
         self
@@ -87,6 +89,7 @@ impl SpinButton {
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
@@ -98,6 +101,7 @@ impl SpinButton {
         self
     }
 
+    /// Sets the tab index configuration for this control.
     pub fn tab_index(mut self, index: isize) -> Self {
         self.tab_index = Some(index);
         self

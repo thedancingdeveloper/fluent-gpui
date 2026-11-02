@@ -5,7 +5,9 @@ use gpui::{div, prelude::*, px, App, IntoElement, RenderOnce, Window};
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DividerOrientation {
     #[default]
+    /// The horizontal option.
     Horizontal,
+    /// The vertical option.
     Vertical,
 }
 
@@ -16,12 +18,14 @@ pub struct Divider {
 }
 
 impl Divider {
+    /// Returns the horizontal value.
     pub fn horizontal() -> Self {
         Self {
             orientation: DividerOrientation::Horizontal,
         }
     }
 
+    /// Returns the vertical value.
     pub fn vertical() -> Self {
         Self {
             orientation: DividerOrientation::Vertical,

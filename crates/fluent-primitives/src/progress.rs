@@ -33,6 +33,7 @@ pub struct ProgressBar {
 
 impl ProgressBar {
     #[track_caller]
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(value: f32) -> Self {
         Self {
             id: core::panic::Location::caller().into(),
@@ -75,16 +76,19 @@ impl ProgressBar {
         self
     }
 
+    /// Sets the success configuration for this control.
     pub fn success(mut self) -> Self {
         self.status = ProgressStatus::Success;
         self
     }
 
+    /// Sets the warning configuration for this control.
     pub fn warning(mut self) -> Self {
         self.status = ProgressStatus::Warning;
         self
     }
 
+    /// Sets the error configuration for this control.
     pub fn error(mut self) -> Self {
         self.status = ProgressStatus::Error;
         self

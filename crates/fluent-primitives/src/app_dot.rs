@@ -16,6 +16,7 @@ pub struct AppDot {
 }
 
 impl AppDot {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(seed: impl Into<SharedString>) -> Self {
         let seed: SharedString = seed.into();
         let letter: SharedString = seed
@@ -32,16 +33,19 @@ impl AppDot {
         }
     }
 
+    /// Sets the letter configuration for this control.
     pub fn letter(mut self, letter: impl Into<SharedString>) -> Self {
         self.letter = letter.into();
         self
     }
 
+    /// Sets the hue configuration for this control.
     pub fn hue(mut self, deg: f32) -> Self {
         self.hue = Some(deg);
         self
     }
 
+    /// Sets the size configuration for this control.
     pub fn size(mut self, size: f32) -> Self {
         self.size = size;
         self
