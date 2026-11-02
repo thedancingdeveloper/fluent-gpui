@@ -5,8 +5,8 @@ use fluent_layout::{
     TabStrip, Workspace,
 };
 use fluent_primitives::{
-    InputCapture, InputCaptureEvent, TerminalCell, TerminalGrid, TerminalView, TerminalViewEvent,
-    VideoScaling, VideoSurface, VideoSurfaceEvent,
+    InputCapture, InputCaptureEvent, Link, LinkAppearance, TerminalCell, TerminalGrid,
+    TerminalView, TerminalViewEvent, VideoScaling, VideoSurface, VideoSurfaceEvent,
 };
 use fluent_ribbon::RibbonBar;
 use gpui::{div, prelude::*, rgb, Context, Entity, IntoElement, Render, SharedString, Window};
@@ -82,6 +82,29 @@ impl Render for InputCaptureDemo {
             .p_2()
             .bg(colors.surface)
             .text_color(colors.on_subtle)
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap_3()
+                    .child(Link::new("gallery-link-default", "Default link").on_click(|_, _, _| {}))
+                    .child(
+                        Link::new("gallery-link-subtle", "Subtle link")
+                            .appearance(LinkAppearance::Subtle)
+                            .on_click(|_, _, _| {}),
+                    )
+                    .child(Link::new("gallery-link-disabled", "Disabled link").disabled(true)),
+            )
+            .child(
+                div()
+                    .child("Inline link: read the ")
+                    .child(
+                        Link::new("gallery-link-inline", "input capture guide")
+                            .open_url("https://github.com/sprooty/fluent-gpui"),
+                    )
+                    .child(" before grabbing input."),
+            )
             .child(self.last.clone())
             .child(div().flex_1().child(self.capture.clone()))
     }
