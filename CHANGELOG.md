@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Add interaction coverage for text-input editing and clipboard shortcuts, textarea newlines, and Escape-cleared searchboxes (WI-2909).
 - fluent-test-utils: add compact role, accessible-name and state snapshots of rendered AccessKit trees, with Expander coverage (WI-2915).
 - Add click, keyboard, dismissal, callback, and filtering interaction coverage for radio groups, dropdowns, and comboboxes.
 - Add headless click and keyboard interaction coverage for buttons, checkboxes, and switches.

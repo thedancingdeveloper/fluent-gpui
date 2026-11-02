@@ -275,3 +275,32 @@ impl Focusable for Textarea {
             .unwrap_or_else(|| cx.focus_handle().tab_stop(true))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::TestAppContext;
+
+    use super::*;
+
+    #[gpui::test]
+    fn typing_and_enter_edit_multiline_text(cx: &mut TestAppContext) {
+        let (area, cx) = open_fluent_test_window(cx, |_, _| Textarea::new());
+        let focus = area.read_with(cx, |area, _| {
+            area.focus_handle
+                .as_ref()
+                .expect("rendered focus handle")
+                .clone()
+        });
+        cx.update(|window, cx| window.focus(&focus, cx));
+
+        cx.type_text("first");
+        cx.type_keys("enter");
+        cx.type_text("second");
+
+        assert_eq!(
+            area.read_with(cx, |area, _| area.text().to_owned()),
+            "first\nsecond"
+        );
+    }
+}

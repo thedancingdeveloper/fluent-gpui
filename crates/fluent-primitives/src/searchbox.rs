@@ -92,6 +92,9 @@ impl Searchbox {
         }
 
         match ev.keystroke.key.as_str() {
+            "escape" => {
+                self.clear(cx);
+            }
             "backspace" => {
                 self.value.pop();
                 self.emit_change(cx);
@@ -254,5 +257,33 @@ impl Focusable for Searchbox {
         self.focus_handle
             .clone()
             .unwrap_or_else(|| cx.focus_handle().tab_stop(true))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::TestAppContext;
+
+    use super::*;
+
+    #[gpui::test]
+    fn escape_clears_search_text(cx: &mut TestAppContext) {
+        let (search, cx) = open_fluent_test_window(cx, |_, _| Searchbox::new().value("needle"));
+        let focus = search.read_with(cx, |search, _| {
+            search
+                .focus_handle
+                .as_ref()
+                .expect("rendered focus handle")
+                .clone()
+        });
+        cx.update(|window, cx| window.focus(&focus, cx));
+
+        cx.type_keys("escape");
+
+        assert_eq!(
+            search.read_with(cx, |search, _| search.text().to_owned()),
+            ""
+        );
     }
 }
