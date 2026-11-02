@@ -1,10 +1,13 @@
 use std::sync::Arc;
 
-use crate::data_status::{status_block, DataStatusKind};
+use crate::{
+    data_status::{status_block, DataStatusKind},
+    virtual_list::VirtualList,
+};
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, App, ClickEvent, IntoElement, KeyDownEvent, RenderOnce, Role,
-    ScrollHandle, SharedString, Window,
+    SharedString, Window,
 };
 
 type RowClickHandler = Arc<dyn Fn(SharedString, &ClickEvent, &mut Window, &mut App) + 'static>;
@@ -113,7 +116,7 @@ impl DataColumn {
     }
 
     pub fn width(mut self, width: f32) -> Self {
-        self.width = Some(width);
+        self.width = Some(width.clamp(48.0, 600.0));
         self
     }
 
@@ -317,10 +320,13 @@ impl Default for DataTable {
 
 impl RenderOnce for DataTable {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let scroll = window
-            .use_keyed_state("data-table-scroll", cx, |_, _| ScrollHandle::new())
-            .read(cx)
-            .clone();
+        let widths = window.use_keyed_state("data-table-widths", cx, |_, _| {
+            self.columns
+                .iter()
+                .map(|column| column.width.unwrap_or(120.0).clamp(48.0, 600.0))
+                .collect::<Vec<f32>>()
+        });
+        let current_widths = widths.read(cx).clone();
         let theme = cx.theme();
         let colors = theme.colors.clone();
         let spacing = theme.spacing;
@@ -375,7 +381,6 @@ impl RenderOnce for DataTable {
         let on_row_activate = self.on_row_click.clone();
         let on_row_extend = self.on_row_extend.clone();
         let key_row_ids = row_ids.clone();
-        let key_scroll = scroll.clone();
 
         let mut root = div()
             .id("data-table")
@@ -406,19 +411,7 @@ impl RenderOnce for DataTable {
                     &on_row_select
                 };
                 if let Some(mv) = mv {
-                    let bounds = key_scroll.bounds();
-                    let row_height = key_scroll
-                        .bounds_for_item(0)
-                        .map(|b| b.size.height)
-                        .filter(|h| *h > px(0.0));
-                    let page = match row_height {
-                        Some(h) if bounds.size.height > px(0.0) => {
-                            (bounds.size.height / h).floor() as usize
-                        }
-                        _ => 10,
-                    };
-                    let next = move_target(selected_index, mv, page, key_row_ids.len());
-                    key_scroll.scroll_to_item(next);
+                    let next = move_target(selected_index, mv, 10, key_row_ids.len());
                     if let Some(handler) = handler {
                         handler(key_row_ids[next].clone(), window, app);
                     }
@@ -482,6 +475,36 @@ impl RenderOnce for DataTable {
                 label = label.child(arrow);
             }
 
+            let resize_widths = widths.clone();
+            let key_resize_widths = resize_widths.clone();
+            let resize_index = col_idx;
+            let resize_handle = div()
+                .id(("data-column-resize", col_idx as u64))
+                .w(px(6.0))
+                .h_full()
+                .flex_none()
+                .cursor_pointer()
+                .on_click(move |_, _, cx| {
+                    key_resize_widths.update(cx, |widths, cx| {
+                        if let Some(width) = widths.get_mut(resize_index) {
+                            *width = (*width + 8.0).clamp(48.0, 600.0);
+                            cx.notify();
+                        }
+                    });
+                })
+                .on_key_down(move |ev, _, cx| {
+                    let delta = match ev.keystroke.key.as_str() {
+                        "left" => -8.0,
+                        "right" => 8.0,
+                        _ => return,
+                    };
+                    resize_widths.update(cx, |widths, cx| {
+                        if let Some(width) = widths.get_mut(resize_index) {
+                            *width = (*width + delta).clamp(48.0, 600.0);
+                            cx.notify();
+                        }
+                    });
+                });
             let mut cell = div()
                 .id(("data-header", col_idx as u64))
                 .role(Role::ColumnHeader)
@@ -497,7 +520,8 @@ impl RenderOnce for DataTable {
                 .text_color(colors.on_subtle)
                 .border_r_1()
                 .border_color(colors.stroke_neutral_subtle)
-                .child(label);
+                .child(label)
+                .child(resize_handle);
             if column.sortable {
                 if let Some(on_sort) = self.on_sort.clone() {
                     let column_id = column.id.clone();
@@ -512,11 +536,8 @@ impl RenderOnce for DataTable {
                         });
                 }
             }
-            if let Some(width) = column.width {
-                cell = cell.w(px(width)).flex_none();
-            } else {
-                cell = cell.flex_1();
-            }
+            let width = current_widths.get(col_idx).copied().unwrap_or(120.0);
+            cell = cell.w(px(width)).flex_none();
             header = header.child(cell);
         }
 
@@ -536,16 +557,17 @@ impl RenderOnce for DataTable {
             return root.child(status_block("data-table-status", kind, message, cx));
         }
 
-        let mut body = div().id("data-table-body").flex().flex_col();
-        if let Some(height) = self.max_body_height {
-            body = body.overflow_y_scroll().max_h(px(height));
-        }
-        if self.max_body_height.is_some() {
-            body = body.track_scroll(&scroll);
-        }
-
-        for (idx, row) in rows.into_iter().enumerate() {
-            let is_selected = self.selected_id.as_ref() == Some(&row.id);
+        let count = rows.len();
+        let columns = self.columns.clone();
+        let selected_id = self.selected_id.clone();
+        let on_row_click = self.on_row_click.clone();
+        let colors_for_rows = colors.clone();
+        let spacing_for_rows = spacing;
+        let typography_for_rows = typography;
+        let row_height = components.menu_item_height;
+        let build_row = move |idx: usize, _window: &mut Window, _cx: &mut App| {
+            let row = rows[idx].clone();
+            let is_selected = selected_id.as_ref() == Some(&row.id);
             let row_id = row.id.clone();
             let mut row_el = div()
                 .id(("data-row", idx as u64))
@@ -554,23 +576,23 @@ impl RenderOnce for DataTable {
                 .aria_selected(is_selected)
                 .flex()
                 .flex_row()
-                .min_h(px(components.menu_item_height))
+                .min_h(px(row_height))
                 .bg(if is_selected {
-                    colors.neutral_selected
+                    colors_for_rows.neutral_selected
                 } else {
-                    colors.surface
+                    colors_for_rows.surface
                 })
                 .border_b_1()
-                .border_color(colors.stroke_neutral_subtle);
+                .border_color(colors_for_rows.stroke_neutral_subtle);
 
-            if let Some(handler) = self.on_row_click.clone() {
+            if let Some(handler) = on_row_click.clone() {
                 row_el = row_el
                     .cursor_pointer()
                     .hover({
-                        let hover = colors.neutral_hover;
+                        let hover = colors_for_rows.neutral_hover;
                         move |s| {
                             s.bg(if is_selected {
-                                colors.neutral_selected
+                                colors_for_rows.neutral_selected
                             } else {
                                 hover
                             })
@@ -579,7 +601,7 @@ impl RenderOnce for DataTable {
                     .on_click(move |ev, win, app| handler(row_id.clone(), ev, win, app));
             }
 
-            for (col_idx, column) in self.columns.iter().enumerate() {
+            for (col_idx, column) in columns.iter().enumerate() {
                 let data_cell = row
                     .cells
                     .get(col_idx)
@@ -595,24 +617,29 @@ impl RenderOnce for DataTable {
                     .items_center()
                     .when(align == DataCellAlign::Center, |d| d.justify_center())
                     .when(align == DataCellAlign::End, |d| d.justify_end())
-                    .px(px(spacing.md))
-                    .py(px(spacing.xs))
-                    .text_size(px(typography.body.size))
-                    .text_color(colors.on_neutral)
+                    .px(px(spacing_for_rows.md))
+                    .py(px(spacing_for_rows.xs))
+                    .text_size(px(typography_for_rows.body.size))
+                    .text_color(colors_for_rows.on_neutral)
                     .border_r_1()
-                    .border_color(colors.stroke_neutral_subtle)
+                    .border_color(colors_for_rows.stroke_neutral_subtle)
                     .child(data_cell.text);
-                if let Some(width) = column.width {
-                    cell = cell.w(px(width)).flex_none();
-                } else {
-                    cell = cell.flex_1();
-                }
+                let width = current_widths.get(col_idx).copied().unwrap_or(120.0);
+                cell = cell.w(px(width)).flex_none();
                 row_el = row_el.child(cell);
             }
 
-            body = body.child(row_el);
+            row_el.into_any_element()
+        };
+        let mut body = div().id("data-table-body").flex().flex_col().h_full();
+        if let Some(height) = self.max_body_height {
+            body = body.h(px(height)).overflow_hidden();
         }
-
+        body = body.child(
+            VirtualList::new("data-table-virtual-list", count, build_row)
+                .row_height(components.menu_item_height)
+                .reveal(selected_index),
+        );
         root.child(body)
     }
 }
