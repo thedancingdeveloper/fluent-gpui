@@ -96,8 +96,10 @@ impl RenderOnce for IconButton {
         let disabled = self.disabled;
         let on_click = self.on_click;
 
+        let debug_id = self.id.to_string();
         let mut el = div()
             .id(self.id)
+            .debug_selector(move || debug_id)
             .flex()
             .items_center()
             .justify_center()
@@ -107,6 +109,8 @@ impl RenderOnce for IconButton {
 
         if !disabled {
             el = el
+                .focusable()
+                .tab_stop(true)
                 .cursor_pointer()
                 .hover(move |s| s.bg(bg_hover))
                 .active(move |s| s.bg(bg_active));
@@ -117,5 +121,76 @@ impl RenderOnce for IconButton {
         }
 
         el.child(gpui::svg().path(self.icon).size(px(icon_px)).text_color(fg))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{cell::Cell, rc::Rc};
+
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Context, InputEvent as _, KeyUpEvent, Keystroke, Render, TestAppContext};
+
+    use super::*;
+
+    struct Host {
+        disabled: bool,
+        clicks: Rc<Cell<usize>>,
+    }
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let clicks = self.clicks.clone();
+            IconButton::new("icon-button", "icons/checkmark.svg")
+                .disabled(self.disabled)
+                .on_click(move |_, _, _| clicks.set(clicks.get() + 1))
+        }
+    }
+
+    fn open(
+        cx: &mut TestAppContext,
+        disabled: bool,
+    ) -> (Rc<Cell<usize>>, &mut gpui::VisualTestContext) {
+        let clicks = Rc::new(Cell::new(0));
+        let host_clicks = clicks.clone();
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| Host {
+            disabled,
+            clicks: host_clicks,
+        });
+        (clicks, cx)
+    }
+
+    fn press(cx: &mut gpui::VisualTestContext, key: &'static str) {
+        cx.type_keys(key);
+        let keystroke = Keystroke::parse(key).expect("valid test keystroke");
+        cx.update(|window, app| {
+            window.dispatch_event(
+                KeyUpEvent {
+                    keystroke,
+                    scan_code: None,
+                }
+                .to_platform_input(),
+                app,
+            );
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+    }
+
+    #[gpui::test]
+    fn click_enter_and_space_activate_when_enabled(cx: &mut TestAppContext) {
+        let (clicks, cx) = open(cx, false);
+        cx.click_selector("icon-button");
+        cx.update(|window, app| window.draw(app).clear(app));
+        press(cx, "enter");
+        press(cx, "space");
+        assert_eq!(clicks.get(), 3);
+    }
+
+    #[gpui::test]
+    fn disabled_icon_button_ignores_clicks(cx: &mut TestAppContext) {
+        let (clicks, cx) = open(cx, true);
+        cx.click_selector("icon-button");
+        assert_eq!(clicks.get(), 0);
     }
 }

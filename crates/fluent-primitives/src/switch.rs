@@ -75,8 +75,10 @@ impl RenderOnce for Switch {
         // Thumb offset: left (off) or right (on)
         let thumb_ml = if self.on { px(20.0) } else { px(2.0) };
 
+        let debug_id = self.id.to_string();
         let mut el = div()
             .id(self.id)
+            .debug_selector(move || debug_id)
             .w(px(40.0))
             .h(px(20.0))
             .rounded(px(9999.0))
@@ -88,7 +90,7 @@ impl RenderOnce for Switch {
             .relative();
 
         if !disabled {
-            el = el.cursor_pointer();
+            el = el.focusable().tab_stop(true).cursor_pointer();
         }
 
         if let Some(handler) = on_click.filter(|_| !disabled) {
@@ -103,5 +105,79 @@ impl RenderOnce for Switch {
                 .rounded(px(9999.0))
                 .bg(thumb_color),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Context, Entity, InputEvent as _, KeyUpEvent, Keystroke, Render, TestAppContext};
+
+    use super::*;
+
+    struct Host {
+        on: bool,
+        disabled: bool,
+    }
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let entity = cx.entity();
+            Switch::new("switch")
+                .on(self.on)
+                .disabled(self.disabled)
+                .on_click(move |on, _, _, cx| {
+                    entity.update(cx, |host, cx| {
+                        host.on = on;
+                        cx.notify();
+                    });
+                })
+        }
+    }
+
+    fn open(
+        cx: &mut TestAppContext,
+        disabled: bool,
+    ) -> (Entity<Host>, &mut gpui::VisualTestContext) {
+        open_fluent_test_window(cx, move |_, _| Host {
+            on: false,
+            disabled,
+        })
+    }
+
+    fn press(cx: &mut gpui::VisualTestContext, key: &'static str) {
+        cx.type_keys(key);
+        let keystroke = Keystroke::parse(key).expect("valid test keystroke");
+        cx.update(|window, app| {
+            window.dispatch_event(
+                KeyUpEvent {
+                    keystroke,
+                    scan_code: None,
+                }
+                .to_platform_input(),
+                app,
+            );
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+    }
+
+    #[gpui::test]
+    fn click_enter_and_space_flip_switch_state(cx: &mut TestAppContext) {
+        let (host, cx) = open(cx, false);
+        cx.click_selector("switch");
+        assert!(host.read_with(cx, |host, _| host.on));
+        cx.update(|window, app| window.draw(app).clear(app));
+        press(cx, "enter");
+        assert!(!host.read_with(cx, |host, _| host.on));
+        press(cx, "space");
+        assert!(host.read_with(cx, |host, _| host.on));
+    }
+
+    #[gpui::test]
+    fn disabled_switch_does_not_flip(cx: &mut TestAppContext) {
+        let (host, cx) = open(cx, true);
+        cx.click_selector("switch");
+        assert!(!host.read_with(cx, |host, _| host.on));
     }
 }
