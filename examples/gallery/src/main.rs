@@ -2,8 +2,9 @@ use fluent_app::{FluentApp, TitleBar};
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_layout::{
     DataCell, DataColumn, DataRow, DataStatusKind, DataTable, DataTableState, DockPanel,
-    DockPosition, MenuBar, MessageBar, MessageIntent, ModalStack, Pane, SelectableList,
-    SelectableListItem, TabItem, TabStrip, Tree, TreeItem, Workspace,
+    DockPosition, Drawer, DrawerMode, DrawerPosition, DrawerSize, MenuBar, MessageBar,
+    MessageIntent, ModalStack, Pane, SelectableList, SelectableListItem, TabItem, TabStrip, Tree,
+    TreeItem, Workspace,
 };
 use fluent_primitives::{
     Avatar, Button, ButtonAppearance, Checkbox, CounterBadge, CounterBadgeAppearance,
@@ -459,6 +460,85 @@ impl Render for CounterBadgeDemo {
                     .child(CounterBadge::new(0).dot(true))
                     .child(CounterBadge::new(120).appearance(CounterBadgeAppearance::Ghost)),
             )
+    }
+}
+
+struct DrawerContent;
+
+impl Render for DrawerContent {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .flex()
+            .flex_col()
+            .gap_3()
+            .text_color(cx.theme().colors.on_neutral)
+            .child("Drawer")
+            .child("A logical start/end side sheet with inline and overlay modes.")
+    }
+}
+
+struct DrawerDemo {
+    drawer: Entity<Drawer>,
+}
+
+impl DrawerDemo {
+    fn new(cx: &mut Context<Self>) -> Self {
+        let content = cx.new(|_| DrawerContent);
+        let drawer = cx.new(|cx| {
+            Drawer::new(content.into(), cx)
+                .size(DrawerSize::Medium)
+                .initially_open(false)
+        });
+        Self { drawer }
+    }
+}
+
+impl Render for DrawerDemo {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let colors = cx.theme().colors.clone();
+        let drawer = self.drawer.clone();
+        let control = |id: &'static str,
+                       label: &'static str,
+                       action: fn(&mut Drawer, &mut Context<Drawer>)| {
+            let drawer = drawer.clone();
+            Button::new(id).label(label).on_click(move |_, _, cx| {
+                drawer.update(cx, action);
+            })
+        };
+        div()
+            .relative()
+            .size_full()
+            .p_3()
+            .flex()
+            .flex_col()
+            .gap_3()
+            .bg(colors.surface)
+            .text_color(colors.on_neutral)
+            .child("Drawer story")
+            .child(
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .gap_2()
+                    .child(control("drawer-toggle", "Open / close", |drawer, cx| {
+                        drawer.toggle(cx)
+                    }))
+                    .child(control("drawer-overlay-mode", "Overlay", |drawer, cx| {
+                        drawer.set_mode(DrawerMode::Overlay, cx);
+                        drawer.set_open(true, cx);
+                    }))
+                    .child(control("drawer-inline-mode", "Inline", |drawer, cx| {
+                        drawer.set_mode(DrawerMode::Inline, cx);
+                        drawer.set_open(true, cx);
+                    }))
+                    .child(control("drawer-start", "Start", |drawer, cx| {
+                        drawer.set_position(DrawerPosition::Start, cx)
+                    }))
+                    .child(control("drawer-end", "End", |drawer, cx| {
+                        drawer.set_position(DrawerPosition::End, cx)
+                    })),
+            )
+            .child(self.drawer.clone())
     }
 }
 
@@ -919,6 +999,7 @@ fn main() {
             opacity: 80.0,
         });
         let matrix_demo = cx.new(|_| ThemeMatrixDemo);
+        let drawer_demo = cx.new(DrawerDemo::new);
         let rtl_demo = cx.new(|cx| {
             cx.observe_global::<LayoutDirection>(|_, cx| cx.notify())
                 .detach();
@@ -930,7 +1011,7 @@ fn main() {
                 data: vec![data_states.into(), big_list.into(), big_tree.into()],
                 date_input: vec![date_demo.into(), input_demo.into(), range_demo.into()],
                 media: vec![terminal_demo.into(), video_demo.into()],
-                theme: vec![matrix_demo.into(), rtl_demo.into()],
+                theme: vec![drawer_demo.into(), matrix_demo.into(), rtl_demo.into()],
             })
         });
         let pane_content = host.clone();

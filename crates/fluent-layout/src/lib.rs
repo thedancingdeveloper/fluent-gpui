@@ -6,6 +6,7 @@ pub mod data_table;
 pub mod dialog;
 pub mod dock;
 pub mod document_viewer;
+pub mod drawer;
 pub mod flyout;
 pub mod menu_bar;
 pub mod menu_button;
@@ -39,6 +40,7 @@ pub use data_table::{
 pub use dialog::{Dialog, DialogAction};
 pub use dock::{DockPanel, DockPosition};
 pub use document_viewer::{DocumentViewer, RichDocument, RichDocumentBlock, RichTextRun};
+pub use drawer::{Drawer, DrawerMode, DrawerPosition, DrawerSize};
 pub use flyout::{Flyout, FlyoutPlacement};
 pub use menu_bar::{MenuBar, MenuItemDef};
 pub use menu_button::MenuButton;
