@@ -90,7 +90,7 @@ impl RenderOnce for IconButton {
         let radii = &theme.radii;
 
         let (bg, bg_hover, bg_active, fg) = match self.appearance {
-            ButtonAppearance::Accent => (
+            ButtonAppearance::Primary => (
                 if self.disabled {
                     colors.accent_disabled
                 } else {
@@ -119,6 +119,7 @@ impl RenderOnce for IconButton {
         let (icon_px, hit_px) = match self.size {
             ButtonSize::Normal => (16.0f32, 32.0f32),
             ButtonSize::Compact => (12.0f32, 24.0f32),
+            ButtonSize::Large => (20.0f32, 40.0f32),
         };
 
         let disabled = self.disabled;

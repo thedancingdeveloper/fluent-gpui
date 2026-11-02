@@ -106,6 +106,7 @@ impl RenderOnce for ToggleButton {
         let (px_val, py_val, font_size) = match self.size {
             ButtonSize::Normal => (px(spacing.md), px(spacing.sm), px(typography.body.size)),
             ButtonSize::Compact => (px(spacing.sm), px(spacing.xs), px(typography.caption.size)),
+            ButtonSize::Large => (px(spacing.lg), px(spacing.md), px(typography.subtitle.size)),
         };
 
         let disabled = self.disabled;

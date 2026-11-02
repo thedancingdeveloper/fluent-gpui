@@ -52,7 +52,10 @@ pub use avatar::Avatar;
 pub use badge::{
     Badge, BadgeVariant, CounterBadge, CounterBadgeAppearance, PresenceBadge, PresenceBadgeState,
 };
-pub use button::{Button, ButtonAppearance, ButtonShape, ButtonSize};
+pub use button::{
+    Button, ButtonAppearance, ButtonIconPosition, ButtonShape, ButtonSize, CompoundButton,
+    SplitButton,
+};
 pub use calendar::{Calendar, CalendarDate};
 pub use card::Card;
 pub use checkbox::{Checkbox, CheckboxState};
