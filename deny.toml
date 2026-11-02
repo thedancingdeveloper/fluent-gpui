@@ -62,7 +62,7 @@ deny = [
     { crate = "gpui", wrappers = [
         "fluent-core", "fluent-primitives", "fluent-ribbon", "fluent-layout",
         "fluent-app", "fluent-test-utils",
-        "gallery", "demo_app", "hello_world", "widgets", "form", "screenshots",
+        "gallery", "demo_app", "widgets", "form", "screenshots",
         "gpui_linux", "gpui_macros", "gpui_platform", "gpui_windows", "gpui_wgpu",
     ] },
 ]

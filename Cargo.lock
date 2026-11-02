@@ -2239,7 +2239,6 @@ dependencies = [
  "fluent-app",
  "fluent-core",
  "fluent-primitives",
- "gpui",
 ]
 
 [[package]]

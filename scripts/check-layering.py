@@ -18,7 +18,6 @@ BASELINE = {
     "examples/demo_app",
     "examples/form",
     "examples/gallery",
-    "examples/hello_world",
     "examples/screenshots",
     "examples/widgets",
 }
