@@ -78,7 +78,7 @@ Workers do not create git branches, push, open pull requests or poll CI.
 | graft line `zed-vendor` | Pristine copy of that closure. Only the vendor script's output lands on it. |
 | line `backlog-1` / `main` | `zed-vendor` merged in (`g line merge zed-vendor --into backlog-1`), plus the patch series and the `fluent-*` crates. |
 | `vendor/zed/UPSTREAM.md` | Zed commit, date and crate list of the current snapshot. |
-| `vendor/zed/PATCHES.md` | Every local patch: name, Cargo feature, upstream files it touches, upstream PR if any. Also the current patch-budget count. |
+| `vendor/zed/PATCHES.md` | Every local patch: name, Cargo feature, upstream files it touches, upstream PR if any. |
 
 The vendor script is `scripts/vendor-zed.py <rev> --zed <zed checkout>`
 (`--dry-run` lists the closure). It vendors Windows and Linux only: the
@@ -103,8 +103,8 @@ edited by hand.
   a feature.
 - Not in the patch set: a general custom-shader API, a web platform,
   anything Metal-only.
-- **Patch budget: 10 upstream files or fewer.** Growth is an operator
-  decision, recorded in `PATCHES.md` with the date.
+- No patch budget (operator, 2026-11-01): any number of upstream files may
+  be patched, but every patched file is listed in `PATCHES.md`.
 - No hand edits under `vendor/zed` outside the files `PATCHES.md` lists.
   `g diff` of `vendor/zed` between the `zed-vendor` tip and `backlog-1` must touch only those files.
   Reviewers run it on any batch that touches `vendor/zed` (it becomes a CI
@@ -124,7 +124,7 @@ YYYY-MM"). It is never folded into feature work. Steps:
    `vendor/zed/UPSTREAM.md`.
 2. **Merge `zed-vendor` into `backlog-1`** (`g line merge zed-vendor --into backlog-1`) **and re-apply the patch series**, patch
    by patch. A patch that no longer applies cleanly is rewritten, never
-   force-merged. Update `PATCHES.md` and the budget count.
+   force-merged. Update `PATCHES.md`.
 3. **Build on Windows and Linux.** Run the GPUI examples, the fork's
    validation examples `video_frame` and `backdrop_blur`, and the
    fluent-gpui gallery.
@@ -256,7 +256,6 @@ Batch review (by oversight):
 
 Needs the **operator**:
 
-- growing the patch budget past 10 upstream files;
 - changing the pull cadence;
 - changing platform scope;
 - any licence exception (there are none, and the default answer is no);

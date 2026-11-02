@@ -148,9 +148,10 @@ Target:
 Current implementation:
 
 - `surface_blur_layer` exists as a theme token.
-- `gpui::backdrop_blur(radius, tint)` is not yet re-applied to the vendored `gpui` (WI-1349).
-- Linux renders through `gpui_wgpu` and Windows through `gpui_windows` (DirectX); neither has a backdrop blur path yet.
-- Do not rely on blur as a visual primitive until WI-1349 lands.
+- `gpui::backdrop_blur(radius, tint)` is re-applied to the vendored `gpui` (WI-1349, patch `backdrop-blur`).
+- Linux (`gpui_wgpu`) copies the colour target before a blur quad and draws a single-pass cross-pattern blur under the tint. Where the surface does not allow `COPY_SRC`, the quad shows the tint over the last capture (or nothing).
+- Windows (`gpui_windows`, DirectX) has the same kernel, unverified at runtime (WI-1439).
+- Visual and performance validation on `demo_app` and the tooltip is WI-1438.
 
 ### Remote display / video surfaces
 
@@ -185,7 +186,7 @@ Current implementation:
 | Connection/status pill | `ConnectionBadge` | Implemented |
 | Loading skeletons | `Skeleton`, `SkeletonRow`, `Skeleton::wrap` | Implemented |
 | Tabular numbers | `FluentTextExt::tabular_nums()` | Implemented |
-| Backdrop blur | `gpui::backdrop_blur` | Not yet re-applied (WI-1349) |
+| Backdrop blur | `gpui::backdrop_blur` | Re-applied (WI-1349); visual check WI-1438, Windows runtime WI-1439 |
 | Video-frame surfaces | `VideoTextureId` APIs | Applied on wgpu and DirectX (WI-1348, WI-1434); not runtime-validated |
 | Web visual parity | Web backend | Future |
 

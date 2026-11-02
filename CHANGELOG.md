@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- gpui: re-apply backdrop blur (`backdrop_blur(radius, tint)`) on the vendored gpui, with a wgpu renderer path and an unverified DirectX path; drop the vendored patch budget from CONTRIBUTING (WI-1349).
 - gpui: backport upstream zed fix #65952 so entities read in paint callbacks or deferred draws inside a reused cached view still redraw the window when notified (WI-1346).
 - Docs: outstanding.md, README and VISUAL_TARGETS state the vendored-gpui status: video frames applied on wgpu and DirectX, not runtime-validated; blur not re-applied (WI-1437).
 - Primitives: `VideoSurface` shows caller-supplied RGBA8 frames (up to 8192 per side) on a gpui video texture: whole frames or dirty-region patches, texture allocated, reallocated on size change and freed on release; `Fit` (letterboxed) or `Native` 1:1 device-pixel-snapped scaling; `VideoLayout` widget-to-frame coordinate mapping and a `Resized` event in device pixels; `Video` accessibility role; a placeholder backend and `VideoRecorder` for tests. Fit scaling is linearly filtered (nearest needs a renderer patch). Gallery demo animates a generated frame. Windows DirectX path unverified (WI-2803).
