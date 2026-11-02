@@ -477,6 +477,83 @@ impl ColorScheme {
             tab_hover_bg: hex(0x1A1408),
         }
     }
+
+    /// High-contrast colour scheme, mapped from the Windows system colours
+    /// (Canvas, CanvasText, Highlight, HighlightText, GrayText, ButtonFace,
+    /// Hyperlink). Fills collapse to Canvas and every boundary is a full-contrast
+    /// stroke, so nothing relies on shadows or subtle fill differences.
+    pub fn high_contrast() -> Self {
+        let canvas = hex(0x000000); // Canvas / ButtonFace
+        let text = hex(0xFFFFFF); // CanvasText / ButtonText
+        let highlight = hex(0x1AEBFF); // Highlight
+        let highlight_text = hex(0x000000); // HighlightText
+        let gray_text = hex(0x3FF23F); // GrayText
+        let hyperlink = hex(0xFFFF00); // Hyperlink
+        let hover = hex(0x262626);
+        Self {
+            neutral: canvas,
+            neutral_hover: hover,
+            neutral_disabled: canvas,
+            neutral_selected: highlight,
+
+            accent: highlight,
+            accent_hover: hyperlink,
+            accent_disabled: canvas,
+            accent_selected: highlight,
+
+            subtle: canvas,
+            subtle_hover: hover,
+            subtle_disabled: canvas,
+            subtle_selected: highlight,
+
+            surface: canvas,
+            surface_dim: canvas,
+            surface_blur_layer: canvas,
+
+            on_neutral: text,
+            on_neutral_disabled: gray_text,
+            on_neutral_selected: highlight_text,
+            on_neutral_accent: highlight,
+
+            on_accent: highlight_text,
+            on_accent_disabled: gray_text,
+            on_accent_selected: highlight_text,
+
+            on_subtle: text,
+            on_subtle_disabled: gray_text,
+            on_subtle_selected: highlight_text,
+
+            stroke_neutral: text,
+            stroke_neutral_disabled: gray_text,
+            stroke_neutral_dim: text,
+            stroke_neutral_subtle: text,
+            stroke_accent: highlight,
+
+            status_info: highlight,
+            status_info_bg: canvas,
+            status_info_border: highlight,
+            status_success: gray_text,
+            status_success_bg: canvas,
+            status_success_border: gray_text,
+            status_warning: hyperlink,
+            status_warning_bg: canvas,
+            status_warning_border: hyperlink,
+            status_error: hex(0xFF6B6B),
+            status_error_bg: canvas,
+            status_error_border: hex(0xFF6B6B),
+
+            ribbon_bg: canvas,
+            ribbon_tab_active_bg: canvas,
+            ribbon_tab_indicator: highlight,
+            ribbon_group_separator: text,
+
+            panel_bg: canvas,
+            panel_border: text,
+            tab_strip_bg: canvas,
+            tab_active_bg: canvas,
+            tab_hover_bg: hover,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -484,12 +561,13 @@ mod tests {
     use super::ColorScheme;
     use gpui::Hsla;
 
-    fn themes() -> [(&'static str, ColorScheme); 4] {
+    fn themes() -> [(&'static str, ColorScheme); 5] {
         [
             ("dark", ColorScheme::dark()),
             ("light", ColorScheme::light()),
             ("midnight", ColorScheme::midnight()),
             ("ember", ColorScheme::ember()),
+            ("high contrast", ColorScheme::high_contrast()),
         ]
     }
 
@@ -624,4 +702,32 @@ mod tests {
 
     // Disabled foregrounds are intentionally muted to communicate disabled state;
     // they are excluded from the normal-text WCAG requirement above.
+
+    #[test]
+    fn high_contrast_pairs_meet_wcag_aaa() {
+        let c = ColorScheme::high_contrast();
+        let pairs = [
+            ("text on surface", c.on_neutral, c.surface),
+            ("text on neutral", c.on_neutral, c.neutral),
+            ("text on hover", c.on_neutral, c.neutral_hover),
+            (
+                "text on selected",
+                c.on_neutral_selected,
+                c.neutral_selected,
+            ),
+            ("text on accent", c.on_accent, c.accent),
+            ("text on accent hover", c.on_accent, c.accent_hover),
+            ("disabled text on surface", c.on_neutral_disabled, c.surface),
+            ("stroke on surface", c.stroke_neutral, c.surface),
+            ("accent stroke on surface", c.stroke_accent, c.surface),
+            ("panel border on panel", c.panel_border, c.panel_bg),
+        ];
+        for (name, fg, bg) in pairs {
+            assert!(
+                contrast(fg, bg) >= 7.0,
+                "high contrast {name} is {:.2}:1, expected at least 7:1",
+                contrast(fg, bg)
+            );
+        }
+    }
 }
