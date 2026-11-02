@@ -690,4 +690,185 @@ mod tests {
         cx.type_keys("enter");
         assert_eq!(log.borrow().activated, vec![SharedString::from("r0")]);
     }
+
+    /// Host that sorts through `on_sort` and keeps a keyed multi-selection fed by click modifiers.
+    struct Model {
+        sort: Option<(SharedString, DataSortDirection)>,
+        sort_calls: Vec<(SharedString, DataSortDirection)>,
+        selection: Vec<SharedString>,
+        anchor: Option<SharedString>,
+        rows: Vec<(&'static str, &'static str)>,
+    }
+
+    struct ModelHost(Rc<RefCell<Model>>);
+
+    impl Render for ModelHost {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let m = self.0.borrow();
+            let (sort_model, click_model) = (self.0.clone(), self.0.clone());
+            let (sort_entity, click_entity) = (cx.entity(), cx.entity());
+            let selected = m.selection.last().cloned();
+            let mut table = DataTable::new()
+                .columns([
+                    DataColumn::new("name", "Name").width(120.0).sortable(true),
+                    DataColumn::new("size", "Size")
+                        .width(80.0)
+                        .sortable(true)
+                        .sort_kind(DataSortKind::Number),
+                ])
+                .rows(
+                    m.rows
+                        .iter()
+                        .map(|(id, size)| DataRow::new(*id, [*id, *size])),
+                )
+                .on_sort(move |col, dir, _, _, app| {
+                    let mut m = sort_model.borrow_mut();
+                    m.sort = Some((col.clone(), dir));
+                    m.sort_calls.push((col, dir));
+                    drop(m);
+                    sort_entity.update(app, |_, cx| cx.notify());
+                })
+                .on_row_click(move |id, ev, _, app| {
+                    let mods = ev.modifiers();
+                    let mut m = click_model.borrow_mut();
+                    if mods.shift {
+                        let ids: Vec<SharedString> =
+                            m.rows.iter().map(|(i, _)| SharedString::from(*i)).collect();
+                        let anchor = m.anchor.clone().unwrap_or_else(|| id.clone());
+                        let a = ids.iter().position(|i| *i == anchor).unwrap_or(0);
+                        let b = ids.iter().position(|i| *i == id).unwrap_or(0);
+                        m.selection = ids[a.min(b)..=a.max(b)].to_vec();
+                    } else if mods.control {
+                        if let Some(pos) = m.selection.iter().position(|i| *i == id) {
+                            m.selection.remove(pos);
+                        } else {
+                            m.selection.push(id.clone());
+                        }
+                        m.anchor = Some(id);
+                    } else {
+                        m.selection = vec![id.clone()];
+                        m.anchor = Some(id);
+                    }
+                    drop(m);
+                    click_entity.update(app, |_, cx| cx.notify());
+                });
+            if let Some((col, dir)) = m.sort.clone() {
+                table = table.sort(col, dir);
+            }
+            if let Some(id) = selected {
+                table = table.selected(id);
+            }
+            table
+        }
+    }
+
+    fn model() -> Rc<RefCell<Model>> {
+        Rc::new(RefCell::new(Model {
+            sort: None,
+            sort_calls: Vec::new(),
+            selection: Vec::new(),
+            anchor: None,
+            rows: vec![("b", "20"), ("c", "3"), ("a", "100"), ("d", "7")],
+        }))
+    }
+
+    /// Centre of header column `col` (widths 120, 80) in window coordinates.
+    fn header_point(cx: &mut gpui::VisualTestContext, col: usize) -> gpui::Point<gpui::Pixels> {
+        let b = cx.selector_bounds("data-table").expect("table painted");
+        let x = [60.0, 160.0][col];
+        gpui::point(b.origin.x + px(1.0 + x), b.origin.y + px(1.0 + 16.0))
+    }
+
+    /// Centre of body row `idx` as laid out (header 32px, rows 28px).
+    fn row_point(cx: &mut gpui::VisualTestContext, idx: usize) -> gpui::Point<gpui::Pixels> {
+        let b = cx.selector_bounds("data-table").expect("table painted");
+        gpui::point(
+            b.origin.x + px(40.0),
+            b.origin.y + px(1.0 + 32.0 + 28.0 * idx as f32 + 14.0),
+        )
+    }
+
+    #[gpui::test]
+    fn header_click_sorts_ascending_then_descending(cx: &mut TestAppContext) {
+        let m = model();
+        let (_host, cx) = open_fluent_test_window(cx, |_, _| ModelHost(m.clone()));
+        let p = header_point(cx, 0);
+        cx.click_at(p, gpui::MouseButton::Left, gpui::Modifiers::none());
+        cx.click_at(p, gpui::MouseButton::Left, gpui::Modifiers::none());
+        let other = header_point(cx, 1);
+        cx.click_at(other, gpui::MouseButton::Left, gpui::Modifiers::none());
+        let calls = m.borrow().sort_calls.clone();
+        assert_eq!(
+            calls,
+            vec![
+                (SharedString::from("name"), DataSortDirection::Ascending),
+                (SharedString::from("name"), DataSortDirection::Descending),
+                (SharedString::from("size"), DataSortDirection::Ascending),
+            ]
+        );
+    }
+
+    #[gpui::test]
+    fn sorted_rows_follow_column_order(cx: &mut TestAppContext) {
+        let m = model();
+        let (_host, cx) = open_fluent_test_window(cx, |_, _| ModelHost(m.clone()));
+        // Numeric ascending on size: c(3) d(7) b(20) a(100). Click the first row.
+        let p = header_point(cx, 1);
+        cx.click_at(p, gpui::MouseButton::Left, gpui::Modifiers::none());
+        let p = row_point(cx, 0);
+        cx.click_at(p, gpui::MouseButton::Left, gpui::Modifiers::none());
+        assert_eq!(m.borrow().selection, vec![SharedString::from("c")]);
+        // Descending flips it: a(100) first.
+        let p = header_point(cx, 1);
+        cx.click_at(p, gpui::MouseButton::Left, gpui::Modifiers::none());
+        let p = row_point(cx, 0);
+        cx.click_at(p, gpui::MouseButton::Left, gpui::Modifiers::none());
+        assert_eq!(m.borrow().selection, vec![SharedString::from("a")]);
+    }
+
+    #[gpui::test]
+    fn click_ctrl_and_shift_select(cx: &mut TestAppContext) {
+        let m = model();
+        let (_host, cx) = open_fluent_test_window(cx, |_, _| ModelHost(m.clone()));
+        let ids = |m: &Rc<RefCell<Model>>| -> Vec<String> {
+            m.borrow().selection.iter().map(|s| s.to_string()).collect()
+        };
+        let none = gpui::Modifiers::none();
+        let ctrl = gpui::Modifiers::control();
+        let shift = gpui::Modifiers::shift();
+
+        let p = row_point(cx, 0);
+        cx.click_at(p, gpui::MouseButton::Left, none);
+        assert_eq!(ids(&m), ["b"]);
+        let p = row_point(cx, 2);
+        cx.click_at(p, gpui::MouseButton::Left, ctrl);
+        assert_eq!(ids(&m), ["b", "a"]);
+        let p = row_point(cx, 0);
+        cx.click_at(p, gpui::MouseButton::Left, ctrl);
+        assert_eq!(ids(&m), ["a"]);
+        let p = row_point(cx, 1);
+        cx.click_at(p, gpui::MouseButton::Left, none);
+        assert_eq!(ids(&m), ["c"]);
+        let p = row_point(cx, 3);
+        cx.click_at(p, gpui::MouseButton::Left, shift);
+        assert_eq!(ids(&m), ["c", "a", "d"]);
+    }
+
+    #[gpui::test]
+    fn selection_survives_refresh_by_row_key(cx: &mut TestAppContext) {
+        let m = model();
+        let (host, cx) = open_fluent_test_window(cx, |_, _| ModelHost(m.clone()));
+        let p = row_point(cx, 2); // "a"
+        cx.click_at(p, gpui::MouseButton::Left, gpui::Modifiers::none());
+        assert_eq!(m.borrow().selection, vec![SharedString::from("a")]);
+        // Refresh: reorder and replace the data, keeping row keys; "a" moves to the top.
+        m.borrow_mut().rows = vec![("a", "101"), ("z", "1"), ("b", "21")];
+        host.update(cx, |_, cx| cx.notify());
+        cx.run_until_parked();
+        assert_eq!(m.borrow().selection, vec![SharedString::from("a")]);
+        // Clicking the key's new position selects the same key.
+        let p = row_point(cx, 0);
+        cx.click_at(p, gpui::MouseButton::Left, gpui::Modifiers::none());
+        assert_eq!(m.borrow().selection, vec![SharedString::from("a")]);
+    }
 }

@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- fluent-layout: DataTable interaction tests: header click sort asc/desc, ctrl/shift click multi-select, selection kept by row key across a data refresh (WI-2910).
 - fluent-layout: interaction tests for DockPanel collapse, SettingsNav selection, Pane tab switching, Toolbar dispatch and Workspace docks; `debug_selector`s on dock close and settings-nav items (WI-2912).
 - fluent-layout: interaction tests for ModalStack/ModalHost, Dialog, Flyout, Popover and Toast (backdrop dismissal, input blocking, toast timeout on the fake clock); `debug_selector`s on dialog and modal buttons (WI-2911).
 - fluent-layout: DataTable keyboard navigation: Up/Down/Home/End/PageUp/PageDown move the active row and scroll it into view, Space selects, Shift extends via `on_row_extend`, Enter activates (WI-2921).
