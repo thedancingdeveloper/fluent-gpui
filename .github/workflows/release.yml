@@ -1,0 +1,72 @@
+name: Release dry run
+
+on:
+  push:
+    tags:
+      - 'v*\+zed.*'
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - 'scripts/check-zed-rev.sh'
+      - 'scripts/release-notes.sh'
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate release inputs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Check Zed revision and release tag
+        env:
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+        run: scripts/check-zed-rev.sh "$RELEASE_TAG"
+      - name: Draft release notes from CHANGELOG
+        run: |
+          scripts/release-notes.sh release-notes.md
+          cat release-notes.md >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: Build (${{ matrix.os }})
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Install Linux system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxcb1-dev libx11-xcb-dev libxkbcommon-dev libxkbcommon-x11-dev \
+            libwayland-dev libvulkan-dev libfontconfig-dev libfreetype-dev
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a
+      - name: Build release workspace
+        run: cargo build --workspace --release --locked
+
+  draft-release:
+    name: Draft GitHub release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          scripts/release-notes.sh release-notes.md
+          gh release create "$RELEASE_TAG" --draft --verify-tag \
+            --title "$RELEASE_TAG" --notes-file release-notes.md
