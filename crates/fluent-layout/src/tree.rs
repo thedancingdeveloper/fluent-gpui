@@ -3,7 +3,7 @@ use std::sync::Arc;
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, svg, App, ClickEvent, IntoElement, KeyDownEvent, MouseButton,
-    MouseDownEvent, RenderOnce, SharedString, Window,
+    MouseDownEvent, RenderOnce, Role, SharedString, Window,
 };
 
 type TreeSelectHandler = Arc<dyn Fn(SharedString, &ClickEvent, &mut Window, &mut App) + 'static>;
@@ -336,6 +336,11 @@ impl Tree {
 
         let mut row = div()
             .id(("tree-item", index as u64))
+            .role(Role::TreeItem)
+            .aria_label(item.label.clone())
+            .aria_level(depth + 1)
+            .aria_selected(is_selected)
+            .when(has_children, |d| d.aria_expanded(item.expanded))
             .flex()
             .flex_row()
             .items_center()
@@ -579,6 +584,8 @@ impl RenderOnce for Tree {
         let key_activate = on_activate.clone();
         let key_toggle = on_toggle.clone();
         let mut root = div()
+            .id("tree")
+            .role(Role::Tree)
             .tab_index(0)
             .key_context("Tree")
             .on_key_down(move |ev: &KeyDownEvent, win, app| {
@@ -808,5 +815,37 @@ mod check_tests {
         let mut items = vec![leaf("a", false)];
         assert!(!set_tree_checked(&mut items, "missing", true));
         assert_eq!(items[0].check_state(), TreeCheckState::Unchecked);
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_tree_levels_and_expansion(cx: &mut gpui::TestAppContext) {
+        struct SnapHost;
+        impl gpui::Render for SnapHost {
+            fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+                Tree::new()
+                    .item(
+                        TreeItem::new("root", "Root")
+                            .expanded(true)
+                            .child(TreeItem::new("leaf", "Leaf"))
+                            .child(
+                                TreeItem::new("folder", "Folder").child(TreeItem::new("x", "X")),
+                            ),
+                    )
+                    .selected("leaf")
+            }
+        }
+        let (_, vcx) = fluent_test_utils::open_fluent_test_window(cx, |_, _| SnapHost);
+        use fluent_test_utils::FluentInteractionExt as _;
+        assert_eq!(
+            vcx.accessibility_snapshot(),
+            vec![
+                "Window".to_string(),
+                "Tree".to_string(),
+                "TreeItem \"Root\" [selected=false, expanded=true, level=1]".to_string(),
+                "TreeItem \"Leaf\" [selected=true, level=2]".to_string(),
+                "TreeItem \"Folder\" [selected=false, expanded=true, level=2]".to_string(),
+                "TreeItem \"X\" [selected=false, level=3]".to_string(),
+            ]
+        );
     }
 }

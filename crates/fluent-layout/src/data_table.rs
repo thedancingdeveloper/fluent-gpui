@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, prelude::*, px, App, ClickEvent, IntoElement, KeyDownEvent, RenderOnce, ScrollHandle,
-    SharedString, Window,
+    div, prelude::*, px, App, ClickEvent, IntoElement, KeyDownEvent, RenderOnce, Role,
+    ScrollHandle, SharedString, Window,
 };
 
 type RowClickHandler = Arc<dyn Fn(SharedString, &ClickEvent, &mut Window, &mut App) + 'static>;
@@ -372,6 +372,9 @@ impl RenderOnce for DataTable {
         let mut root = div()
             .id("data-table")
             .debug_selector(|| "data-table".to_string())
+            .role(Role::Grid)
+            .aria_row_count(rows.len() + 1)
+            .aria_column_count(self.columns.len())
             .tab_index(0)
             .key_context("DataTable")
             .on_key_down(move |ev: &KeyDownEvent, window, app| {
@@ -443,6 +446,9 @@ impl RenderOnce for DataTable {
             .overflow_hidden();
 
         let mut header = div()
+            .id("data-header-row")
+            .role(Role::Row)
+            .aria_row_index(1)
             .flex()
             .flex_row()
             .h(px(components.content_tab_strip_height))
@@ -470,6 +476,9 @@ impl RenderOnce for DataTable {
 
             let mut cell = div()
                 .id(("data-header", col_idx as u64))
+                .role(Role::ColumnHeader)
+                .aria_label(column.title.clone())
+                .aria_column_index(col_idx + 1)
                 .flex()
                 .flex_row()
                 .items_center()
@@ -552,6 +561,9 @@ impl RenderOnce for DataTable {
             let row_id = row.id.clone();
             let mut row_el = div()
                 .id(("data-row", idx as u64))
+                .role(Role::Row)
+                .aria_row_index(idx + 2)
+                .aria_selected(is_selected)
                 .flex()
                 .flex_row()
                 .min_h(px(components.menu_item_height))
@@ -587,6 +599,10 @@ impl RenderOnce for DataTable {
                     .unwrap_or_else(|| DataCell::new(""));
                 let align = data_cell.align.unwrap_or(column.align);
                 let mut cell = div()
+                    .id(("data-cell", (idx * 1000 + col_idx) as u64))
+                    .role(Role::Cell)
+                    .aria_label(data_cell.text.clone())
+                    .aria_column_index(col_idx + 1)
                     .flex()
                     .items_center()
                     .when(align == DataCellAlign::Center, |d| d.justify_center())
@@ -870,5 +886,40 @@ mod tests {
         let p = row_point(cx, 0);
         cx.click_at(p, gpui::MouseButton::Left, gpui::Modifiers::none());
         assert_eq!(m.borrow().selection, vec![SharedString::from("a")]);
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_grid_rows_and_cells(cx: &mut TestAppContext) {
+        struct SnapHost;
+        impl Render for SnapHost {
+            fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+                DataTable::new()
+                    .column(DataColumn::new("n", "Name"))
+                    .column(DataColumn::new("s", "Size"))
+                    .rows(
+                        (0..2).map(|i| {
+                            DataRow::new(format!("r{i}"), [format!("n{i}"), format!("{i}")])
+                        }),
+                    )
+                    .selected("r1")
+            }
+        }
+        let (_, vcx) = open_fluent_test_window(cx, |_, _| SnapHost);
+        assert_eq!(
+            vcx.accessibility_snapshot(),
+            vec![
+                "Window".to_string(),
+                "Grid [row_count=3, column_count=2]".to_string(),
+                "Row [row_index=1]".to_string(),
+                "ColumnHeader \"Name\" [column_index=1]".to_string(),
+                "ColumnHeader \"Size\" [column_index=2]".to_string(),
+                "Row [selected=false, row_index=2]".to_string(),
+                "Cell \"n0\" [column_index=1]".to_string(),
+                "Cell \"0\" [column_index=2]".to_string(),
+                "Row [selected=true, row_index=3]".to_string(),
+                "Cell \"n1\" [column_index=1]".to_string(),
+                "Cell \"1\" [column_index=2]".to_string(),
+            ]
+        );
     }
 }

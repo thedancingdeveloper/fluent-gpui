@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
     anchored, canvas, deferred, div, point, prelude::*, px, svg, App, Bounds, ClickEvent, Context,
-    FocusHandle, IntoElement, KeyDownEvent, MouseButton, Pixels, Render, SharedString,
+    FocusHandle, IntoElement, KeyDownEvent, MouseButton, Pixels, Render, Role, SharedString,
     Subscription, WeakEntity, WeakFocusHandle, Window, WindowId,
 };
 
@@ -494,6 +494,11 @@ impl MenuBar {
         cx: &mut Context<Self>,
     ) -> gpui::AnyElement {
         let mut menu = div()
+            .id(SharedString::from(format!(
+                "{}-panel-{:?}",
+                "menubar", path_prefix
+            )))
+            .role(Role::Menu)
             .relative()
             .flex()
             .flex_col()
@@ -528,15 +533,25 @@ impl MenuBar {
                     } else {
                         env.colors.on_neutral
                     };
-                    let mut row = menu_tree::row_base("menu-item", &path, selected, fg, env)
-                        .on_mouse_move(cx.listener(move |bar: &mut MenuBar, _, _, cx| {
+                    let mut row = menu_tree::row_base(
+                        "menu-item",
+                        &path,
+                        selected,
+                        fg,
+                        env,
+                        Role::MenuItem,
+                        label,
+                    )
+                    .on_mouse_move(cx.listener(
+                        move |bar: &mut MenuBar, _, _, cx| {
                             if bar.closing {
                                 return;
                             }
                             bar.selected_path = select_path.clone();
                             bar.open_path = hover_parent.clone();
                             cx.notify();
-                        }));
+                        },
+                    ));
                     if !disabled && !self.closing {
                         row = row
                             .cursor_pointer()
@@ -586,15 +601,25 @@ impl MenuBar {
                     } else {
                         env.colors.on_neutral
                     };
-                    let mut row = menu_tree::row_base("menu-item", &path, selected, fg, env)
-                        .on_mouse_move(cx.listener(move |bar: &mut MenuBar, _, _, cx| {
+                    let mut row = menu_tree::row_base(
+                        "menu-item",
+                        &path,
+                        selected,
+                        fg,
+                        env,
+                        Role::MenuItemCheckBox,
+                        label,
+                    )
+                    .on_mouse_move(cx.listener(
+                        move |bar: &mut MenuBar, _, _, cx| {
                             if bar.closing {
                                 return;
                             }
                             bar.selected_path = select_path.clone();
                             bar.open_path = hover_parent.clone();
                             cx.notify();
-                        }));
+                        },
+                    ));
                     if !disabled && !self.closing {
                         row = row
                             .cursor_pointer()
@@ -649,15 +674,25 @@ impl MenuBar {
                     } else {
                         env.colors.on_neutral
                     };
-                    let mut row = menu_tree::row_base("menu-item", &path, selected, fg, env)
-                        .on_mouse_move(cx.listener(move |bar: &mut MenuBar, _, _, cx| {
+                    let mut row = menu_tree::row_base(
+                        "menu-item",
+                        &path,
+                        selected,
+                        fg,
+                        env,
+                        Role::MenuItemRadio,
+                        label,
+                    )
+                    .on_mouse_move(cx.listener(
+                        move |bar: &mut MenuBar, _, _, cx| {
                             if bar.closing {
                                 return;
                             }
                             bar.selected_path = select_path.clone();
                             bar.open_path = hover_parent.clone();
                             cx.notify();
-                        }));
+                        },
+                    ));
                     if !disabled && !self.closing {
                         row = row
                             .cursor_pointer()
@@ -706,7 +741,15 @@ impl MenuBar {
                     } else {
                         env.colors.on_neutral
                     };
-                    let mut row = menu_tree::row_base("menu-item", &path, selected, fg, env);
+                    let mut row = menu_tree::row_base(
+                        "menu-item",
+                        &path,
+                        selected,
+                        fg,
+                        env,
+                        Role::MenuItem,
+                        label,
+                    );
                     if !disabled && !self.closing {
                         row = row
                             .cursor_pointer()
@@ -817,6 +860,9 @@ impl Render for MenuBar {
 
             let trigger = div()
                 .id(SharedString::from(format!("menu-trigger-{idx}")))
+                .role(Role::MenuItem)
+                .aria_label(label.clone())
+                .aria_expanded(is_open)
                 .relative()
                 .flex()
                 .items_center()
@@ -908,6 +954,8 @@ impl Render for MenuBar {
         // bar_height px instead of the full window. Without it, absolute().inset_0() in the
         // deferred overlay stretches to the viewport, giving the backdrop full-window coverage.
         let mut root = div()
+            .id("menu-bar")
+            .role(Role::MenuBar)
             .key_context("MenuBar")
             .track_focus(&self.focus_handle)
             .on_key_down(
@@ -1017,6 +1065,43 @@ mod tests {
             assert_eq!(bar.trigger_bounds.len(), 1);
             assert_eq!(bar.menus[0].items.len(), 1);
         });
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_menubar_menu_and_items(cx: &mut TestAppContext) {
+        use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+        let (bar, vcx) = open_fluent_test_window(cx, |_, cx| {
+            MenuBar::new(cx).menu(
+                "File",
+                vec![
+                    ContextMenuItem::action("Open", |_, _, _| {}),
+                    ContextMenuItem::checkbox("Wrap", true, |_, _, _, _| {}),
+                ],
+            )
+        });
+        assert_eq!(
+            vcx.accessibility_snapshot(),
+            vec![
+                "Window".to_string(),
+                "MenuBar".to_string(),
+                "MenuItem \"File\" [expanded=false]".to_string(),
+            ]
+        );
+        bar.update(vcx, |bar, cx| {
+            bar.open_menu(0, false);
+            cx.notify();
+        });
+        assert_eq!(
+            vcx.accessibility_snapshot(),
+            vec![
+                "Window".to_string(),
+                "MenuBar".to_string(),
+                "MenuItem \"File\" [expanded=true]".to_string(),
+                "Menu".to_string(),
+                "MenuItem \"Open\"".to_string(),
+                "MenuItemCheckBox \"Wrap\"".to_string(),
+            ]
+        );
     }
 
     fn keyboard_bar<'a>(
