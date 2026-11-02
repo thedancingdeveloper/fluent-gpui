@@ -5,9 +5,9 @@ use fluent_layout::{
     TabStrip, Workspace,
 };
 use fluent_primitives::{
-    CounterBadge, CounterBadgeAppearance, InputCapture, InputCaptureEvent, Link, LinkAppearance,
-    TerminalCell, TerminalGrid, TerminalView, TerminalViewEvent, VideoScaling, VideoSurface,
-    VideoSurfaceEvent,
+    Avatar, CounterBadge, CounterBadgeAppearance, InputCapture, InputCaptureEvent, Link,
+    LinkAppearance, Persona, PersonaSize, PresenceBadgeState, TerminalCell, TerminalGrid,
+    TerminalView, TerminalViewEvent, VideoScaling, VideoSurface, VideoSurfaceEvent,
 };
 use fluent_ribbon::RibbonBar;
 use gpui::{div, prelude::*, rgb, Context, Entity, IntoElement, Render, SharedString, Window};
@@ -21,6 +21,32 @@ struct GalleryRoot {
 }
 
 struct CounterBadgeDemo;
+
+struct PersonaDemo;
+
+impl Render for PersonaDemo {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .size_full()
+            .p_3()
+            .flex()
+            .flex_col()
+            .gap_3()
+            .bg(cx.theme().colors.surface)
+            .child("Persona")
+            .child(
+                Persona::new(Avatar::initials("AM"), "Alex Morgan")
+                    .secondary("Available")
+                    .presence(PresenceBadgeState::Available),
+            )
+            .child(
+                Persona::new(Avatar::initials("JR"), "Jordan Rivera")
+                    .secondary("Do not disturb")
+                    .presence(PresenceBadgeState::DoNotDisturb)
+                    .size(PersonaSize::Large),
+            )
+    }
+}
 
 impl Render for CounterBadgeDemo {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -411,6 +437,7 @@ fn main() {
         });
         let split_list = cx.new(TerminalDemo::new);
         let badge_demo = cx.new(|_| CounterBadgeDemo);
+        let persona_demo = cx.new(|_| PersonaDemo);
         let input_demo = cx.new(InputCaptureDemo::new);
         let video_demo = cx.new(VideoDemo::new);
         let input_video = cx.new(|_| {
@@ -419,10 +446,16 @@ fn main() {
                 .second(video_demo.into())
                 .ratio(0.4)
         });
-        let split_detail = cx.new(|_| {
+        let badge_detail = cx.new(|_| {
             PaneGroup::vertical()
                 .first(badge_demo.into())
                 .second(input_video.into())
+                .ratio(0.35)
+        });
+        let split_detail = cx.new(|_| {
+            PaneGroup::vertical()
+                .first(persona_demo.into())
+                .second(badge_detail.into())
                 .ratio(0.3)
         });
         let pane_content = cx.new(|_| {
