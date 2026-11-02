@@ -23,6 +23,7 @@ mod link;
 mod persona;
 mod progress;
 mod radio_group;
+mod rating;
 mod roving;
 mod searchbox;
 mod section_header;
@@ -32,6 +33,7 @@ mod spin_button;
 mod spinner;
 mod suggestion_popover;
 mod switch;
+mod tag;
 mod terminal_grid;
 mod terminal_view;
 mod text_ext;
@@ -72,6 +74,7 @@ pub use link::{Link, LinkAppearance};
 pub use persona::{Persona, PersonaSize};
 pub use progress::ProgressBar;
 pub use radio_group::{RadioGroup, RadioGroupOrientation, RadioOption};
+pub use rating::Rating;
 pub use searchbox::Searchbox;
 pub use section_header::SectionHeader;
 pub use skeleton::{Skeleton, SkeletonRow, SkeletonWrap};
@@ -82,6 +85,7 @@ pub use suggestion_popover::{
     SuggestionItem, SuggestionKeyAction, SuggestionListState, SuggestionPopover,
 };
 pub use switch::Switch;
+pub use tag::{Tag, TagAppearance, TagGroup, TagShape, TagSize};
 pub use terminal_grid::{
     CursorShape, GridPoint, TerminalCell, TerminalCursor, TerminalGrid, TerminalSelection,
     DEFAULT_SCROLLBACK,
