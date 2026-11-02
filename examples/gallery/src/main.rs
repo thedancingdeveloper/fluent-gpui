@@ -75,17 +75,20 @@ struct BigTableDemo;
 
 impl Render for BigTableDemo {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .p_2()
-            .child(DataTable::new()
+        div().p_2().child(
+            DataTable::new()
                 .columns([
                     DataColumn::new("name", "Name").width(220.0),
                     DataColumn::new("value", "Value").width(100.0),
                 ])
                 .rows((0..100_000).map(|ix| {
-                    DataRow::new(format!("table-row-{ix}"), [format!("Row {ix}"), ix.to_string()])
+                    DataRow::new(
+                        format!("table-row-{ix}"),
+                        [format!("Row {ix}"), ix.to_string()],
+                    )
                 }))
-                .max_body_height(360.0))
+                .max_body_height(360.0),
+        )
     }
 }
 
