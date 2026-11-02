@@ -257,6 +257,32 @@ impl Combobox {
                     self.highlighted = (self.highlighted + 1).min(len - 1);
                 }
             }
+            "home" => {
+                if !self.filtered_options().is_empty() {
+                    self.open_popup(cx);
+                    self.highlighted = 0;
+                }
+            }
+            "end" => {
+                let len = self.filtered_options().len();
+                if len > 0 {
+                    self.open_popup(cx);
+                    self.highlighted = len - 1;
+                }
+            }
+            "pageup" => {
+                if !self.filtered_options().is_empty() {
+                    self.open_popup(cx);
+                    self.highlighted = self.highlighted.saturating_sub(5);
+                }
+            }
+            "pagedown" => {
+                let len = self.filtered_options().len();
+                if len > 0 {
+                    self.open_popup(cx);
+                    self.highlighted = (self.highlighted + 5).min(len - 1);
+                }
+            }
             "up" => {
                 if self.filtered_options().is_empty() {
                     return;

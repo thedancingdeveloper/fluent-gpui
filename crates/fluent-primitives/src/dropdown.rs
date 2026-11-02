@@ -185,6 +185,7 @@ impl Dropdown {
 
         match ev.keystroke.key.as_str() {
             "escape" => self.close_popup(cx),
+            "down" if ev.keystroke.modifiers.alt => self.open_popup(cx),
             "down" => {
                 if self.options.is_empty() {
                     return;
@@ -206,6 +207,30 @@ impl Dropdown {
                     self.open_popup(cx);
                 }
                 cx.notify();
+            }
+            "home" => {
+                if self.open && !self.options.is_empty() {
+                    self.highlighted = 0;
+                    cx.notify();
+                }
+            }
+            "end" => {
+                if self.open && !self.options.is_empty() {
+                    self.highlighted = self.options.len() - 1;
+                    cx.notify();
+                }
+            }
+            "pageup" => {
+                if self.open && !self.options.is_empty() {
+                    self.highlighted = self.highlighted.saturating_sub(5);
+                    cx.notify();
+                }
+            }
+            "pagedown" => {
+                if self.open && !self.options.is_empty() {
+                    self.highlighted = (self.highlighted + 5).min(self.options.len() - 1);
+                    cx.notify();
+                }
             }
             "enter" | "space" if self.open => {
                 if let Some(value) = self
