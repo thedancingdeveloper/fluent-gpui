@@ -9,6 +9,9 @@ mod stroke_width;
 mod theme;
 mod typography;
 
+/// Re-export the underlying UI toolkit for examples and downstream Fluent crates.
+pub use gpui;
+
 pub use async_resource::{AsyncResource, AsyncResourceState, ResourceRequest};
 pub use colors::{
     gradient_from_hue, hue_for, tint, with_alpha, ColorScheme, ControlStates, NeutralColorStates,
