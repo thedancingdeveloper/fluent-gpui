@@ -5,6 +5,14 @@
 /// icon gutters for aligned menus and popups.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ComponentTokens {
+    /// Fluent 2 button heights for small, medium, and large controls.
+    pub button_small_height: f32,
+    pub button_medium_height: f32,
+    pub button_large_height: f32,
+    /// Fluent 2 button icon sizes for small, medium, and large controls.
+    pub button_small_icon_size: f32,
+    pub button_medium_icon_size: f32,
+    pub button_large_icon_size: f32,
     pub menu_bar_height: f32,
     pub menu_item_height: f32,
     pub menu_min_width: f32,
@@ -40,6 +48,12 @@ pub struct ComponentTokens {
 impl Default for ComponentTokens {
     fn default() -> Self {
         Self {
+            button_small_height: 24.0,
+            button_medium_height: 32.0,
+            button_large_height: 40.0,
+            button_small_icon_size: 12.0,
+            button_medium_icon_size: 16.0,
+            button_large_icon_size: 20.0,
             menu_bar_height: 28.0,
             menu_item_height: 28.0,
             menu_min_width: 200.0,

@@ -7,8 +7,8 @@
 
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_primitives::{
-    Button, ButtonAppearance, ButtonShape, ButtonSize, Checkbox, CheckboxState, Chip, Divider,
-    Label, LabelSize, Link, LinkAppearance, RadioGroup, Switch, ToggleButton,
+    Button, ButtonAppearance, ButtonIconPosition, ButtonShape, ButtonSize, Checkbox, CheckboxState,
+    Chip, Divider, Label, LabelSize, Link, LinkAppearance, RadioGroup, Switch, ToggleButton,
 };
 use gpui::{div, prelude::*, AnyElement, AnyView, Context, Entity, IntoElement, Render, Window};
 
@@ -106,11 +106,11 @@ impl FamilyHost {
 
     fn buttons() -> impl IntoElement {
         let appearances = [
-            ("Neutral", ButtonAppearance::Neutral),
-            ("Accent", ButtonAppearance::Accent),
-            ("Danger", ButtonAppearance::Danger),
+            ("Secondary", ButtonAppearance::Secondary),
+            ("Primary", ButtonAppearance::Primary),
+            ("Outline", ButtonAppearance::Outline),
             ("Subtle", ButtonAppearance::Subtle),
-            ("Hyperlink", ButtonAppearance::Hyperlink),
+            ("Transparent", ButtonAppearance::Transparent),
         ];
         let enabled = appearances
             .iter()
@@ -150,8 +150,21 @@ impl FamilyHost {
                         .shape(ButtonShape::Circular)
                         .into_any_element(),
                     Button::new("size-c")
-                        .label("Compact")
-                        .size(ButtonSize::Compact)
+                        .label("Small")
+                        .size(ButtonSize::Small)
+                        .into_any_element(),
+                    Button::new("size-m")
+                        .label("Medium")
+                        .size(ButtonSize::Medium)
+                        .into_any_element(),
+                    Button::new("size-l")
+                        .label("Large")
+                        .size(ButtonSize::Large)
+                        .into_any_element(),
+                    Button::new("icon-after")
+                        .label("Icon after")
+                        .icon("icons/add.svg")
+                        .icon_position(ButtonIconPosition::After)
                         .into_any_element(),
                 ],
             ))
