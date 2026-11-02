@@ -2,14 +2,15 @@ use fluent_app::{FluentApp, TitleBar};
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_layout::{
     DataCell, DataColumn, DataRow, DataStatusKind, DataTable, DataTableState, DockPanel,
-    DockPosition, MenuBar, ModalStack, Pane, PaneConstraints, PaneGroup, TabItem, TabStrip, Tree,
-    TreeItem, Workspace,
+    DockPosition, MenuBar, MessageBar, MessageIntent, ModalStack, Pane, PaneConstraints, PaneGroup,
+    TabItem, TabStrip, Tree, TreeItem, Workspace,
 };
 use fluent_primitives::{
     Avatar, Button, ButtonAppearance, Checkbox, CounterBadge, CounterBadgeAppearance,
     DateTimeLocale, DateTimePicker, DateTimeValue, InputCapture, InputCaptureEvent, Link,
-    LinkAppearance, Persona, PersonaSize, PresenceBadgeState, Switch, TerminalCell, TerminalGrid,
-    TerminalView, TerminalViewEvent, ToggleButton, VideoScaling, VideoSurface, VideoSurfaceEvent,
+    LinkAppearance, Persona, PersonaSize, PresenceBadgeState, ProgressBar, Spinner, Switch,
+    TerminalCell, TerminalGrid, TerminalView, TerminalViewEvent, ToggleButton, VideoScaling,
+    VideoSurface, VideoSurfaceEvent,
 };
 use fluent_ribbon::RibbonBar;
 use gpui::{div, prelude::*, rgb, Context, Entity, IntoElement, Render, SharedString, Window};
@@ -151,6 +152,70 @@ impl Render for DateTimeDemo {
             .child("Date/time: en-US and de-DE (locale and timezone owned by the app)")
             .child(self.us.clone())
             .child(self.de.clone())
+    }
+}
+
+/// rtbit download progress: determinate, indeterminate, stalled and failed states.
+struct DownloadProgressDemo;
+
+impl Render for DownloadProgressDemo {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = cx.theme();
+        let colors = theme.colors.clone();
+        let row = |name: &'static str, detail: &'static str, bar: ProgressBar| {
+            div()
+                .flex()
+                .flex_col()
+                .gap_1()
+                .child(
+                    div()
+                        .flex()
+                        .justify_between()
+                        .child(name)
+                        .child(div().text_color(colors.on_subtle).child(detail)),
+                )
+                .child(bar)
+        };
+        div()
+            .flex()
+            .flex_col()
+            .gap(gpui::px(theme.spacing.sm))
+            .p(gpui::px(theme.spacing.md))
+            .child("rtbit downloads (value text is announced; animation honours reduced motion)")
+            .child(row(
+                "ubuntu-26.04-desktop.iso",
+                "412 of 900 MB",
+                ProgressBar::new(0.46).value_text("412 of 900 megabytes"),
+            ))
+            .child(row(
+                "Fetching metadata",
+                "Waiting for peers",
+                ProgressBar::new(0.0).indeterminate(),
+            ))
+            .child(row(
+                "sample-set.tar",
+                "Done",
+                ProgressBar::new(1.0).success(),
+            ))
+            .child(row(
+                "archive.zip",
+                "Stalled",
+                ProgressBar::new(0.7).warning(),
+            ))
+            .child(
+                MessageBar::new("Tracker unreachable; the download stopped at 12%.")
+                    .intent(MessageIntent::Error)
+                    .title("Download failed")
+                    .action("Retry", |_, _, _| {}),
+            )
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(Spinner::new().label("Checking files"))
+                    .child("Checking files"),
+            )
     }
 }
 
@@ -732,6 +797,7 @@ fn main() {
                 .detach();
             RtlDemo
         });
+        let download_demo = cx.new(|_| DownloadProgressDemo);
         let date_demo = cx.new(DateTimeDemo::new);
         let input_demo = cx.new(InputCaptureDemo::new);
         let video_demo = cx.new(VideoDemo::new);
@@ -741,10 +807,16 @@ fn main() {
                 .second(video_demo.into())
                 .ratio(0.4)
         });
+        let download_date = cx.new(|_| {
+            PaneGroup::vertical()
+                .first(download_demo.into())
+                .second(date_demo.into())
+                .ratio(0.6)
+        });
         let badge_date = cx.new(|_| {
             PaneGroup::vertical()
                 .first(badge_demo.into())
-                .second(date_demo.into())
+                .second(download_date.into())
                 .ratio(0.4)
         });
         let badge_detail = cx.new(|_| {

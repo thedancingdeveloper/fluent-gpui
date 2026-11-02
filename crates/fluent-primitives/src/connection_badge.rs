@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, prelude::*, px, AnimationExt, App, ElementId, Hsla, IntoElement, RenderOnce, SharedString,
-    Window,
+    div, prelude::*, px, AnimationExt, App, ElementId, Hsla, IntoElement, RenderOnce, Role,
+    SharedString, Window,
 };
 use gpui::{pulsating_between, Animation};
 
@@ -97,6 +97,9 @@ impl RenderOnce for ConnectionBadge {
         };
 
         div()
+            .id((self.id.clone(), "status"))
+            .role(Role::Status)
+            .aria_label(label.clone())
             .flex()
             .flex_row()
             .items_center()
