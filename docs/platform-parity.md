@@ -25,7 +25,7 @@ row marked **divergent** is an intentional platform difference, not a failure.
 | System theme and accent | Fluent theme state supplies colors; `TitleBar` uses the Fluent accent colors. Automatic OS theme/accent synchronization is not claimed by the wrapper. | Same Fluent theme contract; desktop-environment synchronization is not claimed. | Same Fluent theme contract; desktop-environment synchronization is not claimed. | **unverified** for native synchronization. Follow [WI-3055](https://vogt.sprooty.com/work/WI-3055). |
 | High-contrast detection | The `high-contrast` patch exposes OS state and change notifications, but this repository has no real-Windows run recorded. | Portal-backed `org.freedesktop.appearance` contrast is implemented by the Linux platform layer; desktop coverage is not recorded here. | Portal-backed `org.freedesktop.appearance` contrast is implemented by the Linux platform layer; compositor/portal availability varies. | **unverified** natively. Follow [WI-3056](https://vogt.sprooty.com/work/WI-3056). See [`PATCHES.md`](../vendor/zed/PATCHES.md) for the implementation boundary. |
 | IME composition and committed text | GPUI separates composition/committed text from physical key events; native IME coverage is not recorded. | Same contract; toolkit/desktop IME setup is environment-dependent. | Same contract; toolkit/desktop IME setup is environment-dependent. | **unverified** natively. Follow [WI-3057](https://vogt.sprooty.com/work/WI-3057). |
-| Physical scancodes and key repeat | Set-1 make code is derived from the Windows message; the key-scan-code patch is not verified on real Windows. | Scancode is derived from X11 event detail (`detail - 8`). | Wayland supplies the evdev key, including repeats. | **divergent, Windows unverified**. Follow [WI-3058](https://vogt.sprooty.com/work/WI-3058); implementation notes are in [`PATCHES.md`](../vendor/zed/PATCHES.md). |
+| Physical scancodes and key repeat | Set-1 make code is derived from the Windows message, with `0xE000` marking an extended key. | Scancode is derived from X11 event detail (`detail - 8`). | Wayland supplies the evdev key on the initial event and repeat timer. | **verified-by-test** for the shared patch/InputCapture press-repeat-release contract; **unverified natively** on all three backends. See [scancode evidence](#physical-scancode-evidence) and [`PATCHES.md`](../vendor/zed/PATCHES.md). |
 | Clipboard (text and image) | GPUI's DirectX backend reads and writes Unicode text and registered image formats (PNG, GIF, JPEG, SVG). | The X11 selection backend supports UTF-8 text and the GPUI image formats; ownership and persistence depend on the selection owner/clipboard manager. | The data-device backend supports text and image MIME types, with reads transferred through a pipe and cached after a successful offer read. | **source-verified; native run unavailable**. See the [clipboard audit](#clipboard-audit) and follow [WI-3059](https://vogt.sprooty.com/work/WI-3059) for a Windows/X11/Wayland host run. |
 | File and folder pickers | `fluent-app::pickers` delegates to native GPUI prompts; test-platform filtering and cancellation are tested, native dialogs are not. | Native dialog availability depends on the desktop portal/toolkit environment. | Native dialog availability normally depends on the desktop portal/toolkit environment. | **unverified** natively. Follow [WI-3060](https://vogt.sprooty.com/work/WI-3060); see [picker contracts](consumer-contracts.md#3-file-and-folder-pickers). |
 | DPI scaling and device pixels | `WM_DPICHANGED` updates the window scale factor; device-pixel resize sizes are converted to logical pixels before the resize callback. Text and layout continue to use logical pixels, while renderer bounds use device pixels. | The display scale is selected from `GPUI_X11_SCALE_FACTOR`, RandR, `Xft.dpi`, or the default `1.0` (in that order); X11 resize callbacks receive logical size and scale. | The compositor-provided output scale is applied to the surface; configure/resize handling is throttled during interactive resizing and callbacks receive logical size and scale. | **source-audited, unverified manually**. The shared contract is `logical = physical / scale` and `physical = round(logical * scale)`; see the manual evidence and test plan below. Follow [WI-3061](https://vogt.sprooty.com/work/WI-3061) for native runs. |
@@ -114,6 +114,30 @@ are attached to the work item.
   check is useful build evidence, but it is not a native interaction test.
 - No macOS, web, or wasm behavior is included because those targets are outside
   this repository's support contract.
+
+## Physical scancode evidence
+
+WI-3058 audited the `key-scan-code` patch end to end and added a regression test
+that injects a physical scancode whose logical key deliberately differs. The
+test verifies that the physical code wins, the unchanged scancode is delivered
+on press, repeat, and release, and only the repeated press has `is_held: true`.
+
+The backend source contract is:
+
+- Windows extracts the set-1 make code from `WM_KEYDOWN`/`WM_KEYUP` `lParam`
+  bits 16–23 and adds `0xE000` when the extended-key bit is set.
+- X11 converts the XKB keycode to evdev with `event.detail - 8` for both key
+  directions.
+- Wayland forwards the compositor's evdev key on both key directions and keeps
+  that key on the repeat-timer event.
+- IME-committed text, replayed keystrokes, and simulated input may carry
+  `scan_code: None`; consumers must retain that fallback.
+
+This session did not have native Windows, X11, and Wayland desktops available,
+so it does not label any backend **verified-manually**. A native pass should
+capture one ordinary key, one extended key, a held repeat, and its release on
+each backend, confirming that the press/repeat/release scancode is stable and
+that repeat is reported only on key-down.
 
 ## Clipboard audit
 
