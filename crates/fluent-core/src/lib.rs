@@ -5,6 +5,7 @@ mod motion;
 mod radii;
 mod shadows;
 mod spacing;
+mod stroke_width;
 mod theme;
 mod typography;
 
@@ -15,6 +16,7 @@ pub use motion::{popup_motion_surface, MotionCurve, MotionTokens};
 pub use radii::RadiiTokens;
 pub use shadows::ShadowTokens;
 pub use spacing::SpacingTokens;
+pub use stroke_width::StrokeWidthTokens;
 pub use theme::{
     Brightness, LayoutDirection, LayoutDirectionProvider, Theme, ThemeMode, ThemeProvider,
 };
@@ -33,6 +35,14 @@ mod tests {
         assert_eq!(s.lg, 12.0);
         assert_eq!(s.xl, 16.0);
         assert_eq!(s.xxl, 24.0);
+    }
+
+    #[test]
+    fn stroke_width_tokens_values() {
+        let s = StrokeWidthTokens::default();
+        assert_eq!(s.thin, 1.0);
+        assert_eq!(s.thick, 2.0);
+        assert_eq!(s.thickest, 3.0);
     }
 
     #[test]
