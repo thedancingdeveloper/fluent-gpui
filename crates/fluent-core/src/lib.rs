@@ -10,8 +10,8 @@ mod theme;
 mod typography;
 
 /// Re-export the underlying UI toolkit for examples and downstream Fluent crates.
-pub use gpui;
-pub use gpui_platform;
+pub use gpui::*;
+pub use gpui_platform::application;
 
 pub use async_resource::{AsyncResource, AsyncResourceState, ResourceRequest};
 pub use colors::{
