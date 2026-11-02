@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, prelude::*, px, App, ClickEvent, IntoElement, KeyDownEvent, RenderOnce, SharedString,
-    Window,
+    div, prelude::*, px, App, ClickEvent, IntoElement, KeyDownEvent, RenderOnce, ScrollHandle,
+    SharedString, Window,
 };
 
 type RowClickHandler = Arc<dyn Fn(SharedString, &ClickEvent, &mut Window, &mut App) + 'static>;
@@ -160,7 +160,36 @@ pub struct DataTable {
     max_body_height: Option<f32>,
     on_row_click: Option<RowClickHandler>,
     on_row_select: Option<RowSelectHandler>,
+    on_row_extend: Option<RowSelectHandler>,
     on_sort: Option<SortHandler>,
+}
+
+/// Where a navigation key moves the active row.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RowMove {
+    Up,
+    Down,
+    Home,
+    End,
+    PageUp,
+    PageDown,
+}
+
+/// The row a move from `current` lands on, clamped to `len` rows (`len > 0`).
+/// With no active row, forward moves land on the first row and backward moves on the last.
+fn move_target(current: Option<usize>, mv: RowMove, page: usize, len: usize) -> usize {
+    let last = len - 1;
+    let page = page.max(1);
+    match (current, mv) {
+        (_, RowMove::Home) => 0,
+        (_, RowMove::End) => last,
+        (None, RowMove::Down | RowMove::PageDown) => 0,
+        (None, RowMove::Up | RowMove::PageUp) => last,
+        (Some(c), RowMove::Up) => c.saturating_sub(1),
+        (Some(c), RowMove::Down) => (c + 1).min(last),
+        (Some(c), RowMove::PageUp) => c.saturating_sub(page),
+        (Some(c), RowMove::PageDown) => (c + page).min(last),
+    }
 }
 
 impl DataTable {
@@ -174,6 +203,7 @@ impl DataTable {
             max_body_height: None,
             on_row_click: None,
             on_row_select: None,
+            on_row_extend: None,
             on_sort: None,
         }
     }
@@ -253,6 +283,15 @@ impl DataTable {
         self
     }
 
+    /// Called with the new active row when Shift+navigation or Shift+Space extends the selection.
+    pub fn on_row_extend(
+        mut self,
+        f: impl Fn(SharedString, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_row_extend = Some(Arc::new(f));
+        self
+    }
+
     pub fn on_sort(
         mut self,
         f: impl Fn(SharedString, DataSortDirection, &ClickEvent, &mut Window, &mut App) + 'static,
@@ -269,7 +308,11 @@ impl Default for DataTable {
 }
 
 impl RenderOnce for DataTable {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let scroll = window
+            .use_keyed_state("data-table-scroll", cx, |_, _| ScrollHandle::new())
+            .read(cx)
+            .clone();
         let theme = cx.theme();
         let colors = theme.colors.clone();
         let spacing = theme.spacing;
@@ -322,33 +365,71 @@ impl RenderOnce for DataTable {
             .and_then(|id| row_ids.iter().position(|row_id| row_id == id));
         let on_row_select = self.on_row_select.clone();
         let on_row_activate = self.on_row_click.clone();
+        let on_row_extend = self.on_row_extend.clone();
         let key_row_ids = row_ids.clone();
+        let key_scroll = scroll.clone();
 
         let mut root = div()
+            .id("data-table")
+            .debug_selector(|| "data-table".to_string())
             .tab_index(0)
             .key_context("DataTable")
             .on_key_down(move |ev: &KeyDownEvent, window, app| {
                 if key_row_ids.is_empty() {
                     return;
                 }
-                match ev.keystroke.key.as_str() {
-                    "up" | "down" => {
-                        let current = selected_index.unwrap_or(0);
-                        let next = if ev.keystroke.key.as_str() == "up" {
-                            current.saturating_sub(1)
-                        } else {
-                            (current + 1).min(key_row_ids.len() - 1)
-                        };
-                        if let Some(handler) = &on_row_select {
-                            handler(key_row_ids[next].clone(), window, app);
+                let key = ev.keystroke.key.as_str();
+                let mv = match key {
+                    "up" => Some(RowMove::Up),
+                    "down" => Some(RowMove::Down),
+                    "home" => Some(RowMove::Home),
+                    "end" => Some(RowMove::End),
+                    "pageup" => Some(RowMove::PageUp),
+                    "pagedown" => Some(RowMove::PageDown),
+                    _ => None,
+                };
+                let extend = ev.keystroke.modifiers.shift;
+                let handler = if extend {
+                    &on_row_extend
+                } else {
+                    &on_row_select
+                };
+                if let Some(mv) = mv {
+                    let bounds = key_scroll.bounds();
+                    let row_height = key_scroll
+                        .bounds_for_item(0)
+                        .map(|b| b.size.height)
+                        .filter(|h| *h > px(0.0));
+                    let page = match row_height {
+                        Some(h) if bounds.size.height > px(0.0) => {
+                            (bounds.size.height / h).floor() as usize
                         }
+                        _ => 10,
+                    };
+                    let next = move_target(selected_index, mv, page, key_row_ids.len());
+                    key_scroll.scroll_to_item(next);
+                    if let Some(handler) = handler {
+                        handler(key_row_ids[next].clone(), window, app);
                     }
-                    "return" | "space" => {
+                    app.stop_propagation();
+                    return;
+                }
+                match key {
+                    "space" => {
+                        if let (Some(handler), Some(current)) = (handler, selected_index) {
+                            handler(key_row_ids[current].clone(), window, app);
+                        } else if let Some(handler) = handler {
+                            handler(key_row_ids[0].clone(), window, app);
+                        }
+                        app.stop_propagation();
+                    }
+                    "enter" | "return" => {
                         let current = selected_index.unwrap_or(0).min(key_row_ids.len() - 1);
                         if let Some(handler) = &on_row_activate {
                             let ev = ClickEvent::default();
                             handler(key_row_ids[current].clone(), &ev, window, app);
                         }
+                        app.stop_propagation();
                     }
                     _ => {}
                 }
@@ -462,6 +543,9 @@ impl RenderOnce for DataTable {
         if let Some(height) = self.max_body_height {
             body = body.overflow_y_scroll().max_h(px(height));
         }
+        if self.max_body_height.is_some() {
+            body = body.track_scroll(&scroll);
+        }
 
         for (idx, row) in rows.into_iter().enumerate() {
             let is_selected = self.selected_id.as_ref() == Some(&row.id);
@@ -526,5 +610,84 @@ impl RenderOnce for DataTable {
         }
 
         root.child(body)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{cell::RefCell, rc::Rc};
+
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Context, Render, TestAppContext};
+
+    use super::*;
+
+    #[test]
+    fn move_target_clamps_and_pages() {
+        assert_eq!(move_target(Some(0), RowMove::Up, 5, 20), 0);
+        assert_eq!(move_target(Some(19), RowMove::Down, 5, 20), 19);
+        assert_eq!(move_target(Some(3), RowMove::PageDown, 5, 20), 8);
+        assert_eq!(move_target(Some(18), RowMove::PageDown, 5, 20), 19);
+        assert_eq!(move_target(Some(3), RowMove::PageUp, 5, 20), 0);
+        assert_eq!(move_target(Some(7), RowMove::Home, 5, 20), 0);
+        assert_eq!(move_target(Some(7), RowMove::End, 5, 20), 19);
+        assert_eq!(move_target(None, RowMove::Down, 5, 20), 0);
+        assert_eq!(move_target(None, RowMove::Up, 5, 20), 19);
+    }
+
+    #[derive(Default)]
+    struct Log {
+        selected: Option<SharedString>,
+        extended: Vec<SharedString>,
+        activated: Vec<SharedString>,
+    }
+
+    struct Host(Rc<RefCell<Log>>);
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let (a, b, c) = (self.0.clone(), self.0.clone(), self.0.clone());
+            let selected = self.0.borrow().selected.clone();
+            let mut table = DataTable::new()
+                .column(DataColumn::new("n", "N"))
+                .rows((0..5).map(|i| DataRow::new(format!("r{i}"), [format!("{i}")])))
+                .on_row_select(move |id, _, _| a.borrow_mut().selected = Some(id))
+                .on_row_extend(move |id, _, _| b.borrow_mut().extended.push(id))
+                .on_row_click(move |id, _, _, _| c.borrow_mut().activated.push(id));
+            if let Some(id) = selected {
+                table = table.selected(id);
+            }
+            table
+        }
+    }
+
+    fn selected(log: &Rc<RefCell<Log>>) -> Option<String> {
+        log.borrow().selected.as_ref().map(|s| s.to_string())
+    }
+
+    #[gpui::test]
+    fn keys_move_extend_and_activate(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(Log::default()));
+        let (host, cx) = open_fluent_test_window(cx, |_, _| Host(log.clone()));
+        cx.click_selector("data-table");
+        cx.type_keys("down");
+        assert_eq!(selected(&log).as_deref(), Some("r0"));
+        host.update(cx, |_, cx| cx.notify());
+        cx.type_keys("down");
+        assert_eq!(selected(&log).as_deref(), Some("r1"));
+        cx.type_keys("end");
+        assert_eq!(selected(&log).as_deref(), Some("r4"));
+        cx.type_keys("home");
+        assert_eq!(selected(&log).as_deref(), Some("r0"));
+        cx.type_keys("pagedown");
+        assert_eq!(selected(&log).as_deref(), Some("r4"));
+        cx.type_keys("pageup");
+        assert_eq!(selected(&log).as_deref(), Some("r0"));
+        cx.type_keys("shift-down");
+        assert_eq!(log.borrow().extended, vec![SharedString::from("r1")]);
+        cx.type_keys("space");
+        assert_eq!(selected(&log).as_deref(), Some("r0"));
+        cx.type_keys("enter");
+        assert_eq!(log.borrow().activated, vec![SharedString::from("r0")]);
     }
 }
