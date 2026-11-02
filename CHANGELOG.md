@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Add headless click and keyboard interaction coverage for buttons, checkboxes, and switches.
 - fluent-core: check every dark, light, Midnight and Ember colour token for initialization and enforce WCAG contrast for text, brand and status pairs (WI-2914).
 - fluent-test-utils: `FluentInteractionExt` helpers on `VisualTestContext` to type keys, click an element by debug selector and assert focus (WI-2906).
 - gpui: re-apply backdrop blur (`backdrop_blur(radius, tint)`) on the vendored gpui, with a wgpu renderer path and an unverified DirectX path; drop the vendored patch budget from CONTRIBUTING (WI-1349).

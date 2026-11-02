@@ -104,8 +104,10 @@ impl RenderOnce for ToggleButton {
         let icon = self.icon;
         let label = self.label;
 
+        let debug_id = self.id.to_string();
         let mut el = div()
             .id(self.id)
+            .debug_selector(move || debug_id)
             .flex()
             .flex_row()
             .items_center()
@@ -118,7 +120,11 @@ impl RenderOnce for ToggleButton {
             .text_color(fg);
 
         if !disabled {
-            el = el.cursor_pointer().hover(move |s| s.bg(bg_hover));
+            el = el
+                .focusable()
+                .tab_stop(true)
+                .cursor_pointer()
+                .hover(move |s| s.bg(bg_hover));
         }
 
         if let Some(handler) = on_click.filter(|_| !disabled) {
@@ -136,5 +142,80 @@ impl RenderOnce for ToggleButton {
         }
 
         el
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Context, Entity, InputEvent as _, KeyUpEvent, Keystroke, Render, TestAppContext};
+
+    use super::*;
+
+    struct Host {
+        selected: bool,
+        disabled: bool,
+    }
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let entity = cx.entity();
+            ToggleButton::new("toggle-button")
+                .label("Pin")
+                .selected(self.selected)
+                .disabled(self.disabled)
+                .on_click(move |selected, _, _, cx| {
+                    entity.update(cx, |host, cx| {
+                        host.selected = selected;
+                        cx.notify();
+                    });
+                })
+        }
+    }
+
+    fn open(
+        cx: &mut TestAppContext,
+        disabled: bool,
+    ) -> (Entity<Host>, &mut gpui::VisualTestContext) {
+        open_fluent_test_window(cx, move |_, _| Host {
+            selected: false,
+            disabled,
+        })
+    }
+
+    fn press(cx: &mut gpui::VisualTestContext, key: &'static str) {
+        cx.type_keys(key);
+        let keystroke = Keystroke::parse(key).expect("valid test keystroke");
+        cx.update(|window, app| {
+            window.dispatch_event(
+                KeyUpEvent {
+                    keystroke,
+                    scan_code: None,
+                }
+                .to_platform_input(),
+                app,
+            );
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+    }
+
+    #[gpui::test]
+    fn click_enter_and_space_flip_selected_state(cx: &mut TestAppContext) {
+        let (host, cx) = open(cx, false);
+        cx.click_selector("toggle-button");
+        assert!(host.read_with(cx, |host, _| host.selected));
+        cx.update(|window, app| window.draw(app).clear(app));
+        press(cx, "enter");
+        assert!(!host.read_with(cx, |host, _| host.selected));
+        press(cx, "space");
+        assert!(host.read_with(cx, |host, _| host.selected));
+    }
+
+    #[gpui::test]
+    fn disabled_toggle_button_does_not_flip(cx: &mut TestAppContext) {
+        let (host, cx) = open(cx, true);
+        cx.click_selector("toggle-button");
+        assert!(!host.read_with(cx, |host, _| host.selected));
     }
 }

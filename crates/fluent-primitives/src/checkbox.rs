@@ -102,8 +102,10 @@ impl RenderOnce for Checkbox {
             CheckboxState::Checked => CheckboxState::Unchecked,
         };
 
+        let debug_id = self.id.to_string();
         let mut el = div()
             .id(self.id)
+            .debug_selector(move || debug_id)
             .size(px(18.0))
             .rounded(px(radii.sm))
             .bg(box_bg)
@@ -115,6 +117,8 @@ impl RenderOnce for Checkbox {
 
         if !disabled {
             el = el
+                .focusable()
+                .tab_stop(true)
                 .cursor_pointer()
                 .hover(move |s| s.border_color(colors.stroke_accent));
         }
@@ -142,5 +146,91 @@ impl RenderOnce for Checkbox {
         }
 
         el
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Context, Entity, InputEvent as _, KeyUpEvent, Keystroke, Render, TestAppContext};
+
+    use super::*;
+
+    struct Host {
+        state: CheckboxState,
+        disabled: bool,
+    }
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let entity = cx.entity();
+            Checkbox::new("checkbox")
+                .state(self.state)
+                .disabled(self.disabled)
+                .on_click(move |state, _, _, cx| {
+                    entity.update(cx, |host, cx| {
+                        host.state = state;
+                        cx.notify();
+                    });
+                })
+        }
+    }
+
+    fn open(
+        cx: &mut TestAppContext,
+        disabled: bool,
+    ) -> (Entity<Host>, &mut gpui::VisualTestContext) {
+        open_fluent_test_window(cx, move |_, _| Host {
+            state: CheckboxState::Unchecked,
+            disabled,
+        })
+    }
+
+    fn press(cx: &mut gpui::VisualTestContext, key: &'static str) {
+        cx.type_keys(key);
+        let keystroke = Keystroke::parse(key).expect("valid test keystroke");
+        cx.update(|window, app| {
+            window.dispatch_event(
+                KeyUpEvent {
+                    keystroke,
+                    scan_code: None,
+                }
+                .to_platform_input(),
+                app,
+            );
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+    }
+
+    #[gpui::test]
+    fn click_enter_and_space_flip_checked_state(cx: &mut TestAppContext) {
+        let (host, cx) = open(cx, false);
+        cx.click_selector("checkbox");
+        assert_eq!(
+            host.read_with(cx, |host, _| host.state),
+            CheckboxState::Checked
+        );
+        cx.update(|window, app| window.draw(app).clear(app));
+        press(cx, "enter");
+        assert_eq!(
+            host.read_with(cx, |host, _| host.state),
+            CheckboxState::Unchecked
+        );
+        press(cx, "space");
+        assert_eq!(
+            host.read_with(cx, |host, _| host.state),
+            CheckboxState::Checked
+        );
+    }
+
+    #[gpui::test]
+    fn disabled_checkbox_does_not_flip(cx: &mut TestAppContext) {
+        let (host, cx) = open(cx, true);
+        cx.click_selector("checkbox");
+        assert_eq!(
+            host.read_with(cx, |host, _| host.state),
+            CheckboxState::Unchecked
+        );
     }
 }
