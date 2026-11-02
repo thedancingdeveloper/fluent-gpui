@@ -2,8 +2,8 @@ use fluent_app::{FluentApp, TitleBar};
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_layout::{
     DataCell, DataColumn, DataRow, DataStatusKind, DataTable, DataTableState, DockPanel,
-    DockPosition, MenuBar, MessageBar, MessageIntent, ModalStack, Pane, PaneConstraints, PaneGroup,
-    TabItem, TabStrip, Tree, TreeItem, Workspace,
+    DockPosition, MenuBar, MessageBar, MessageIntent, ModalStack, Pane, TabItem, TabStrip, Tree,
+    TreeItem, Workspace,
 };
 use fluent_primitives::{
     Avatar, Button, ButtonAppearance, Checkbox, CounterBadge, CounterBadgeAppearance,
@@ -13,6 +13,9 @@ use fluent_primitives::{
     VideoSurface, VideoSurfaceEvent,
 };
 use fluent_ribbon::RibbonBar;
+
+mod families;
+use families::{DemoViews, FamilyHost, FamilyNav};
 use gpui::{div, prelude::*, rgb, Context, Entity, IntoElement, Render, SharedString, Window};
 
 // ---------------------------------------------------------------------------
@@ -400,28 +403,6 @@ impl Render for GalleryRoot {
 }
 
 // ---------------------------------------------------------------------------
-// Placeholder pane content
-// ---------------------------------------------------------------------------
-
-struct PlaceholderView {
-    label: gpui::SharedString,
-}
-
-impl Render for PlaceholderView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let colors = cx.theme().colors.clone();
-        div()
-            .size_full()
-            .flex()
-            .items_center()
-            .justify_center()
-            .bg(colors.surface)
-            .text_color(colors.on_subtle)
-            .child(self.label.clone())
-    }
-}
-
-// ---------------------------------------------------------------------------
 // InputCapture demo: click (or focus + Enter) to grab, Escape or Ctrl+Alt to release
 // ---------------------------------------------------------------------------
 
@@ -764,16 +745,6 @@ fn main() {
                 })
         });
 
-        // Left sidebar
-        let sidebar_content = cx.new(|_| PlaceholderView {
-            label: "Navigation tree".into(),
-        });
-        let sidebar = cx.new(|cx| {
-            DockPanel::new(cx, DockPosition::Left, "Navigation")
-                .size(240.0)
-                .content(sidebar_content.into())
-        });
-
         // Main pane with a tab strip
         let tab_strip = cx.new(|cx: &mut gpui::Context<TabStrip>| {
             let mut ts = TabStrip::new(cx);
@@ -781,80 +752,39 @@ fn main() {
             ts.add_tab(TabItem::new("settings").label("Settings").closable(true));
             ts
         });
-        let terminal_demo = cx.new(TerminalDemo::new);
-        let data_states = cx.new(|_| DataStatesDemo);
-        let split_list = cx.new(|_| {
-            PaneGroup::vertical()
-                .first(terminal_demo.into())
-                .second(data_states.into())
-                .ratio(0.4)
-        });
         let badge_demo = cx.new(|_| CounterBadgeDemo);
-        let matrix_demo = cx.new(|_| ThemeMatrixDemo);
         let persona_demo = cx.new(|_| PersonaDemo);
+        let download_demo = cx.new(|_| DownloadProgressDemo);
+        let data_states = cx.new(|_| DataStatesDemo);
+        let date_demo = cx.new(DateTimeDemo::new);
+        let input_demo = cx.new(InputCaptureDemo::new);
+        let terminal_demo = cx.new(TerminalDemo::new);
+        let video_demo = cx.new(VideoDemo::new);
+        let matrix_demo = cx.new(|_| ThemeMatrixDemo);
         let rtl_demo = cx.new(|cx| {
             cx.observe_global::<LayoutDirection>(|_, cx| cx.notify())
                 .detach();
             RtlDemo
         });
-        let download_demo = cx.new(|_| DownloadProgressDemo);
-        let date_demo = cx.new(DateTimeDemo::new);
-        let input_demo = cx.new(InputCaptureDemo::new);
-        let video_demo = cx.new(VideoDemo::new);
-        let input_video = cx.new(|_| {
-            PaneGroup::vertical()
-                .first(input_demo.into())
-                .second(video_demo.into())
-                .ratio(0.4)
+        let host = cx.new(|_| {
+            FamilyHost::new(DemoViews {
+                status: vec![badge_demo.into(), persona_demo.into(), download_demo.into()],
+                data: vec![data_states.into()],
+                date_input: vec![date_demo.into(), input_demo.into()],
+                media: vec![terminal_demo.into(), video_demo.into()],
+                theme: vec![matrix_demo.into(), rtl_demo.into()],
+            })
         });
-        let download_date = cx.new(|_| {
-            PaneGroup::vertical()
-                .first(download_demo.into())
-                .second(date_demo.into())
-                .ratio(0.6)
+        let pane_content = host.clone();
+
+        // Left sidebar
+        let sidebar_content = cx.new(|_| FamilyNav::new(host.clone()));
+        let sidebar = cx.new(|cx| {
+            DockPanel::new(cx, DockPosition::Left, "Navigation")
+                .size(240.0)
+                .content(sidebar_content.into())
         });
-        let badge_date = cx.new(|_| {
-            PaneGroup::vertical()
-                .first(badge_demo.into())
-                .second(download_date.into())
-                .ratio(0.4)
-        });
-        let badge_detail = cx.new(|_| {
-            PaneGroup::vertical()
-                .first(badge_date.into())
-                .second(input_video.into())
-                .ratio(0.35)
-        });
-        let rtl_detail = cx.new(|_| {
-            PaneGroup::vertical()
-                .first(rtl_demo.into())
-                .second(badge_detail.into())
-                .ratio(0.3)
-        });
-        let matrix_detail = cx.new(|_| {
-            PaneGroup::vertical()
-                .first(matrix_demo.into())
-                .second(rtl_detail.into())
-                .ratio(0.5)
-        });
-        let split_detail = cx.new(|_| {
-            PaneGroup::vertical()
-                .first(persona_demo.into())
-                .second(matrix_detail.into())
-                .ratio(0.3)
-        });
-        let pane_content = cx.new(|_| {
-            PaneGroup::horizontal()
-                .first(split_list.into())
-                .second(split_detail.into())
-                .ratio(0.36)
-                .constraints(
-                    PaneConstraints::new()
-                        .first_min(220.0)
-                        .second_min(320.0)
-                        .first_max(Some(520.0)),
-                )
-        });
+
         let main_pane = cx.new(|cx| Pane::new(cx).with_tab_strip(tab_strip));
         // set content separately since we need the entity
         main_pane.update(cx, |p, cx| {
