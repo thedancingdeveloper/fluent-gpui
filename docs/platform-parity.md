@@ -23,7 +23,7 @@ row marked **divergent** is an intentional platform difference, not a failure.
 | Window movement and native decorations | `TitleBar` can replace native decorations in client/frameless mode; drag uses `start_window_move`; minimize/maximize/close are app controls. Native frame behavior is a Windows policy. | A move request is handled by the X11 window manager; the app must not assume it can reposition a top-level window directly. Whether the native frame is shown is window-manager policy. | A move request is handled by the compositor through the xdg-shell protocol; the app must not assume it can reposition a top-level surface directly. Server-side/client-side decoration support varies by compositor. | **divergent, unverified** natively. The wrapper behavior is covered by source-level/test-platform contracts; run [WI-3055](https://vogt.sprooty.com/work/WI-3055). |
 | Snap and caption buttons | Windows snap layouts and caption-button hit testing are OS behaviors; custom chrome must preserve the caption-button affordance and leave controls accessible. | No Windows snap-layout equivalent is promised; tiling/window-manager behavior is external to Fluent. | Tiling and decoration behavior are compositor-specific; no Windows snap-layout equivalent is promised. | **divergent, unverified**. Follow [WI-3055](https://vogt.sprooty.com/work/WI-3055) for a native interaction pass. |
 | System theme and accent | Fluent theme state supplies colors; `TitleBar` uses the Fluent accent colors. Automatic OS theme/accent synchronization is not claimed by the wrapper. | Same Fluent theme contract; desktop-environment synchronization is not claimed. | Same Fluent theme contract; desktop-environment synchronization is not claimed. | **unverified** for native synchronization. Follow [WI-3055](https://vogt.sprooty.com/work/WI-3055). |
-| High-contrast detection | The `high-contrast` patch exposes OS state and change notifications, but this repository has no real-Windows run recorded. | Portal-backed `org.freedesktop.appearance` contrast is implemented by the Linux platform layer; desktop coverage is not recorded here. | Portal-backed `org.freedesktop.appearance` contrast is implemented by the Linux platform layer; compositor/portal availability varies. | **unverified** natively. Follow [WI-3056](https://vogt.sprooty.com/work/WI-3056). See [`PATCHES.md`](../vendor/zed/PATCHES.md) for the implementation boundary. |
+| High-contrast detection | `SPI_GETHIGHCONTRAST` reads `HCF_HIGHCONTRASTON`; `WM_SETTINGCHANGE` for that action notifies GPUI observers. | The xdg-desktop-portal `org.freedesktop.appearance` `contrast` setting is read at startup and on setting changes; values `>= 2` mean high contrast. | The same portal contract is consumed by the Wayland event loop; the compositor/portal must provide the setting. | **source-audited, unverified manually**. The shared GPUI contract only notifies when the boolean changes. See the [high-contrast evidence](#high-contrast-evidence-wi-3056) and [`PATCHES.md`](../vendor/zed/PATCHES.md). |
 | IME composition and committed text | GPUI separates composition/committed text from physical key events; native IME coverage is not recorded. | Same contract; toolkit/desktop IME setup is environment-dependent. | Same contract; toolkit/desktop IME setup is environment-dependent. | **unverified** natively. Follow [WI-3057](https://vogt.sprooty.com/work/WI-3057). |
 | Physical scancodes and key repeat | Set-1 make code is derived from the Windows message, with `0xE000` marking an extended key. | Scancode is derived from X11 event detail (`detail - 8`). | Wayland supplies the evdev key on the initial event and repeat timer. | **verified-by-test** for the shared patch/InputCapture press-repeat-release contract; **unverified natively** on all three backends. See [scancode evidence](#physical-scancode-evidence) and [`PATCHES.md`](../vendor/zed/PATCHES.md). |
 | Clipboard (text and image) | GPUI's DirectX backend reads and writes Unicode text and registered image formats (PNG, GIF, JPEG, SVG). | The X11 selection backend supports UTF-8 text and the GPUI image formats; ownership and persistence depend on the selection owner/clipboard manager. | The data-device backend supports text and image MIME types, with reads transferred through a pipe and cached after a successful offer read. | **source-verified; native run unavailable**. See the [clipboard audit](#clipboard-audit) and follow [WI-3059](https://vogt.sprooty.com/work/WI-3059) for a Windows/X11/Wayland host run. |
@@ -63,6 +63,56 @@ X11 or Wayland session (`DISPLAY` and `WAYLAND_DISPLAY` are unset), so the
 manual scenarios above remain **unverified**. The follow-up items linked in the
 matrix are the owners of those desktop runs. This explicit negative record
 prevents a headless cargo/test run from being mistaken for manual evidence.
+
+## High-contrast evidence (WI-3056)
+
+The source audit on 2026-11-02 confirms the following end-to-end contract:
+
+- **Windows DirectX:** `gpui_windows::system_settings::system_high_contrast`
+  calls `SystemParametersInfoW(SPI_GETHIGHCONTRAST)` and checks
+  `HCF_HIGHCONTRASTON`. The window message handler watches `WM_SETTINGCHANGE`
+  for `SPI_GETHIGHCONTRAST` and invokes the registered callback. GPUI reads
+  the setting again when the application asks for `high_contrast()` rather
+  than relying on a stale cached value.
+- **Linux X11:** the xdg-desktop-portal listener reads
+  `org.freedesktop.appearance/contrast` initially and subscribes to its
+  setting-change signal. `contrast >= 2` is converted to `true`; the X11
+  client updates its state and invokes the callback only when that boolean
+  differs from the previous value.
+- **Linux Wayland:** the same portal event source is consumed by the Wayland
+  client. It applies the same `contrast >= 2` conversion and changed-value
+  guard before invoking the callback.
+- **Fluent integration:** `FluentApp` applies `Theme::high_contrast()` at
+  startup when the system reports high contrast and subscribes to the GPUI
+  change notification. Turning the setting off restores the configured light
+  or dark system theme.
+
+The source boundary is the `high-contrast` patch listed in
+[`vendor/zed/PATCHES.md`](../vendor/zed/PATCHES.md). The relevant files are
+`gpui_windows/src/system_settings.rs`, `gpui_windows/src/platform.rs`,
+`gpui_windows/src/events.rs`, `gpui_linux/src/linux/xdg_desktop_portal.rs`,
+`gpui_linux/src/linux/x11/client.rs`, `gpui_linux/src/linux/wayland/client.rs`,
+`gpui/src/platform.rs`, `gpui/src/app.rs`, and
+`crates/fluent-app/src/app_builder.rs`.
+
+### Manual test record
+
+| Backend | Host/session evidence | Result | Status |
+|---|---|---|---|
+| Windows DirectX 11 | No Windows host or desktop session is available in this worker. | Not run; `SPI_GETHIGHCONTRAST` and `WM_SETTINGCHANGE` require a Windows desktop. | **source-audited, unverified manually** |
+| Linux X11 | `DISPLAY` is unset in this worker. | Not run; no X11 display or portal signal source is available. | **source-audited, unverified manually** |
+| Linux Wayland | `WAYLAND_DISPLAY` and `XDG_SESSION_TYPE` are unset in this worker. | Not run; no Wayland compositor or portal signal source is available. | **source-audited, unverified manually** |
+
+The native follow-up procedure is deliberately recorded here rather than
+claiming that a headless test is equivalent to a desktop run: launch the
+gallery with the same build, enable high contrast, verify the initial
+`high_contrast()` state and Fluent high-contrast tokens, toggle the setting
+off and on, and verify exactly one theme update per boolean transition. On
+Linux, record the desktop portal's `contrast` value (including a value below
+2 and a value of 2 or greater); on Windows, record the Windows contrast
+scheme and the `WM_SETTINGCHANGE` transition. Attach the host/session details
+and observations to WI-3056 before changing any matrix cell to
+**verified-manually**.
 
 ## Audit notes
 
