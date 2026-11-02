@@ -16,6 +16,11 @@ unicode-segmentation = "1.12"
 [dev-dependencies]
 fluent-test-utils = { workspace = true }
 gpui = { workspace = true, features = ["test-support"] }
+criterion = "0.8.2"
+
+[[bench]]
+name = "render_cost"
+harness = false
 
 [package.metadata.estate-gpui]
 # Must equal the zed commit in vendor/zed/UPSTREAM.md (scripts/check-zed-rev.sh).
