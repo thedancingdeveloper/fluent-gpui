@@ -26,7 +26,7 @@ row marked **divergent** is an intentional platform difference, not a failure.
 | High-contrast detection | The `high-contrast` patch exposes OS state and change notifications, but this repository has no real-Windows run recorded. | Portal-backed `org.freedesktop.appearance` contrast is implemented by the Linux platform layer; desktop coverage is not recorded here. | Portal-backed `org.freedesktop.appearance` contrast is implemented by the Linux platform layer; compositor/portal availability varies. | **unverified** natively. Follow [WI-3056](https://vogt.sprooty.com/work/WI-3056). See [`PATCHES.md`](../vendor/zed/PATCHES.md) for the implementation boundary. |
 | IME composition and committed text | GPUI separates composition/committed text from physical key events; native IME coverage is not recorded. | Same contract; toolkit/desktop IME setup is environment-dependent. | Same contract; toolkit/desktop IME setup is environment-dependent. | **unverified** natively. Follow [WI-3057](https://vogt.sprooty.com/work/WI-3057). |
 | Physical scancodes and key repeat | Set-1 make code is derived from the Windows message; the key-scan-code patch is not verified on real Windows. | Scancode is derived from X11 event detail (`detail - 8`). | Wayland supplies the evdev key, including repeats. | **divergent, Windows unverified**. Follow [WI-3058](https://vogt.sprooty.com/work/WI-3058); implementation notes are in [`PATCHES.md`](../vendor/zed/PATCHES.md). |
-| Clipboard | GPUI platform clipboard API provides text and image read/write; native integration is not manually verified here. | Clipboard ownership and persistence depend on the X11 selection/clipboard owner. | Clipboard access depends on compositor/data-device support and may be asynchronous. | **divergent, unverified**. Follow [WI-3059](https://vogt.sprooty.com/work/WI-3059). |
+| Clipboard | GPUI's DirectX backend reads and writes Unicode text and registered image formats (PNG, GIF, JPEG, SVG). | The X11 selection backend supports UTF-8 text and the GPUI image formats; ownership and persistence depend on the selection owner/clipboard manager. | The data-device backend supports text and image MIME types, with reads transferred through a pipe and cached after a successful offer read. | **source-verified; native run unavailable**. See the [clipboard audit](#clipboard-audit) and follow [WI-3059](https://vogt.sprooty.com/work/WI-3059) for a Windows/X11/Wayland host run. |
 | File and folder pickers | `fluent-app::pickers` delegates to native GPUI prompts; test-platform filtering and cancellation are tested, native dialogs are not. | Native dialog availability depends on the desktop portal/toolkit environment. | Native dialog availability normally depends on the desktop portal/toolkit environment. | **unverified** natively. Follow [WI-3060](https://vogt.sprooty.com/work/WI-3060); see [picker contracts](consumer-contracts.md#3-file-and-folder-pickers). |
 | DPI scaling and device pixels | `WM_DPICHANGED` updates the window scale factor; device-pixel resize sizes are converted to logical pixels before the resize callback. Text and layout continue to use logical pixels, while renderer bounds use device pixels. | The display scale is selected from `GPUI_X11_SCALE_FACTOR`, RandR, `Xft.dpi`, or the default `1.0` (in that order); X11 resize callbacks receive logical size and scale. | The compositor-provided output scale is applied to the surface; configure/resize handling is throttled during interactive resizing and callbacks receive logical size and scale. | **source-audited, unverified manually**. The shared contract is `logical = physical / scale` and `physical = round(logical * scale)`; see the manual evidence and test plan below. Follow [WI-3061](https://vogt.sprooty.com/work/WI-3061) for native runs. |
 | X11 vs Wayland window/input differences | Not applicable. | X11 exposes server-side selections and X11 event details; window-manager policy is external. | Wayland delegates more policy to the compositor and uses evdev/data-device protocols; server-side assumptions must not be made. | **divergent** by design and **unverified** as a complete matrix. Follow [WI-3062](https://vogt.sprooty.com/work/WI-3062). |
@@ -81,3 +81,28 @@ are attached to the work item.
   check is useful build evidence, but it is not a native interaction test.
 - No macOS, web, or wasm behavior is included because those targets are outside
   this repository's support contract.
+
+## Clipboard audit
+
+The vendored GPUI platform implementations were inspected on 2026-11-02. The
+repository's platform test backend verifies clipboard round trips, and the
+Windows backend has a native test covering Unicode text, metadata, and NUL
+normalization. The Linux backends expose text and image MIME formats: X11 uses
+selection requests and a clipboard-manager handover, while Wayland reads the
+data offer through a bounded pipe and caches successful reads.
+
+The asynchronous API is a ready task on these native backends and returns
+`Ok(None)` when no item is available. The `ClipboardReadError` variants
+(`Unavailable`, `Denied`, and `UnsupportedContent`) remain part of the shared
+API for permission-gated platforms; no native Windows, X11, or Wayland failure
+run was possible in this headless session.
+
+| Target | Text | Image | Async/failure handling | Evidence |
+|---|---|---|---|---|
+| Windows DirectX 11 | source + backend test | source (PNG/GIF/JPEG/SVG) | synchronous native read wrapped as ready task; no native failure run | source/test verified |
+| Linux X11 | source (UTF-8 selection targets) | source (GPUI image MIME targets) | selection timeout/error returns no item; no X server in session | source verified |
+| Linux Wayland | source (text MIME offer) | source (image MIME offer) | pipe transfer errors return no item; no compositor in session | source verified |
+
+Native host execution for all three targets remains follow-up work because this
+session has no Windows desktop, X11 display, or Wayland compositor (`DISPLAY`
+and `WAYLAND_DISPLAY` are unset).
