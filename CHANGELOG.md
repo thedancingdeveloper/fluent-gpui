@@ -11,6 +11,7 @@ per crate.
 ---
 
 ## Unreleased
+- docs: `docs/consumer-contracts.md` states the frame lifetime and cadence, terminal sizing and focus, picker cancellation, error and platform-support contracts for rtbit-fluent, rdpapp and email-desktop-fluent (WI-3020).
 - fluent-test-utils: reusable assertions for accessibility role/name/state (`assert_a11y_node`), tab order, keyboard outcomes, WCAG contrast (`assert_contrast`) and RTL inline order; Button, Switch and Dialog tests migrated (WI-3019).
 - fluent-app, fluent-primitives, docs: icon-only control audit; arrow_left/arrow_right resolve to specific builtins, referenced-icon test, icon size/contrast/label/tooltip rules in docs/tokens.md (WI-3017).
 - fluent-primitives, fluent-layout, gallery: ProgressBar value text (default percentage) and Spinner label for assistive tech, ConnectionBadge Status role, MessageBar Alert/Status roles plus a recovery `action`, and an rtbit download-progress gallery story; animations already honour `reduce_motion` (WI-3016).

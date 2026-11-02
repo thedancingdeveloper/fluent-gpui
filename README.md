@@ -237,6 +237,8 @@ names, not pixels). The gallery's own tree dump test is the worked example.
   accessibility gate (coming with the 3.x work).
 - `AGENTS.md` — for worker sessions (coming with the 3.x work).
 - [docs/graft.md](docs/graft.md) — how changes land in this repository.
+- [docs/consumer-contracts.md](docs/consumer-contracts.md) — video, terminal and
+  picker contracts for native consumers.
 - [docs/VISUAL_TARGETS.md](docs/VISUAL_TARGETS.md) — visual reference
   targets.
 - [CHANGELOG.md](CHANGELOG.md) — release notes and migration notes.
