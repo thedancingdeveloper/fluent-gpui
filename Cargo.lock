@@ -1533,6 +1533,7 @@ name = "fluent-core"
 version = "2.4.0"
 dependencies = [
  "gpui",
+ "gpui_platform",
 ]
 
 [[package]]

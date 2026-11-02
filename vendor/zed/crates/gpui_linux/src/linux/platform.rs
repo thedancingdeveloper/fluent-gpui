@@ -73,6 +73,7 @@ pub(crate) struct PlatformHandlers {
     pub(crate) system_wake: Option<Box<dyn FnMut()>>,
     pub(crate) power_mode_change: Option<Box<dyn FnMut()>>,
     pub(crate) displays_changed: Option<Box<dyn FnMut()>>,
+    pub(crate) high_contrast_changed: Option<Box<dyn FnMut()>>,
 }
 
 /// A system power change, forwarded from D-Bus to the client's event loop.
@@ -92,6 +93,7 @@ pub(crate) struct LinuxCommon {
     pub(crate) foreground_executor: ForegroundExecutor,
     pub(crate) text_system: Arc<dyn PlatformTextSystem>,
     pub(crate) appearance: WindowAppearance,
+    pub(crate) high_contrast: bool,
     pub(crate) auto_hide_scrollbars: bool,
     pub(crate) button_layout: WindowButtonLayout,
     pub(crate) callbacks: PlatformHandlers,
@@ -142,6 +144,7 @@ impl LinuxCommon {
             foreground_executor: ForegroundExecutor::new(dispatcher),
             text_system,
             appearance: WindowAppearance::Light,
+            high_contrast: false,
             auto_hide_scrollbars: false,
             button_layout: WindowButtonLayout::linux_default(),
             callbacks,
@@ -1147,6 +1150,14 @@ impl Platform for LinuxPlatform {
 
     fn window_appearance(&self) -> WindowAppearance {
         self.with_common(|common| common.appearance)
+    }
+
+    fn high_contrast(&self) -> bool {
+        self.with_common(|common| common.high_contrast)
+    }
+
+    fn on_high_contrast_change(&self, callback: Box<dyn FnMut()>) {
+        self.with_common(|common| common.callbacks.high_contrast_changed = Some(callback));
     }
 
     fn button_layout(&self) -> Option<WindowButtonLayout> {

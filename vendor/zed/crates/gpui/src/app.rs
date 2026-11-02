@@ -881,6 +881,7 @@ pub struct App {
     pub(crate) keyboard_layout_observers: SingleSubscriberSet<Handler>,
     missing_glyph_callback: Rc<MissingGlyphCallbackSlot>,
     pub(crate) thermal_state_observers: SingleSubscriberSet<Handler>,
+    pub(crate) high_contrast_observers: SingleSubscriberSet<Handler>,
     pub(crate) display_observers: SingleSubscriberSet<DisplayHandler>,
     /// The connected displays, as of the platform's last display change
     /// notification.
@@ -1031,6 +1032,7 @@ impl App {
                 keyboard_layout_observers: SingleSubscriberSet::new(),
                 missing_glyph_callback: Rc::default(),
                 thermal_state_observers: SingleSubscriberSet::new(),
+                high_contrast_observers: SingleSubscriberSet::new(),
                 display_observers: SingleSubscriberSet::new(),
                 displays: read_displays(platform.as_ref()),
                 system_sleep_observers: SingleSubscriberSet::new(),
@@ -1114,6 +1116,18 @@ impl App {
                 if let Some(app) = app.upgrade() {
                     let cx = &mut app.borrow_mut();
                     cx.system_sleep_observers
+                        .clone()
+                        .retain(move |callback| (callback)(cx));
+                }
+            }
+        }));
+
+        platform.on_high_contrast_change(Box::new({
+            let app = Rc::downgrade(&app);
+            move || {
+                if let Some(app) = app.upgrade() {
+                    let cx = &mut app.borrow_mut();
+                    cx.high_contrast_observers
                         .clone()
                         .retain(move |callback| (callback)(cx));
                 }
@@ -1776,6 +1790,22 @@ impl App {
     /// Returns the appearance of the application's windows.
     pub fn window_appearance(&self) -> WindowAppearance {
         self.platform.window_appearance()
+    }
+
+    /// Returns whether the operating system has enabled high contrast mode.
+    pub fn high_contrast(&self) -> bool {
+        self.platform.high_contrast()
+    }
+
+    /// Invokes a handler when the operating system's high contrast setting changes.
+    pub fn on_high_contrast_change<F>(&self, mut callback: F) -> Subscription
+    where
+        F: 'static + FnMut(&mut App),
+    {
+        self.high_contrast_observers.insert(Box::new(move |cx| {
+            callback(cx);
+            true
+        }))
     }
 
     /// Overrides the appearance (light/dark) applied to the app's windows, independent of

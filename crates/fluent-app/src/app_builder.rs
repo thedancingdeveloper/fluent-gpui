@@ -178,7 +178,21 @@ impl FluentApp {
                 match theme_mode {
                     ThemeMode::Dark => Theme::apply_dark(cx),
                     ThemeMode::Light => Theme::apply_light(cx),
-                    ThemeMode::System => apply_system_theme(cx, cx.window_appearance()),
+                    ThemeMode::System => {
+                        if cx.high_contrast() {
+                            Theme::apply_high_contrast(cx);
+                        } else {
+                            apply_system_theme(cx, cx.window_appearance());
+                        }
+                        cx.on_high_contrast_change(move |cx| {
+                            if cx.high_contrast() {
+                                Theme::apply_high_contrast(cx);
+                            } else {
+                                apply_system_theme(cx, cx.window_appearance());
+                            }
+                        })
+                        .detach();
+                    }
                 }
                 ModalStack::init(cx);
                 ToastStack::init(cx);

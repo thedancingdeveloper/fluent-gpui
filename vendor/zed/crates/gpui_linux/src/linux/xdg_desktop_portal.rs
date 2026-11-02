@@ -12,6 +12,7 @@ use gpui::{BackgroundExecutor, Task, WindowAppearance};
 
 pub enum Event {
     WindowAppearance(WindowAppearance),
+    HighContrast(bool),
     #[cfg_attr(feature = "x11", allow(dead_code))]
     CursorTheme(String),
     #[cfg_attr(feature = "x11", allow(dead_code))]
@@ -50,6 +51,12 @@ async fn listen(sender: Sender<Event>) -> anyhow::Result<()> {
         sender.send(Event::WindowAppearance(
             window_appearance_from_color_scheme(initial_appearance),
         ))?;
+    }
+    if let Ok(contrast) = settings
+        .read::<u32>("org.freedesktop.appearance", "contrast")
+        .await
+    {
+        sender.send(Event::HighContrast(contrast >= 2))?;
     }
     if let Ok(initial_theme) = settings
         .read::<String>("org.gnome.desktop.interface", "cursor-theme")
@@ -117,14 +124,28 @@ async fn listen(sender: Sender<Event>) -> anyhow::Result<()> {
     }
 
     let mut appearance_changed = settings.receive_color_scheme_changed().await?;
+    let appearance_sender = sender.clone();
     listeners.push(Box::pin(async move {
         while let Some(scheme) = appearance_changed.next().await {
-            sender.send(Event::WindowAppearance(
+            appearance_sender.send(Event::WindowAppearance(
                 window_appearance_from_color_scheme(scheme),
             ))?;
         }
         anyhow::Ok(())
     }));
+
+    if let Ok(mut contrast_changed) = settings
+        .receive_setting_changed_with_args::<u32>("org.freedesktop.appearance", "contrast")
+        .await
+    {
+        let contrast_sender = sender.clone();
+        listeners.push(Box::pin(async move {
+            while let Some(contrast) = contrast_changed.next().await {
+                contrast_sender.send(Event::HighContrast(contrast? >= 2))?;
+            }
+            anyhow::Ok(())
+        }));
+    }
 
     for result in futures::future::join_all(listeners).await {
         result?;

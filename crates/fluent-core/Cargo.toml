@@ -10,6 +10,7 @@ categories = ["gui"]
 
 [dependencies]
 gpui = { workspace = true, features = ["svg-font-warmup"] }
+gpui_platform = { workspace = true }
 
 [package.metadata.estate-gpui]
 # Must equal the zed commit in vendor/zed/UPSTREAM.md (scripts/check-zed-rev.sh).
