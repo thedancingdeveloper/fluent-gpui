@@ -1,4 +1,5 @@
 use fluent_core::{LayoutDirection, Theme};
+use std::cell::Cell;
 
 pub use gpui::{Context, Entity, FocusHandle, TestAppContext, VisualTestContext, Window};
 
@@ -6,6 +7,28 @@ use gpui::{Bounds, Modifiers, MouseButton, Pixels, Point};
 
 pub fn init_fluent_test(cx: &mut TestAppContext) {
     cx.update(Theme::init);
+}
+
+/// Opt-in counters used by render-cost fixtures without changing production widgets.
+#[derive(Default)]
+pub struct RenderAudit {
+    elements: Cell<usize>,
+    notifies: Cell<usize>,
+}
+
+impl RenderAudit {
+    pub fn element_built(&self) {
+        self.elements.set(self.elements.get() + 1);
+    }
+    pub fn notified(&self) {
+        self.notifies.set(self.notifies.get() + 1);
+    }
+    pub fn element_builds(&self) -> usize {
+        self.elements.get()
+    }
+    pub fn notify_calls(&self) -> usize {
+        self.notifies.get()
+    }
 }
 
 pub fn open_fluent_test_window<V: gpui::Render>(
