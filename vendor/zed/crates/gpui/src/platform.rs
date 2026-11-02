@@ -427,6 +427,10 @@ pub trait Platform: 'static {
 
     /// Returns the appearance of the application's windows.
     fn window_appearance(&self) -> WindowAppearance;
+    fn high_contrast(&self) -> bool {
+        false
+    }
+    fn on_high_contrast_change(&self, _callback: Box<dyn FnMut()>) {}
 
     /// Overrides the appearance (light/dark) applied to the app's windows, independent
     /// of the OS-wide setting. Pass `None` to clear the override and follow the system

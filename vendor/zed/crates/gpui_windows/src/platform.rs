@@ -115,6 +115,7 @@ struct PlatformCallbacks {
     system_wake: Cell<Option<Box<dyn FnMut()>>>,
     low_power_mode_change: Cell<Option<Box<dyn FnMut()>>>,
     displays_changed: Cell<Option<Box<dyn FnMut()>>>,
+    high_contrast_changed: Cell<Option<Box<dyn FnMut()>>>,
 }
 
 impl WindowsPlatformState {
@@ -783,6 +784,18 @@ impl Platform for WindowsPlatform {
         system_appearance().log_err().unwrap_or_default()
     }
 
+    fn high_contrast(&self) -> bool {
+        system_high_contrast()
+    }
+
+    fn on_high_contrast_change(&self, callback: Box<dyn FnMut()>) {
+        self.inner
+            .state
+            .callbacks
+            .high_contrast_changed
+            .set(Some(callback));
+    }
+
     fn open_url(&self, url: &str) {
         if url.is_empty() {
             return;
@@ -1240,6 +1253,7 @@ impl WindowsPlatformInner {
             | WM_GPUI_GPU_DEVICE_LOST => self.handle_gpui_events(msg, wparam, lparam),
             WM_POWERBROADCAST => self.handle_power_broadcast(wparam, lparam),
             WM_DISPLAYCHANGE => self.handle_display_change(handle),
+            WM_SETTINGCHANGE => self.handle_system_settings_changed(wparam),
             WM_QUERYENDSESSION => Some(1),
             WM_ENDSESSION if wparam.0 != 0 => self.handle_end_session(),
             _ => None,
@@ -1290,6 +1304,16 @@ impl WindowsPlatformInner {
             |callbacks| &callbacks.displays_changed,
             |callback| callback(),
         );
+        Some(0)
+    }
+
+    fn handle_system_settings_changed(&self, wparam: WPARAM) -> Option<isize> {
+        if SYSTEM_PARAMETERS_INFO_ACTION(wparam.0 as u32) == SPI_GETHIGHCONTRAST {
+            self.with_callback(
+                |callbacks| &callbacks.high_contrast_changed,
+                |callback| callback(),
+            );
+        }
         Some(0)
     }
 

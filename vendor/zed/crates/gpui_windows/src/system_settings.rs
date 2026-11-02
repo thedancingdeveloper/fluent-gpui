@@ -4,9 +4,10 @@ use std::{
 };
 
 use gpui_util::ResultExt;
+use windows::Win32::UI::Accessibility::{HCF_HIGHCONTRASTON, HIGHCONTRASTW};
 use windows::Win32::UI::WindowsAndMessaging::{
-    SPI_GETWHEELSCROLLCHARS, SPI_GETWHEELSCROLLLINES, SYSTEM_PARAMETERS_INFO_ACTION,
-    SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, SystemParametersInfoW,
+    SPI_GETHIGHCONTRAST, SPI_GETWHEELSCROLLCHARS, SPI_GETWHEELSCROLLLINES,
+    SYSTEM_PARAMETERS_INFO_ACTION, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, SystemParametersInfoW,
 };
 
 /// Windows settings pulled from SystemParametersInfo
@@ -14,6 +15,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 #[derive(Default, Debug, Clone)]
 pub(crate) struct WindowsSystemSettings {
     pub(crate) mouse_wheel_settings: MouseWheelSettings,
+    pub(crate) high_contrast: Cell<bool>,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -33,10 +35,12 @@ impl WindowsSystemSettings {
 
     fn init(&mut self) {
         self.mouse_wheel_settings.update();
+        self.high_contrast.set(system_high_contrast());
     }
 
     pub(crate) fn update(&self, wparam: usize) {
         match SYSTEM_PARAMETERS_INFO_ACTION(wparam as u32) {
+            SPI_GETHIGHCONTRAST => self.high_contrast.set(system_high_contrast()),
             SPI_GETWHEELSCROLLLINES | SPI_GETWHEELSCROLLCHARS => self.update_mouse_wheel_settings(),
             _ => {}
         }
@@ -45,6 +49,21 @@ impl WindowsSystemSettings {
     fn update_mouse_wheel_settings(&self) {
         self.mouse_wheel_settings.update();
     }
+}
+
+pub(crate) fn system_high_contrast() -> bool {
+    let mut info = HIGHCONTRASTW::default();
+    info.cbSize = std::mem::size_of::<HIGHCONTRASTW>() as u32;
+    let succeeded = unsafe {
+        SystemParametersInfoW(
+            SPI_GETHIGHCONTRAST,
+            info.cbSize,
+            Some((&mut info) as *mut HIGHCONTRASTW as *mut c_void),
+            SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS::default(),
+        )
+    }
+    .is_ok();
+    succeeded && info.dwFlags.contains(HCF_HIGHCONTRASTON)
 }
 
 impl MouseWheelSettings {
