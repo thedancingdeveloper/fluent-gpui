@@ -24,7 +24,7 @@ row marked **divergent** is an intentional platform difference, not a failure.
 | Snap and caption buttons | Windows snap layouts and caption-button hit testing are OS behaviors; custom chrome must preserve the caption-button affordance and leave controls accessible. | No Windows snap-layout equivalent is promised; tiling/window-manager behavior is external to Fluent. | Tiling and decoration behavior are compositor-specific; no Windows snap-layout equivalent is promised. | **divergent, unverified**. Follow [WI-3055](https://vogt.sprooty.com/work/WI-3055) for a native interaction pass. |
 | System theme and accent | Fluent theme state supplies colors; `TitleBar` uses the Fluent accent colors. Automatic OS theme/accent synchronization is not claimed by the wrapper. | Same Fluent theme contract; desktop-environment synchronization is not claimed. | Same Fluent theme contract; desktop-environment synchronization is not claimed. | **unverified** for native synchronization. Follow [WI-3055](https://vogt.sprooty.com/work/WI-3055). |
 | High-contrast detection | `SPI_GETHIGHCONTRAST` reads `HCF_HIGHCONTRASTON`; `WM_SETTINGCHANGE` for that action notifies GPUI observers. | The xdg-desktop-portal `org.freedesktop.appearance` `contrast` setting is read at startup and on setting changes; values `>= 2` mean high contrast. | The same portal contract is consumed by the Wayland event loop; the compositor/portal must provide the setting. | **source-audited, unverified manually**. The shared GPUI contract only notifies when the boolean changes. See the [high-contrast evidence](#high-contrast-evidence-wi-3056) and [`PATCHES.md`](../vendor/zed/PATCHES.md). |
-| IME composition and committed text | GPUI separates composition/committed text from physical key events; native IME coverage is not recorded. | Same contract; toolkit/desktop IME setup is environment-dependent. | Same contract; toolkit/desktop IME setup is environment-dependent. | **unverified** natively. Follow [WI-3057](https://vogt.sprooty.com/work/WI-3057). |
+| IME composition and committed text | `WM_IME_COMPOSITION` sends committed `GCS_RESULTSTR` text through `replace_text_in_range`, and the active `GCS_COMPSTR` through `replace_and_mark_text_in_range`; the IME context is enabled only while the focused input accepts text. | XIM preedit callbacks map to marked text and XIM commit callbacks map to committed text; XKB compose sequences use the same marked/committed path, while the physical key event remains separate. | `zwp_text_input_v3` preedit maps to marked text and commit strings map to committed text; the text-input state is enabled only for an accepting input and committed before dispatch. | **source-audited; unverified manually**. The shared `TextInput` handler replaces marked text, clears the mark on commit, and preserves UTF-16 ranges. See [IME evidence](#ime-evidence). |
 | Physical scancodes and key repeat | Set-1 make code is derived from the Windows message, with `0xE000` marking an extended key. | Scancode is derived from X11 event detail (`detail - 8`). | Wayland supplies the evdev key on the initial event and repeat timer. | **verified-by-test** for the shared patch/InputCapture press-repeat-release contract; **unverified natively** on all three backends. See [scancode evidence](#physical-scancode-evidence) and [`PATCHES.md`](../vendor/zed/PATCHES.md). |
 | Clipboard (text and image) | GPUI's DirectX backend reads and writes Unicode text and registered image formats (PNG, GIF, JPEG, SVG). | The X11 selection backend supports UTF-8 text and the GPUI image formats; ownership and persistence depend on the selection owner/clipboard manager. | The data-device backend supports text and image MIME types, with reads transferred through a pipe and cached after a successful offer read. | **source-verified; native run unavailable**. See the [clipboard audit](#clipboard-audit) and follow [WI-3059](https://vogt.sprooty.com/work/WI-3059) for a Windows/X11/Wayland host run. |
 | File and folder pickers | `fluent-app::pickers` delegates to native GPUI prompts; test-platform filtering and cancellation are tested, native dialogs are not. | Native dialog availability depends on the desktop portal/toolkit environment. | Native dialog availability normally depends on the desktop portal/toolkit environment. | **unverified** natively. Follow [WI-3060](https://vogt.sprooty.com/work/WI-3060); see [picker contracts](consumer-contracts.md#3-file-and-folder-pickers). |
@@ -164,6 +164,47 @@ are attached to the work item.
   check is useful build evidence, but it is not a native interaction test.
 - No macOS, web, or wasm behavior is included because those targets are outside
   this repository's support contract.
+
+## IME evidence
+
+The GPUI input contract and the Fluent `TextInput` adapter were source-audited
+on 2026-11-02. All three supported native paths deliver composition separately
+from physical key events:
+
+- **Windows DirectX:** `WM_IME_COMPOSITION` reads `GCS_COMPSTR` as the active
+  composition and `GCS_RESULTSTR` as committed text. The active string is sent
+  to `replace_and_mark_text_in_range`; the result string is sent to
+  `replace_text_in_range`. The IME context is associated only while the focused
+  window has an input handler that accepts text, and an inactive context is
+  completed before it is detached.
+- **Linux X11:** XIM preedit callbacks send marked text and XIM commit callbacks
+  send committed text. The XKB compose path also emits marked text while a
+  sequence is in progress and commits the composed character separately. X11
+  key events remain distinct from these text callbacks.
+- **Linux Wayland:** `zwp_text_input_v3` sends preedit text and commit strings
+  independently. GPUI maps these to marked and committed text respectively,
+  enables the protocol only for an accepting input handler, updates the IME
+  cursor rectangle, and commits the text-input state.
+
+`TextInput` replaces the current marked range during composition, underlines the
+marked range, clears it when committed text arrives, and converts the GPUI
+UTF-16 ranges at the input boundary. This is the parity contract: composition
+may be rendered differently by each native backend, but the consumer receives
+the same marked/committed distinction and does not need to process IME text as
+physical key presses. The existing test-platform coverage exercises ordinary
+editing and UTF-16 offset handling; it does not emulate native IME callbacks.
+
+No native IME run can be claimed from this worker: `DISPLAY`,
+`WAYLAND_DISPLAY`, and `XDG_SESSION_TYPE` are unset, and the worker is not a
+Windows host. Therefore Windows DirectX, Linux X11, and Linux Wayland remain
+**unverified manually**. A native follow-up should use the same `TextInput`
+scenario on each backend (Japanese hiragana-to-kanji conversion or an
+equivalent composition, cancellation, reconversion, and direct committed text),
+record the desktop/IME, whether preedit was visibly marked, the final committed
+string, and whether any physical key event was emitted for the committed text.
+For Linux also record whether XIM or Wayland text-input-v3 was available; for
+Windows record the IME name and whether focus changes commit or cancel the
+composition.
 
 ## Physical scancode evidence
 
