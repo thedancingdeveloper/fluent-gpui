@@ -1,6 +1,9 @@
 use crate::focus::FluentFocus as _;
 use fluent_core::ThemeProvider as _;
-use gpui::{div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, Window};
+use gpui::{
+    div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, Role, SharedString,
+    Toggled, Window,
+};
 
 /// A Fluent 2-styled toggle switch.
 ///
@@ -10,6 +13,7 @@ use gpui::{div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderO
 pub struct Switch {
     id: ElementId,
     on: bool,
+    label: Option<SharedString>,
     disabled: bool,
     tab_index: Option<isize>,
     on_click: Option<Box<dyn Fn(bool, &ClickEvent, &mut Window, &mut App) + 'static>>,
@@ -20,10 +24,18 @@ impl Switch {
         Self {
             id: id.into(),
             on: false,
+            label: None,
             disabled: false,
             tab_index: None,
             on_click: None,
         }
+    }
+
+    /// The accessible name. The switch draws no text of its own, so set this
+    /// to the text of the label shown beside it.
+    pub fn label(mut self, label: impl Into<SharedString>) -> Self {
+        self.label = Some(label.into());
+        self
     }
 
     pub fn on(mut self, on: bool) -> Self {
@@ -82,6 +94,8 @@ impl RenderOnce for Switch {
         let focus_ring = colors.stroke_accent;
         let new_state = !self.on;
         let on_click = self.on_click;
+        let on = self.on;
+        let label = self.label;
 
         // Thumb offset: left (off) or right (on)
         let thumb_ml = if self.on { px(20.0) } else { px(2.0) };
@@ -90,6 +104,9 @@ impl RenderOnce for Switch {
         let mut el = div()
             .id(self.id)
             .debug_selector(move || debug_id)
+            .role(Role::Switch)
+            .aria_toggled(if on { Toggled::True } else { Toggled::False })
+            .when_some(label, |d, name| d.aria_label(name))
             .w(px(40.0))
             .h(px(20.0))
             .rounded(px(9999.0))
@@ -194,5 +211,40 @@ mod tests {
         let (host, cx) = open(cx, true);
         cx.click_selector("switch");
         assert!(!host.read_with(cx, |host, _| host.on));
+    }
+
+    struct A11yHost(Box<dyn Fn() -> gpui::AnyElement>);
+
+    impl Render for A11yHost {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            (self.0)()
+        }
+    }
+
+    fn snapshot(
+        cx: &mut TestAppContext,
+        build: impl Fn() -> gpui::AnyElement + 'static,
+    ) -> Vec<String> {
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| A11yHost(Box::new(build)));
+        cx.accessibility_snapshot()
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_switch_state(cx: &mut TestAppContext) {
+        for on in [false, true] {
+            let snap = snapshot(cx, move || {
+                Switch::new("s").label("Wi-Fi").on(on).into_any_element()
+            });
+            assert_eq!(
+                snap,
+                vec![
+                    "Window".to_string(),
+                    format!(
+                        "Switch \"Wi-Fi\" [toggled={}]",
+                        if on { "True" } else { "False" }
+                    )
+                ]
+            );
+        }
     }
 }

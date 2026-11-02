@@ -1,7 +1,8 @@
 use crate::focus::FluentFocus as _;
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, SharedString, Window,
+    div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, Role, SharedString,
+    Toggled, Window,
 };
 
 use crate::button::ButtonSize;
@@ -119,6 +120,13 @@ impl RenderOnce for ToggleButton {
         let mut el = div()
             .id(self.id)
             .debug_selector(move || debug_id)
+            .role(Role::Button)
+            .aria_toggled(if selected {
+                Toggled::True
+            } else {
+                Toggled::False
+            })
+            .when_some(label.clone(), |d, name| d.aria_label(name))
             .flex()
             .flex_row()
             .items_center()
@@ -229,5 +237,43 @@ mod tests {
         let (host, cx) = open(cx, true);
         cx.click_selector("toggle-button");
         assert!(!host.read_with(cx, |host, _| host.selected));
+    }
+
+    struct A11yHost(Box<dyn Fn() -> gpui::AnyElement>);
+
+    impl Render for A11yHost {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            (self.0)()
+        }
+    }
+
+    fn snapshot(
+        cx: &mut TestAppContext,
+        build: impl Fn() -> gpui::AnyElement + 'static,
+    ) -> Vec<String> {
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| A11yHost(Box::new(build)));
+        cx.accessibility_snapshot()
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_toggle_state(cx: &mut TestAppContext) {
+        for selected in [false, true] {
+            let snap = snapshot(cx, move || {
+                ToggleButton::new("t")
+                    .label("Bold")
+                    .selected(selected)
+                    .into_any_element()
+            });
+            assert_eq!(
+                snap,
+                vec![
+                    "Window".to_string(),
+                    format!(
+                        "Button \"Bold\" [toggled={}]",
+                        if selected { "True" } else { "False" }
+                    )
+                ]
+            );
+        }
     }
 }
