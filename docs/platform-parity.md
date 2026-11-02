@@ -20,16 +20,49 @@ row marked **divergent** is an intentional platform difference, not a failure.
 
 | Behavior | Windows DirectX 11 | Linux X11 | Linux Wayland | Evidence and follow-up |
 |---|---|---|---|---|
-| Native title bar and window controls | `TitleBar` can replace native decorations in client/frameless mode; drag uses `start_window_move`; minimize/maximize/close are app controls. | Same Fluent custom-title-bar contract; native decoration policy remains compositor/window-manager controlled. | Same Fluent custom-title-bar contract; compositor controls native decoration policy. | **unverified** natively. The wrapper behavior is covered by source-level/test-platform contracts; run [WI-3055](https://vogt.sprooty.com/work/WI-3055). |
-| Snap and caption buttons | Windows snap layouts and caption-button hit testing are OS behaviors; custom chrome must preserve the caption-button affordance and leave controls accessible. | No Windows snap-layout equivalent is promised; tiling/window-manager behavior is external to Fluent. | Tiling and server-side/client-side decoration behavior are compositor-specific; no Windows snap-layout equivalent is promised. | **divergent, unverified**. Follow [WI-3055](https://vogt.sprooty.com/work/WI-3055) for a native interaction pass. |
+| Window movement and native decorations | `TitleBar` can replace native decorations in client/frameless mode; drag uses `start_window_move`; minimize/maximize/close are app controls. Native frame behavior is a Windows policy. | A move request is handled by the X11 window manager; the app must not assume it can reposition a top-level window directly. Whether the native frame is shown is window-manager policy. | A move request is handled by the compositor through the xdg-shell protocol; the app must not assume it can reposition a top-level surface directly. Server-side/client-side decoration support varies by compositor. | **divergent, unverified** natively. The wrapper behavior is covered by source-level/test-platform contracts; run [WI-3055](https://vogt.sprooty.com/work/WI-3055). |
+| Snap and caption buttons | Windows snap layouts and caption-button hit testing are OS behaviors; custom chrome must preserve the caption-button affordance and leave controls accessible. | No Windows snap-layout equivalent is promised; tiling/window-manager behavior is external to Fluent. | Tiling and decoration behavior are compositor-specific; no Windows snap-layout equivalent is promised. | **divergent, unverified**. Follow [WI-3055](https://vogt.sprooty.com/work/WI-3055) for a native interaction pass. |
 | System theme and accent | Fluent theme state supplies colors; `TitleBar` uses the Fluent accent colors. Automatic OS theme/accent synchronization is not claimed by the wrapper. | Same Fluent theme contract; desktop-environment synchronization is not claimed. | Same Fluent theme contract; desktop-environment synchronization is not claimed. | **unverified** for native synchronization. Follow [WI-3055](https://vogt.sprooty.com/work/WI-3055). |
 | High-contrast detection | The `high-contrast` patch exposes OS state and change notifications, but this repository has no real-Windows run recorded. | Portal-backed `org.freedesktop.appearance` contrast is implemented by the Linux platform layer; desktop coverage is not recorded here. | Portal-backed `org.freedesktop.appearance` contrast is implemented by the Linux platform layer; compositor/portal availability varies. | **unverified** natively. Follow [WI-3056](https://vogt.sprooty.com/work/WI-3056). See [`PATCHES.md`](../vendor/zed/PATCHES.md) for the implementation boundary. |
 | IME composition and committed text | GPUI separates composition/committed text from physical key events; native IME coverage is not recorded. | Same contract; toolkit/desktop IME setup is environment-dependent. | Same contract; toolkit/desktop IME setup is environment-dependent. | **unverified** natively. Follow [WI-3057](https://vogt.sprooty.com/work/WI-3057). |
 | Physical scancodes and key repeat | Set-1 make code is derived from the Windows message; the key-scan-code patch is not verified on real Windows. | Scancode is derived from X11 event detail (`detail - 8`). | Wayland supplies the evdev key, including repeats. | **divergent, Windows unverified**. Follow [WI-3058](https://vogt.sprooty.com/work/WI-3058); implementation notes are in [`PATCHES.md`](../vendor/zed/PATCHES.md). |
-| Clipboard | GPUI's DirectX backend reads and writes Unicode text and registered image formats (PNG, GIF, JPEG, SVG). | The X11 selection backend supports UTF-8 text and the GPUI image formats; ownership and persistence depend on the selection owner/clipboard manager. | The data-device backend supports text and image MIME types, with reads transferred through a pipe and cached after a successful offer read. | **source-verified; native run unavailable**. See the [clipboard audit](#clipboard-audit) and follow [WI-3059](https://vogt.sprooty.com/work/WI-3059) for a Windows/X11/Wayland host run. |
+| Clipboard (text and image) | GPUI's DirectX backend reads and writes Unicode text and registered image formats (PNG, GIF, JPEG, SVG). | The X11 selection backend supports UTF-8 text and the GPUI image formats; ownership and persistence depend on the selection owner/clipboard manager. | The data-device backend supports text and image MIME types, with reads transferred through a pipe and cached after a successful offer read. | **source-verified; native run unavailable**. See the [clipboard audit](#clipboard-audit) and follow [WI-3059](https://vogt.sprooty.com/work/WI-3059) for a Windows/X11/Wayland host run. |
 | File and folder pickers | `fluent-app::pickers` delegates to native GPUI prompts; test-platform filtering and cancellation are tested, native dialogs are not. | Native dialog availability depends on the desktop portal/toolkit environment. | Native dialog availability normally depends on the desktop portal/toolkit environment. | **unverified** natively. Follow [WI-3060](https://vogt.sprooty.com/work/WI-3060); see [picker contracts](consumer-contracts.md#3-file-and-folder-pickers). |
 | DPI scaling and device pixels | `WM_DPICHANGED` updates the window scale factor; device-pixel resize sizes are converted to logical pixels before the resize callback. Text and layout continue to use logical pixels, while renderer bounds use device pixels. | The display scale is selected from `GPUI_X11_SCALE_FACTOR`, RandR, `Xft.dpi`, or the default `1.0` (in that order); X11 resize callbacks receive logical size and scale. | The compositor-provided output scale is applied to the surface; configure/resize handling is throttled during interactive resizing and callbacks receive logical size and scale. | **source-audited, unverified manually**. The shared contract is `logical = physical / scale` and `physical = round(logical * scale)`; see the manual evidence and test plan below. Follow [WI-3061](https://vogt.sprooty.com/work/WI-3061) for native runs. |
 | X11 vs Wayland window/input differences | Not applicable. | X11 exposes server-side selections and X11 event details; window-manager policy is external. | Wayland delegates more policy to the compositor and uses evdev/data-device protocols; server-side assumptions must not be made. | **divergent** by design and **unverified** as a complete matrix. Follow [WI-3062](https://vogt.sprooty.com/work/WI-3062). |
+
+## Manual evidence record
+
+A native run must record the session type, desktop/compositor, scale factor,
+portal availability, and the result for each row. Use the same build and
+scenario in both sessions; do not treat a test-platform result as native proof.
+The following checklist is the minimum evidence to attach to a work-item
+comment or release note:
+
+1. **Window movement/decorations:** launch the gallery, drag the custom title
+   bar, invoke minimize/maximize/close, and repeat with native decorations
+   enabled where the desktop allows it. Record whether the move request is
+   accepted and which component owns the frame.
+2. **Clipboard:** copy and paste text and an image, then close the source
+   application and paste again. On X11 also test primary selection; on Wayland
+   record whether the data offer resolves asynchronously and which formats are
+   offered.
+3. **Pickers:** open/save a file and pick a folder, cancel each dialog, and
+   test an extension filter. Record whether the portal/toolkit dialog appears,
+   the returned path, and cancellation/error behavior.
+4. **Input:** exercise key repeat, IME composition, pointer motion, wheel,
+   drag, and title-bar buttons. Record physical key/scancode behavior and any
+   compositor-specific limitations.
+5. **Scaling:** run at 100% and a non-100% scale, move the window between
+   outputs if available, and compare logical layout dimensions with device
+   pixel resize events.
+
+**Evidence for this documentation land (2026-11-02):** source and test
+contracts were audited, but no native evidence is claimed. This worker has no
+X11 or Wayland session (`DISPLAY` and `WAYLAND_DISPLAY` are unset), so the
+manual scenarios above remain **unverified**. The follow-up items linked in the
+matrix are the owners of those desktop runs. This explicit negative record
+prevents a headless cargo/test run from being mistaken for manual evidence.
 
 ## Audit notes
 
