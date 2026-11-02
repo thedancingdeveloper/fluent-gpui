@@ -92,6 +92,27 @@ impl Render for BigTableDemo {
     }
 }
 
+struct BigTreeDemo;
+
+impl Render for BigTreeDemo {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        let roots = (0..50_000)
+            .map(|ix| TreeItem::new(format!("gallery-tree-{ix}"), format!("Tree node {ix}")));
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .p_2()
+            .child("50,000 tree nodes (virtualised)")
+            .child(
+                div()
+                    .h(px(360.0))
+                    .overflow_hidden()
+                    .child(Tree::new().items(roots)),
+            )
+    }
+}
+
 impl Render for BigListDemo {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let view = cx.entity();
@@ -909,6 +930,7 @@ fn main() {
         let download_demo = cx.new(|_| DownloadProgressDemo);
         let data_states = cx.new(|_| DataStatesDemo);
         let big_list = cx.new(|_| BigListDemo { selected: 0 });
+        let big_tree = cx.new(|_| BigTreeDemo);
         let date_demo = cx.new(DateTimeDemo::new);
         let input_demo = cx.new(InputCaptureDemo::new);
         let terminal_demo = cx.new(TerminalDemo::new);
@@ -928,7 +950,7 @@ fn main() {
         let host = cx.new(|_| {
             FamilyHost::new(DemoViews {
                 status: vec![badge_demo.into(), persona_demo.into(), download_demo.into()],
-                data: vec![data_states.into(), big_list.into()],
+                data: vec![data_states.into(), big_list.into(), big_tree.into()],
                 date_input: vec![date_demo.into(), input_demo.into(), range_demo.into()],
                 media: vec![terminal_demo.into(), video_demo.into()],
                 theme: vec![matrix_demo.into(), rtl_demo.into()],

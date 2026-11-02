@@ -15,6 +15,7 @@ type TreeContextHandler =
     Arc<dyn Fn(SharedString, &MouseDownEvent, &mut Window, &mut App) + 'static>;
 type TreeCheckHandler =
     Arc<dyn Fn(SharedString, bool, &ClickEvent, &mut Window, &mut App) + 'static>;
+type TreeLoadHandler = Arc<dyn Fn(SharedString, &mut Window, &mut App) + 'static>;
 
 #[derive(Clone)]
 struct FlatTreeItem {
@@ -32,6 +33,7 @@ struct TreeRenderState {
     on_toggle: Option<TreeToggleHandler>,
     on_context_menu: Option<TreeContextHandler>,
     on_check: Option<TreeCheckHandler>,
+    on_load_children: Option<TreeLoadHandler>,
     filter: Option<SharedString>,
 }
 
@@ -56,6 +58,10 @@ pub struct TreeItem {
     pub children: Vec<TreeItem>,
     checkable: bool,
     checked: bool,
+    /// Whether children are being fetched by a lazy data source.
+    pub loading: bool,
+    /// Whether this item can have children that are not loaded yet.
+    pub lazy: bool,
 }
 
 impl TreeItem {
@@ -70,6 +76,8 @@ impl TreeItem {
             children: Vec::new(),
             checkable: false,
             checked: false,
+            loading: false,
+            lazy: false,
         }
     }
 
@@ -108,6 +116,18 @@ impl TreeItem {
     /// their leaves and ignore this flag.
     pub fn checked(mut self, checked: bool) -> Self {
         self.checked = checked;
+        self
+    }
+
+    /// Marks this item as having children that may be loaded on demand.
+    pub fn lazy(mut self, lazy: bool) -> Self {
+        self.lazy = lazy;
+        self
+    }
+
+    /// Shows a loading state while a lazy child request is in flight.
+    pub fn loading(mut self, loading: bool) -> Self {
+        self.loading = loading;
         self
     }
 
@@ -191,10 +211,29 @@ pub struct Tree {
     on_toggle: Option<TreeToggleHandler>,
     on_context_menu: Option<TreeContextHandler>,
     on_check: Option<TreeCheckHandler>,
+    on_load_children: Option<TreeLoadHandler>,
     status: Option<(DataStatusKind, SharedString)>,
 }
 
 impl Tree {
+    fn flatten_visible(
+        items: &[TreeItem],
+        filter: Option<&str>,
+        depth: usize,
+    ) -> Vec<(TreeItem, usize)> {
+        let mut out = Vec::new();
+        for item in items {
+            if filter.is_some_and(|query| !Self::item_matches_filter(item, query)) {
+                continue;
+            }
+            out.push((item.clone(), depth));
+            if item.expanded {
+                out.extend(Self::flatten_visible(&item.children, filter, depth + 1));
+            }
+        }
+        out
+    }
+
     fn flatten_visible_for_keys(
         items: &[TreeItem],
         filter: Option<&str>,
@@ -212,7 +251,7 @@ impl Tree {
                     id: item.id.clone(),
                     disabled: item.disabled,
                     expanded: item.expanded,
-                    has_children: !item.children.is_empty(),
+                    has_children: !item.children.is_empty() || item.lazy,
                 });
             }
 
@@ -232,6 +271,7 @@ impl Tree {
             on_toggle: None,
             on_context_menu: None,
             on_check: None,
+            on_load_children: None,
             status: None,
         }
     }
@@ -308,6 +348,16 @@ impl Tree {
         self
     }
 
+    /// Requests children for a lazy item when it is expanded. The owner should
+    /// update its model with the children and clear [`TreeItem::loading`].
+    pub fn on_load_children(
+        mut self,
+        f: impl Fn(SharedString, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_load_children = Some(Arc::new(f));
+        self
+    }
+
     fn item_matches_filter(item: &TreeItem, query: &str) -> bool {
         let query = query.to_ascii_lowercase();
         item.label.to_ascii_lowercase().contains(&query)
@@ -336,7 +386,7 @@ impl Tree {
         let typography = theme.typography;
         let components = theme.components;
         let is_selected = state.selected_id.as_ref() == Some(&item.id);
-        let has_children = !item.children.is_empty();
+        let has_children = !item.children.is_empty() || item.lazy;
         let fg = if item.disabled {
             colors.on_neutral_disabled
         } else {
@@ -405,6 +455,7 @@ impl Tree {
 
         let toggle_id = item.id.clone();
         let toggle_handler = state.on_toggle.clone();
+        let load_handler = state.on_load_children.clone();
         let chevron = if has_children {
             let path = if item.expanded {
                 "icons/chevron_down.svg"
@@ -432,6 +483,11 @@ impl Tree {
                     if has_children {
                         if let Some(handler) = &toggle_handler {
                             handler(toggle_id.clone(), !item.expanded, ev, win, app);
+                        }
+                        if item.lazy && !item.expanded && !item.loading {
+                            if let Some(handler) = &load_handler {
+                                handler(toggle_id.clone(), win, app);
+                            }
                         }
                     }
                 })
@@ -527,6 +583,9 @@ impl Tree {
         }
 
         content = content.child(item.label);
+        if item.loading {
+            content = content.child(div().text_color(colors.on_subtle).child("Loading…"));
+        }
         if let Some(badge) = item.badge {
             content = content.child(
                 div()
@@ -539,23 +598,15 @@ impl Tree {
                     .child(badge),
             );
         }
-        let mut node = div().flex().flex_col().child(row.child(content));
-        if item.expanded {
-            for (child_idx, child) in item.children.into_iter().enumerate() {
-                let child = Self::render_item(
-                    child,
-                    depth + 1,
-                    index * 100 + child_idx + 1,
-                    state.clone(),
-                    cx,
-                );
-                if let Some(child) = child {
-                    node = node.child(child);
-                }
-            }
-        }
-
-        Some(node.into_any_element())
+        // Children are separate rows in the flattened virtual list. Keeping
+        // this element to one row is what makes deep and wide trees cheap.
+        Some(
+            div()
+                .flex()
+                .flex_col()
+                .child(row.child(content))
+                .into_any_element(),
+        )
     }
 }
 
@@ -585,6 +636,7 @@ impl RenderOnce for Tree {
             on_toggle: on_toggle.clone(),
             on_context_menu: on_context_menu.clone(),
             on_check,
+            on_load_children: self.on_load_children.clone(),
             filter: self.filter.clone(),
         };
         let root_select = self.selected_id.clone();
@@ -592,7 +644,7 @@ impl RenderOnce for Tree {
         let key_select = on_select.clone();
         let key_activate = on_activate.clone();
         let key_toggle = on_toggle.clone();
-        let mut root = div()
+        let root = div()
             .id("tree")
             .role(Role::Tree)
             .tab_index(0)
@@ -668,12 +720,21 @@ impl RenderOnce for Tree {
         if let Some((kind, message)) = status {
             return root.child(status_block("tree-status", kind, message, cx));
         }
-        for (idx, item) in self.items.into_iter().enumerate() {
-            if let Some(item) = Self::render_item(item, 0, idx, render_state.clone(), cx) {
-                root = root.child(item);
-            }
-        }
-        root
+        let rows = Self::flatten_visible(&self.items, self.filter.as_deref(), 0);
+        let count = rows.len();
+        let build_row = move |index: usize, _window: &mut Window, app: &mut App| {
+            let (item, depth) = rows[index].clone();
+            Self::render_item(item, depth, index, render_state.clone(), app)
+                .unwrap_or_else(|| div().into_any_element())
+        };
+        root.child(
+            crate::virtual_list::VirtualList::new("tree-virtual-list", count, build_row)
+                .row_height(cx.theme().components.menu_item_height)
+                .reveal(
+                    flat.iter()
+                        .position(|item| self.selected_id.as_ref() == Some(&item.id)),
+                ),
+        )
     }
 }
 
