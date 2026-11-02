@@ -304,13 +304,13 @@ impl ColorScheme {
             stroke_accent: hex(0x0078D4),
 
             // --- Semantic status ---
-            status_info: hex(0x0078D4),
+            status_info: hex(0x005A9E),
             status_info_bg: hex(0xE5F3FF),
             status_info_border: hex(0x0078D4),
             status_success: hex(0x107C10),
             status_success_bg: hex(0xEAF6EA),
             status_success_border: hex(0x107C10),
-            status_warning: hex(0xF7630C),
+            status_warning: hex(0x8A3700),
             status_warning_bg: hex(0xFFF4CE),
             status_warning_border: hex(0xF7630C),
             status_error: hex(0xC42B1C),
@@ -414,7 +414,7 @@ impl ColorScheme {
             neutral_disabled: hex(0x181208),
             neutral_selected: hex(0x251A0A),
 
-            accent: hex(0xE07B39),
+            accent: hex(0xA85520),
             accent_hover: hex(0xCB6B2D),
             accent_disabled: hex(0x3A2414),
             accent_selected: hex(0xA85520),
@@ -477,4 +477,151 @@ impl ColorScheme {
             tab_hover_bg: hex(0x1A1408),
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ColorScheme;
+    use gpui::Hsla;
+
+    fn themes() -> [(&'static str, ColorScheme); 4] {
+        [
+            ("dark", ColorScheme::dark()),
+            ("light", ColorScheme::light()),
+            ("midnight", ColorScheme::midnight()),
+            ("ember", ColorScheme::ember()),
+        ]
+    }
+
+    fn tokens(colors: &ColorScheme) -> [(&'static str, Hsla); 51] {
+        [
+            ("neutral", colors.neutral),
+            ("neutral_hover", colors.neutral_hover),
+            ("neutral_disabled", colors.neutral_disabled),
+            ("neutral_selected", colors.neutral_selected),
+            ("accent", colors.accent),
+            ("accent_hover", colors.accent_hover),
+            ("accent_disabled", colors.accent_disabled),
+            ("accent_selected", colors.accent_selected),
+            ("subtle", colors.subtle),
+            ("subtle_hover", colors.subtle_hover),
+            ("subtle_disabled", colors.subtle_disabled),
+            ("subtle_selected", colors.subtle_selected),
+            ("surface", colors.surface),
+            ("surface_dim", colors.surface_dim),
+            ("surface_blur_layer", colors.surface_blur_layer),
+            ("on_neutral", colors.on_neutral),
+            ("on_neutral_disabled", colors.on_neutral_disabled),
+            ("on_neutral_selected", colors.on_neutral_selected),
+            ("on_neutral_accent", colors.on_neutral_accent),
+            ("on_accent", colors.on_accent),
+            ("on_accent_disabled", colors.on_accent_disabled),
+            ("on_accent_selected", colors.on_accent_selected),
+            ("on_subtle", colors.on_subtle),
+            ("on_subtle_disabled", colors.on_subtle_disabled),
+            ("on_subtle_selected", colors.on_subtle_selected),
+            ("stroke_neutral", colors.stroke_neutral),
+            ("stroke_neutral_disabled", colors.stroke_neutral_disabled),
+            ("stroke_neutral_dim", colors.stroke_neutral_dim),
+            ("stroke_neutral_subtle", colors.stroke_neutral_subtle),
+            ("stroke_accent", colors.stroke_accent),
+            ("status_info", colors.status_info),
+            ("status_info_bg", colors.status_info_bg),
+            ("status_info_border", colors.status_info_border),
+            ("status_success", colors.status_success),
+            ("status_success_bg", colors.status_success_bg),
+            ("status_success_border", colors.status_success_border),
+            ("status_warning", colors.status_warning),
+            ("status_warning_bg", colors.status_warning_bg),
+            ("status_warning_border", colors.status_warning_border),
+            ("status_error", colors.status_error),
+            ("status_error_bg", colors.status_error_bg),
+            ("status_error_border", colors.status_error_border),
+            ("ribbon_bg", colors.ribbon_bg),
+            ("ribbon_tab_active_bg", colors.ribbon_tab_active_bg),
+            ("ribbon_tab_indicator", colors.ribbon_tab_indicator),
+            ("ribbon_group_separator", colors.ribbon_group_separator),
+            ("panel_bg", colors.panel_bg),
+            ("panel_border", colors.panel_border),
+            ("tab_strip_bg", colors.tab_strip_bg),
+            ("tab_active_bg", colors.tab_active_bg),
+            ("tab_hover_bg", colors.tab_hover_bg),
+        ]
+    }
+
+    fn relative_luminance(color: Hsla) -> f32 {
+        let rgb = color.to_rgb();
+        [rgb.r, rgb.g, rgb.b]
+            .map(|channel| {
+                if channel <= 0.04045 {
+                    channel / 12.92
+                } else {
+                    ((channel + 0.055) / 1.055).powf(2.4)
+                }
+            })
+            .iter()
+            .zip([0.2126, 0.7152, 0.0722])
+            .map(|(channel, weight)| channel * weight)
+            .sum()
+    }
+
+    fn contrast(foreground: Hsla, background: Hsla) -> f32 {
+        let foreground = relative_luminance(foreground);
+        let background = relative_luminance(background);
+        (foreground.max(background) + 0.05) / (foreground.min(background) + 0.05)
+    }
+
+    #[test]
+    fn every_theme_sets_every_color_token() {
+        for (theme, colors) in themes() {
+            for (name, token) in tokens(&colors) {
+                assert!(
+                    token.h.is_finite()
+                        && token.s.is_finite()
+                        && token.l.is_finite()
+                        && token.a.is_finite(),
+                    "{theme} theme token {name} is not initialized"
+                );
+                assert_eq!(token.a, 1.0, "{theme} theme token {name} is not opaque");
+            }
+        }
+    }
+
+    #[test]
+    fn required_foreground_pairs_meet_wcag_contrast() {
+        for (theme, colors) in themes() {
+            let pairs = [
+                ("text on surface", colors.on_neutral, colors.surface),
+                (
+                    "brand text on surface",
+                    colors.on_neutral_accent,
+                    colors.surface,
+                ),
+                ("text on brand", colors.on_accent, colors.accent),
+                ("secondary text on subtle", colors.on_subtle, colors.subtle),
+                ("info status", colors.status_info, colors.status_info_bg),
+                (
+                    "success status",
+                    colors.status_success,
+                    colors.status_success_bg,
+                ),
+                (
+                    "warning status",
+                    colors.status_warning,
+                    colors.status_warning_bg,
+                ),
+                ("error status", colors.status_error, colors.status_error_bg),
+            ];
+            for (name, foreground, background) in pairs {
+                assert!(
+                    contrast(foreground, background) >= 4.5,
+                    "{theme} {name} contrast is {:.2}:1, expected at least 4.5:1",
+                    contrast(foreground, background)
+                );
+            }
+        }
+    }
+
+    // Disabled foregrounds are intentionally muted to communicate disabled state;
+    // they are excluded from the normal-text WCAG requirement above.
 }
