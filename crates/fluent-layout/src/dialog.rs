@@ -3,6 +3,7 @@ use gpui::{
     div, prelude::*, px, svg, AnyElement, App, ClickEvent, IntoElement, RenderOnce, SharedString,
     Window,
 };
+use std::rc::Rc;
 
 use crate::{ModalSize, ModalStack};
 
@@ -15,11 +16,12 @@ pub struct Dialog {
     dismissible: bool,
 }
 
+#[derive(Clone)]
 #[allow(clippy::type_complexity)]
 pub struct DialogAction {
     label: SharedString,
     primary: bool,
-    on_click: Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>,
+    on_click: Rc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>,
 }
 
 impl DialogAction {
@@ -30,7 +32,7 @@ impl DialogAction {
         Self {
             label: label.into(),
             primary: false,
-            on_click: Box::new(on_click),
+            on_click: Rc::new(on_click),
         }
     }
 
@@ -66,18 +68,23 @@ impl Dialog {
     }
 
     pub fn show(self, size: ModalSize, cx: &mut App) {
-        let entity = cx.new(|_| DialogView { dialog: Some(self) });
+        let entity = cx.new(|_| DialogView { dialog: self });
         ModalStack::push(entity.into(), size, cx);
     }
 }
 
 struct DialogView {
-    dialog: Option<Dialog>,
+    dialog: Dialog,
 }
 
 impl gpui::Render for DialogView {
     fn render(&mut self, _window: &mut Window, _cx: &mut gpui::Context<Self>) -> impl IntoElement {
-        self.dialog.take().unwrap_or_else(|| Dialog::new(""))
+        Dialog {
+            title: self.dialog.title.clone(),
+            body: self.dialog.body.take(),
+            actions: self.dialog.actions.clone(),
+            dismissible: self.dialog.dismissible,
+        }
     }
 }
 
