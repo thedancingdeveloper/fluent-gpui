@@ -1,6 +1,58 @@
 use fluent_core::ThemeProvider as _;
 use gpui::{div, prelude::*, px, App, IntoElement, RenderOnce, Window};
 
+use crate::Avatar;
+
+/// Presence state shown on an avatar.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum PresenceBadgeState {
+    #[default]
+    Available,
+    Busy,
+    Away,
+    Offline,
+    DoNotDisturb,
+}
+
+/// An avatar with a small status indicator overlaid at its lower-right edge.
+#[derive(IntoElement)]
+pub struct PresenceBadge {
+    avatar: Avatar,
+    state: PresenceBadgeState,
+}
+
+impl PresenceBadge {
+    pub fn new(avatar: Avatar, state: PresenceBadgeState) -> Self {
+        Self { avatar, state }
+    }
+}
+
+impl RenderOnce for PresenceBadge {
+    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let colors = &cx.theme().colors;
+        let size = self.avatar.size_value();
+        let indicator_size = (size * 0.3).clamp(8.0, 12.0);
+        let color = match self.state {
+            PresenceBadgeState::Available => colors.status_success,
+            PresenceBadgeState::Busy | PresenceBadgeState::DoNotDisturb => colors.status_error,
+            PresenceBadgeState::Away => colors.status_warning,
+            PresenceBadgeState::Offline => colors.neutral,
+        };
+
+        div().relative().size(px(size)).child(self.avatar).child(
+            div()
+                .absolute()
+                .right(px(0.0))
+                .bottom(px(0.0))
+                .size(px(indicator_size))
+                .rounded(px(9999.0))
+                .bg(color)
+                .border_2()
+                .border_color(colors.surface),
+        )
+    }
+}
+
 /// The visual treatment of a [`CounterBadge`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum CounterBadgeAppearance {

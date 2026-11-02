@@ -20,6 +20,7 @@ mod info_label;
 mod input_capture;
 mod label;
 mod link;
+mod persona;
 mod progress;
 mod radio_group;
 mod roving;
@@ -42,7 +43,9 @@ mod video_surface;
 pub use accordion::Accordion;
 pub use app_dot::AppDot;
 pub use avatar::Avatar;
-pub use badge::{Badge, BadgeVariant, CounterBadge, CounterBadgeAppearance};
+pub use badge::{
+    Badge, BadgeVariant, CounterBadge, CounterBadgeAppearance, PresenceBadge, PresenceBadgeState,
+};
 pub use button::{Button, ButtonAppearance, ButtonShape, ButtonSize};
 pub use card::Card;
 pub use checkbox::{Checkbox, CheckboxState};
@@ -61,6 +64,7 @@ pub use info_label::InfoLabel;
 pub use input_capture::{key_code_for, InputCapture, InputCaptureEvent};
 pub use label::{Label, LabelSize};
 pub use link::{Link, LinkAppearance};
+pub use persona::{Persona, PersonaSize};
 pub use progress::ProgressBar;
 pub use radio_group::{RadioGroup, RadioGroupOrientation, RadioOption};
 pub use searchbox::Searchbox;
