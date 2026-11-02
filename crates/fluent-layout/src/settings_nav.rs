@@ -220,6 +220,7 @@ impl Render for SettingsNav {
                 // Active item: 3px accent bar on the left, offset by 16px indent
                 let row = div()
                     .id(("nav-item", (si * 100 + ii) as u64))
+                    .debug_selector(move || format!("nav-item-{si}-{ii}"))
                     .flex()
                     .flex_row()
                     .items_center()
@@ -258,5 +259,50 @@ impl Render for SettingsNav {
         }
 
         nav
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{cell::RefCell, rc::Rc};
+
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::TestAppContext;
+
+    use super::*;
+
+    fn nav(cx: &mut Context<SettingsNav>, log: Rc<RefCell<Vec<String>>>) -> SettingsNav {
+        SettingsNav::new(cx)
+            .section(
+                SettingsNavSection::new("General")
+                    .item(SettingsNavItem::new("a", "A"))
+                    .item(SettingsNavItem::new("b", "B")),
+            )
+            .on_select(move |id, _| log.borrow_mut().push(id.to_string()))
+    }
+
+    #[gpui::test]
+    fn first_item_is_active_by_default(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (nav, cx) = open_fluent_test_window(cx, |_, cx| nav(cx, log.clone()));
+        nav.read_with(cx, |n, _| assert_eq!(n.active_id.as_deref(), Some("a")));
+    }
+
+    #[gpui::test]
+    fn clicking_item_changes_selection_and_fires_callback(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (nav, cx) = open_fluent_test_window(cx, |_, cx| nav(cx, log.clone()));
+        cx.click_selector("nav-item-0-1");
+        nav.read_with(cx, |n, _| assert_eq!(n.active_id.as_deref(), Some("b")));
+        assert_eq!(*log.borrow(), vec!["b".to_string()]);
+    }
+
+    #[gpui::test]
+    fn set_active_changes_selection_without_callback(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (nav, cx) = open_fluent_test_window(cx, |_, cx| nav(cx, log.clone()));
+        nav.update(cx, |n, cx| n.set_active("b".into(), cx));
+        nav.read_with(cx, |n, _| assert_eq!(n.active_id.as_deref(), Some("b")));
+        assert!(log.borrow().is_empty());
     }
 }
