@@ -27,6 +27,8 @@ mod roving;
 mod searchbox;
 mod section_header;
 mod skeleton;
+mod slider;
+mod spin_button;
 mod spinner;
 mod suggestion_popover;
 mod switch;
@@ -73,6 +75,8 @@ pub use radio_group::{RadioGroup, RadioGroupOrientation, RadioOption};
 pub use searchbox::Searchbox;
 pub use section_header::SectionHeader;
 pub use skeleton::{Skeleton, SkeletonRow, SkeletonWrap};
+pub use slider::{Slider, SliderOrientation};
+pub use spin_button::SpinButton;
 pub use spinner::Spinner;
 pub use suggestion_popover::{
     SuggestionItem, SuggestionKeyAction, SuggestionListState, SuggestionPopover,
