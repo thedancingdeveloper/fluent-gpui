@@ -884,6 +884,35 @@ mod tests {
         });
     }
 
+    fn key_down_with_scan_code(
+        vcx: &mut VisualTestContext,
+        logical_key: &str,
+        scan_code: u32,
+        is_held: bool,
+    ) {
+        vcx.simulate_event(KeyDownEvent {
+            keystroke: Keystroke {
+                modifiers: Modifiers::default(),
+                key: logical_key.into(),
+                key_char: Some(logical_key.into()),
+            },
+            is_held,
+            prefer_character_input: false,
+            scan_code: Some(scan_code),
+        });
+    }
+
+    fn key_up_with_scan_code(vcx: &mut VisualTestContext, logical_key: &str, scan_code: u32) {
+        vcx.simulate_event(KeyUpEvent {
+            keystroke: Keystroke {
+                modifiers: Modifiers::default(),
+                key: logical_key.into(),
+                key_char: Some(logical_key.into()),
+            },
+            scan_code: Some(scan_code),
+        });
+    }
+
     #[gpui::test]
     fn click_grabs_and_is_consumed(cx: &mut TestAppContext) {
         let (capture, log, vcx) = setup(cx);
@@ -927,6 +956,50 @@ mod tests {
             "Tab binding must not fire while grabbed"
         );
         assert!(grabbed(&capture, vcx));
+    }
+
+    #[gpui::test]
+    fn physical_scan_code_survives_press_repeat_and_release(cx: &mut TestAppContext) {
+        let (_capture, log, vcx) = setup(cx);
+        vcx.simulate_click(at(10.0, 10.0), Modifiers::default());
+        log.borrow_mut().clear();
+
+        // Use a deliberately different logical key to prove that `code` is derived from the
+        // physical position. Linux receives evdev 30; Windows receives set-1 0x1e. Both are A.
+        let scan_code = 30;
+        key_down_with_scan_code(vcx, "q", scan_code, false);
+        key_down_with_scan_code(vcx, "q", scan_code, true);
+        key_up_with_scan_code(vcx, "q", scan_code);
+
+        let events = log.borrow();
+        let physical: Vec<_> = events
+            .iter()
+            .filter_map(|event| match event {
+                InputCaptureEvent::Key {
+                    key,
+                    code,
+                    scan_code,
+                    pressed,
+                    is_held,
+                    ..
+                } => Some((
+                    key.as_str(),
+                    code.as_deref(),
+                    *scan_code,
+                    *pressed,
+                    *is_held,
+                )),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            physical,
+            vec![
+                ("q", Some("KeyA"), Some(scan_code), true, false),
+                ("q", Some("KeyA"), Some(scan_code), true, true),
+                ("q", Some("KeyA"), Some(scan_code), false, false),
+            ]
+        );
     }
 
     #[gpui::test]
