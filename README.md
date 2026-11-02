@@ -86,6 +86,16 @@ crates you use.
 | `FluentApp` entry point, title bar, client-side window chrome, bundled assets | `fluent-app` |
 | Accessibility tree dumps and UI test helpers (dev-dependency) | `fluent-test-utils` |
 
+### Date and time input
+
+`DateTimePicker` edits a timezone-less wall-clock `DateTimeValue`. **The app owns the locale and the
+timezone**: the picker never reads the system locale or zone. Pass a `DateTimeLocale` (`iso`, `en_us`,
+`en_gb`, `de_de`, or your own field order, separator and 12/24-hour clock) to set display format, entry
+parsing and segment order. `formatter` and `parser` hooks replace the locale for anything else.
+`parse_input` reports bad text as a `DateTimeParseError` with a message (also shown in the popup).
+Left/Right move between segments in display order, Home/End jump to the first/last, Up/Down adjust.
+The gallery shows en-US and de-DE side by side.
+
 ### Feature flags
 
 Estate renderer additions sit behind Cargo features so that the default

@@ -206,6 +206,245 @@ impl DateTimeValue {
     }
 }
 
+/// Order of the date fields in a locale's display and entry format.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DateOrder {
+    YearMonthDay,
+    DayMonthYear,
+    MonthDayYear,
+}
+
+/// Why a typed date/time string was rejected. [`Display`](std::fmt::Display)
+/// gives a message suitable for showing next to the field.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DateTimeParseError {
+    Empty,
+    /// The text does not match the locale's layout; `expected` is an example.
+    Format {
+        expected: String,
+    },
+    InvalidYear,
+    InvalidMonth,
+    /// The day does not exist in that month; `max` is the month's last day.
+    InvalidDay {
+        max: Option<u8>,
+    },
+    InvalidTime,
+}
+
+impl std::fmt::Display for DateTimeParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Empty => f.write_str("Enter a date and time."),
+            Self::Format { expected } => write!(f, "Use the format {expected}."),
+            Self::InvalidYear => write!(f, "Year must be between {MIN_YEAR} and {MAX_YEAR}."),
+            Self::InvalidMonth => f.write_str("Month must be between 1 and 12."),
+            Self::InvalidDay { max: Some(max) } => {
+                write!(f, "That month has only {max} days.")
+            }
+            Self::InvalidDay { max: None } => f.write_str("That day does not exist."),
+            Self::InvalidTime => f.write_str("Enter a valid time."),
+        }
+    }
+}
+
+impl std::error::Error for DateTimeParseError {}
+
+/// Hook that turns a value into display text, replacing the locale format.
+pub type DateTimeFormatter = Arc<dyn Fn(DateTimeValue) -> String + Send + Sync>;
+/// Hook that parses typed text, replacing the locale parser.
+pub type DateTimeParser =
+    Arc<dyn Fn(&str) -> Result<DateTimeValue, DateTimeParseError> + Send + Sync>;
+
+/// Date/time layout conventions for one locale: field order, separator and
+/// 12/24-hour clock.
+///
+/// Ownership: the app owns the locale and the timezone. The picker edits a
+/// timezone-less wall-clock [`DateTimeValue`]; it never reads the system locale
+/// or zone, and converting to or from an instant is the app's job. Pick a
+/// preset or build one, and use [`DateTimePicker::formatter`] /
+/// [`DateTimePicker::parser`] for anything this struct cannot express.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DateTimeLocale {
+    pub tag: SharedString,
+    pub date_order: DateOrder,
+    pub date_separator: char,
+    pub hour12: bool,
+    pub am_label: SharedString,
+    pub pm_label: SharedString,
+}
+
+impl Default for DateTimeLocale {
+    fn default() -> Self {
+        Self::iso()
+    }
+}
+
+impl DateTimeLocale {
+    /// `2026-05-25 21:30`, the picker's default.
+    pub fn iso() -> Self {
+        Self {
+            tag: "und".into(),
+            date_order: DateOrder::YearMonthDay,
+            date_separator: '-',
+            hour12: false,
+            am_label: "AM".into(),
+            pm_label: "PM".into(),
+        }
+    }
+
+    /// `05/25/2026 9:30 PM`
+    pub fn en_us() -> Self {
+        Self {
+            tag: "en-US".into(),
+            date_order: DateOrder::MonthDayYear,
+            date_separator: '/',
+            hour12: true,
+            ..Self::iso()
+        }
+    }
+
+    /// `25/05/2026 21:30`
+    pub fn en_gb() -> Self {
+        Self {
+            tag: "en-GB".into(),
+            date_order: DateOrder::DayMonthYear,
+            date_separator: '/',
+            ..Self::iso()
+        }
+    }
+
+    /// `25.05.2026 21:30`
+    pub fn de_de() -> Self {
+        Self {
+            tag: "de-DE".into(),
+            date_order: DateOrder::DayMonthYear,
+            date_separator: '.',
+            ..Self::iso()
+        }
+    }
+
+    /// The date segments in display order, followed by hour and minute.
+    pub fn segment_order(&self) -> [DateTimeSegment; 5] {
+        use DateTimeSegment::*;
+        match self.date_order {
+            DateOrder::YearMonthDay => [Year, Month, Day, Hour, Minute],
+            DateOrder::DayMonthYear => [Day, Month, Year, Hour, Minute],
+            DateOrder::MonthDayYear => [Month, Day, Year, Hour, Minute],
+        }
+    }
+
+    pub fn format(&self, v: DateTimeValue) -> String {
+        let sep = self.date_separator;
+        let date = match self.date_order {
+            DateOrder::YearMonthDay => {
+                format!("{:04}{sep}{:02}{sep}{:02}", v.year, v.month, v.day)
+            }
+            DateOrder::DayMonthYear => {
+                format!("{:02}{sep}{:02}{sep}{:04}", v.day, v.month, v.year)
+            }
+            DateOrder::MonthDayYear => {
+                format!("{:02}{sep}{:02}{sep}{:04}", v.month, v.day, v.year)
+            }
+        };
+        if self.hour12 {
+            let h = match v.hour % 12 {
+                0 => 12,
+                h => h,
+            };
+            let mark = if v.hour < 12 {
+                &self.am_label
+            } else {
+                &self.pm_label
+            };
+            format!("{date} {h}:{:02} {mark}", v.minute)
+        } else {
+            format!("{date} {:02}:{:02}", v.hour, v.minute)
+        }
+    }
+
+    /// An example of the entry format, used in error messages.
+    pub fn example(&self) -> String {
+        self.format(DateTimeValue {
+            year: 2026,
+            month: 5,
+            day: 25,
+            hour: 21,
+            minute: 30,
+        })
+    }
+
+    pub fn parse(&self, input: &str) -> Result<DateTimeValue, DateTimeParseError> {
+        let bad = || DateTimeParseError::Format {
+            expected: self.example(),
+        };
+        let input = input.trim();
+        if input.is_empty() {
+            return Err(DateTimeParseError::Empty);
+        }
+        let (date, time) = input.split_once(char::is_whitespace).ok_or_else(bad)?;
+
+        let nums = date
+            .split(self.date_separator)
+            .map(|p| p.parse::<i32>().map_err(|_| bad()))
+            .collect::<Result<Vec<_>, _>>()?;
+        let [a, b, c] = nums[..] else {
+            return Err(bad());
+        };
+        let (year, month, day) = match self.date_order {
+            DateOrder::YearMonthDay => (a, b, c),
+            DateOrder::DayMonthYear => (c, b, a),
+            DateOrder::MonthDayYear => (c, a, b),
+        };
+
+        let mut time = time.trim();
+        let mut pm = None;
+        if self.hour12 {
+            let lower = time.to_lowercase();
+            for (label, is_pm) in [(&self.am_label, false), (&self.pm_label, true)] {
+                let label = label.to_lowercase();
+                if lower.ends_with(&label) {
+                    time = time[..time.len() - label.len()].trim_end();
+                    pm = Some(is_pm);
+                    break;
+                }
+            }
+            if pm.is_none() {
+                return Err(bad());
+            }
+        }
+        let (h, m) = time.split_once(':').ok_or_else(bad)?;
+        let hour: i32 = h.trim().parse().map_err(|_| bad())?;
+        let minute: i32 = m.trim().parse().map_err(|_| bad())?;
+
+        let hour = match pm {
+            Some(is_pm) => {
+                if !(1..=12).contains(&hour) {
+                    return Err(DateTimeParseError::InvalidTime);
+                }
+                hour % 12 + if is_pm { 12 } else { 0 }
+            }
+            None => hour,
+        };
+
+        if !(MIN_YEAR..=MAX_YEAR).contains(&year) {
+            return Err(DateTimeParseError::InvalidYear);
+        }
+        if !(1..=12).contains(&month) {
+            return Err(DateTimeParseError::InvalidMonth);
+        }
+        let max = DateTimeValue::days_in_month(year, month as u8);
+        if day < 1 || max.is_none_or(|max| day > i32::from(max)) {
+            return Err(DateTimeParseError::InvalidDay { max });
+        }
+        if !(0..=23).contains(&hour) || !(0..=59).contains(&minute) {
+            return Err(DateTimeParseError::InvalidTime);
+        }
+        DateTimeValue::new(year, month as u8, day as u8, hour as u8, minute as u8)
+            .ok_or(DateTimeParseError::InvalidTime)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DateTimeSegment {
     Year,
@@ -246,26 +485,6 @@ impl DateTimeSegment {
             Self::Minute => format!("{:02}", value.minute),
         }
     }
-
-    fn next(self) -> Self {
-        match self {
-            Self::Year => Self::Month,
-            Self::Month => Self::Day,
-            Self::Day => Self::Hour,
-            Self::Hour => Self::Minute,
-            Self::Minute => Self::Year,
-        }
-    }
-
-    fn previous(self) -> Self {
-        match self {
-            Self::Year => Self::Minute,
-            Self::Month => Self::Year,
-            Self::Day => Self::Month,
-            Self::Hour => Self::Day,
-            Self::Minute => Self::Hour,
-        }
-    }
 }
 
 /// Local wall-clock date/time picker for workflows such as scheduling,
@@ -285,6 +504,10 @@ pub struct DateTimePicker {
     drop_origin: Point<Pixels>,
     trigger_bounds: Arc<Mutex<Option<Bounds<Pixels>>>>,
     observing_theme: bool,
+    locale: DateTimeLocale,
+    formatter: Option<DateTimeFormatter>,
+    parser: Option<DateTimeParser>,
+    invalid_message: Option<SharedString>,
     on_change: Option<Box<dyn Fn(Option<DateTimeValue>, &mut App) + 'static>>,
 }
 
@@ -310,6 +533,10 @@ impl Default for DateTimePicker {
             drop_origin: point(px(0.0), px(0.0)),
             trigger_bounds: Arc::new(Mutex::new(None)),
             observing_theme: false,
+            locale: DateTimeLocale::default(),
+            formatter: None,
+            parser: None,
+            invalid_message: None,
             on_change: None,
         }
     }
@@ -357,6 +584,74 @@ impl DateTimePicker {
     pub fn on_change(mut self, f: impl Fn(Option<DateTimeValue>, &mut App) + 'static) -> Self {
         self.on_change = Some(Box::new(f));
         self
+    }
+
+    /// Set the locale used to format, parse and order segments. See
+    /// [`DateTimeLocale`] for who owns locale and timezone.
+    pub fn locale(mut self, locale: DateTimeLocale) -> Self {
+        self.locale = locale;
+        self
+    }
+
+    /// Replace the locale's display format.
+    pub fn formatter(
+        mut self,
+        f: impl Fn(DateTimeValue) -> String + Send + Sync + 'static,
+    ) -> Self {
+        self.formatter = Some(Arc::new(f));
+        self
+    }
+
+    /// Replace the locale's parser used by [`DateTimePicker::parse_input`].
+    pub fn parser(
+        mut self,
+        f: impl Fn(&str) -> Result<DateTimeValue, DateTimeParseError> + Send + Sync + 'static,
+    ) -> Self {
+        self.parser = Some(Arc::new(f));
+        self
+    }
+
+    /// The message for the last rejected [`DateTimePicker::parse_input`], if any.
+    pub fn invalid_message(&self) -> Option<&SharedString> {
+        self.invalid_message.as_ref()
+    }
+
+    /// Format a value the way this picker displays it.
+    pub fn format_value(&self, value: DateTimeValue) -> String {
+        match &self.formatter {
+            Some(f) => f(value),
+            None => self.locale.format(value),
+        }
+    }
+
+    /// Parse typed text with the picker's parser or locale. On success the
+    /// value is set and `on_change` fires; on failure the value is kept, the
+    /// picker shows the error state and [`DateTimePicker::invalid_message`]
+    /// holds the message.
+    pub fn parse_input(
+        &mut self,
+        text: &str,
+        cx: &mut Context<Self>,
+    ) -> Result<DateTimeValue, DateTimeParseError> {
+        let parsed = match &self.parser {
+            Some(f) => f(text),
+            None => self.locale.parse(text),
+        };
+        match parsed {
+            Ok(value) => {
+                self.value = Some(value);
+                self.draft = value;
+                self.invalid_message = None;
+                self.error = false;
+                self.emit_change(cx);
+            }
+            Err(ref err) => {
+                self.invalid_message = Some(err.to_string().into());
+                self.error = true;
+            }
+        }
+        cx.notify();
+        parsed
     }
 
     pub fn selected_value(&self) -> Option<DateTimeValue> {
@@ -449,6 +744,7 @@ impl DateTimePicker {
 
     fn clear_value(&mut self, cx: &mut Context<Self>) {
         self.value = None;
+        self.invalid_message = None;
         self.emit_change(cx);
         cx.notify();
     }
@@ -457,9 +753,22 @@ impl DateTimePicker {
         let current = self.value.unwrap_or(self.draft);
         let adjusted = current.adjust(segment, delta);
         self.value = Some(adjusted);
+        self.invalid_message = None;
         self.draft = adjusted;
         self.selected_segment = segment;
         self.emit_change(cx);
+        cx.notify();
+    }
+
+    /// Move the selection one segment along the locale's display order,
+    /// wrapping at the ends.
+    fn move_segment(&mut self, step: isize, cx: &mut Context<Self>) {
+        let order = self.locale.segment_order();
+        let at = order
+            .iter()
+            .position(|s| *s == self.selected_segment)
+            .unwrap_or(0) as isize;
+        self.selected_segment = order[(at + step).rem_euclid(5) as usize];
         cx.notify();
     }
 
@@ -487,12 +796,14 @@ impl DateTimePicker {
                     self.open_popup(cx);
                 }
             }
-            "left" => {
-                self.selected_segment = self.selected_segment.previous();
+            "left" => self.move_segment(-1, cx),
+            "right" => self.move_segment(1, cx),
+            "home" => {
+                self.selected_segment = self.locale.segment_order()[0];
                 cx.notify();
             }
-            "right" => {
-                self.selected_segment = self.selected_segment.next();
+            "end" => {
+                self.selected_segment = self.locale.segment_order()[4];
                 cx.notify();
             }
             "up" => self.adjust_segment(self.selected_segment, 1, cx),
@@ -553,8 +864,7 @@ impl Render for DateTimePicker {
         };
         let label = self
             .value
-            .map(DateTimeValue::display_value)
-            .map(SharedString::from)
+            .map(|v| SharedString::from(self.format_value(v)))
             .unwrap_or_else(|| self.placeholder.clone());
 
         let trigger_bounds_arc = Arc::clone(&self.trigger_bounds);
@@ -648,13 +958,7 @@ impl Render for DateTimePicker {
                 .on_mouse_down_out(close_listener);
 
             let mut controls = div().flex().flex_row().gap(px(spacing.sm));
-            for segment in [
-                DateTimeSegment::Year,
-                DateTimeSegment::Month,
-                DateTimeSegment::Day,
-                DateTimeSegment::Hour,
-                DateTimeSegment::Minute,
-            ] {
+            for segment in self.locale.segment_order() {
                 controls = controls.child(segment_control(
                     segment,
                     self.draft,
@@ -664,7 +968,16 @@ impl Render for DateTimePicker {
                 ));
             }
 
-            panel = panel.child(controls).child(
+            panel = panel.child(controls);
+            if let Some(message) = self.invalid_message.clone() {
+                panel = panel.child(
+                    div()
+                        .text_size(px(typography.caption.size))
+                        .text_color(colors.status_error)
+                        .child(message),
+                );
+            }
+            panel = panel.child(
                 div()
                     .flex()
                     .flex_row()
@@ -922,6 +1235,69 @@ mod tests {
                 .unwrap()
                 .adjust(DateTimeSegment::Hour, -1),
             DateTimeValue::new(2025, 12, 31, 23, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn locale_formats_and_orders_segments() {
+        let v = DateTimeValue::new(2026, 5, 25, 21, 30).unwrap();
+        assert_eq!(DateTimeLocale::de_de().format(v), "25.05.2026 21:30");
+        assert_eq!(DateTimeLocale::en_gb().format(v), "25/05/2026 21:30");
+        assert_eq!(DateTimeLocale::en_us().format(v), "05/25/2026 9:30 PM");
+        assert_eq!(
+            DateTimeLocale::de_de().segment_order()[0],
+            DateTimeSegment::Day
+        );
+        assert_eq!(
+            DateTimeLocale::en_us().segment_order()[..3],
+            [
+                DateTimeSegment::Month,
+                DateTimeSegment::Day,
+                DateTimeSegment::Year
+            ]
+        );
+    }
+
+    #[test]
+    fn locale_parse_round_trips() {
+        let v = DateTimeValue::new(2026, 5, 25, 0, 5).unwrap();
+        for l in [
+            DateTimeLocale::iso(),
+            DateTimeLocale::en_us(),
+            DateTimeLocale::en_gb(),
+            DateTimeLocale::de_de(),
+        ] {
+            assert_eq!(l.parse(&l.format(v)), Ok(v), "{}", l.tag);
+        }
+        assert_eq!(
+            DateTimeLocale::en_us().parse("05/25/2026 12:00 pm"),
+            Ok(DateTimeValue::new(2026, 5, 25, 12, 0).unwrap())
+        );
+    }
+
+    #[test]
+    fn locale_parse_reports_invalid_input() {
+        let de = DateTimeLocale::de_de();
+        assert_eq!(de.parse("  "), Err(DateTimeParseError::Empty));
+        assert!(matches!(
+            de.parse("2026-05-25 09:30"),
+            Err(DateTimeParseError::Format { .. })
+        ));
+        assert_eq!(
+            de.parse("31.02.2026 09:30").unwrap_err().to_string(),
+            "That month has only 28 days."
+        );
+        assert_eq!(
+            de.parse("01.13.2026 09:30"),
+            Err(DateTimeParseError::InvalidMonth)
+        );
+        assert_eq!(
+            de.parse("01.01.2026 24:00"),
+            Err(DateTimeParseError::InvalidTime)
+        );
+        assert_eq!(
+            DateTimeLocale::en_us().parse("05/25/2026 13:00 PM"),
+            Err(DateTimeParseError::InvalidTime)
         );
     }
 }

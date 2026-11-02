@@ -52,7 +52,10 @@ pub use checkbox::{Checkbox, CheckboxState};
 pub use chip::Chip;
 pub use combobox::{Combobox, ComboboxOption};
 pub use connection_badge::{ConnectionBadge, ConnectionBadgeState};
-pub use date_time_picker::{DateTimePicker, DateTimeSegment, DateTimeValue};
+pub use date_time_picker::{
+    DateOrder, DateTimeFormatter, DateTimeLocale, DateTimeParseError, DateTimeParser,
+    DateTimePicker, DateTimeSegment, DateTimeValue,
+};
 pub use divider::{Divider, DividerOrientation};
 pub use dropdown::Dropdown;
 pub use expander::Expander;

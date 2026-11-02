@@ -5,10 +5,10 @@ use fluent_layout::{
     TabStrip, Workspace,
 };
 use fluent_primitives::{
-    Avatar, Button, ButtonAppearance, Checkbox, CounterBadge, CounterBadgeAppearance, InputCapture,
-    InputCaptureEvent, Link, LinkAppearance, Persona, PersonaSize, PresenceBadgeState, Switch,
-    TerminalCell, TerminalGrid, TerminalView, TerminalViewEvent, ToggleButton, VideoScaling,
-    VideoSurface, VideoSurfaceEvent,
+    Avatar, Button, ButtonAppearance, Checkbox, CounterBadge, CounterBadgeAppearance,
+    DateTimeLocale, DateTimePicker, DateTimeValue, InputCapture, InputCaptureEvent, Link,
+    LinkAppearance, Persona, PersonaSize, PresenceBadgeState, Switch, TerminalCell, TerminalGrid,
+    TerminalView, TerminalViewEvent, ToggleButton, VideoScaling, VideoSurface, VideoSurfaceEvent,
 };
 use fluent_ribbon::RibbonBar;
 use gpui::{div, prelude::*, rgb, Context, Entity, IntoElement, Render, SharedString, Window};
@@ -24,6 +24,43 @@ struct GalleryRoot {
 struct CounterBadgeDemo;
 
 struct PersonaDemo;
+
+/// Date/time pickers in en-US and de-DE (day.month.year, 24-hour).
+struct DateTimeDemo {
+    us: Entity<DateTimePicker>,
+    de: Entity<DateTimePicker>,
+}
+
+impl DateTimeDemo {
+    fn new(cx: &mut Context<Self>) -> Self {
+        let when = DateTimeValue::new(2026, 5, 25, 21, 30).unwrap();
+        let us = cx.new(|_| {
+            DateTimePicker::new()
+                .locale(DateTimeLocale::en_us())
+                .value(when)
+        });
+        let de = cx.new(|_| {
+            DateTimePicker::new()
+                .locale(DateTimeLocale::de_de())
+                .value(when)
+        });
+        Self { us, de }
+    }
+}
+
+impl Render for DateTimeDemo {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = cx.theme();
+        div()
+            .flex()
+            .flex_col()
+            .gap(gpui::px(theme.spacing.sm))
+            .p(gpui::px(theme.spacing.md))
+            .child("Date/time: en-US and de-DE (locale and timezone owned by the app)")
+            .child(self.us.clone())
+            .child(self.de.clone())
+    }
+}
 
 struct ThemeMatrixDemo;
 
@@ -527,6 +564,7 @@ fn main() {
         let badge_demo = cx.new(|_| CounterBadgeDemo);
         let matrix_demo = cx.new(|_| ThemeMatrixDemo);
         let persona_demo = cx.new(|_| PersonaDemo);
+        let date_demo = cx.new(DateTimeDemo::new);
         let input_demo = cx.new(InputCaptureDemo::new);
         let video_demo = cx.new(VideoDemo::new);
         let input_video = cx.new(|_| {
@@ -535,9 +573,15 @@ fn main() {
                 .second(video_demo.into())
                 .ratio(0.4)
         });
-        let badge_detail = cx.new(|_| {
+        let badge_date = cx.new(|_| {
             PaneGroup::vertical()
                 .first(badge_demo.into())
+                .second(date_demo.into())
+                .ratio(0.4)
+        });
+        let badge_detail = cx.new(|_| {
+            PaneGroup::vertical()
+                .first(badge_date.into())
                 .second(input_video.into())
                 .ratio(0.35)
         });
