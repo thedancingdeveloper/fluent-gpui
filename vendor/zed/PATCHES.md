@@ -4,6 +4,7 @@ Each local patch to this tree is a land on the working line (`backlog-1`), never
 
 | patch | commit | files |
 |---|---|---|
+| `test-a11y-activation` (WI-2915): retain AccessKit activation callbacks on headless test windows and expose a test-only activation hook so `fluent-test-utils` can render and snapshot accessibility trees | WI-2915 land on `backlog-1` | `crates/gpui/src/platform/test/window.rs`, `crates/gpui/src/app/test_context.rs` |
 | `trim-ios` (WI-2728): drop the `target_os = "ios"` arm of `current_platform`, since `gpui_ios` is no longer vendored | WI-2728 land on `backlog-1` | `crates/gpui_platform/src/gpui_platform.rs` |
 | `svg-font-warmup` (WI-1432): module-level `SYSTEM_FONT_DB` plus `pub fn warmup_svg_font_db()` behind the `svg-font-warmup` feature (enabled by `fluent-core`), so `main()` can prime `load_system_fonts()` on a background thread | WI-1432 land on `backlog-1` | `crates/gpui/src/svg_renderer.rs`, `crates/gpui/Cargo.toml` |
 | `element-scale` (WI-1433): `Style::scale` and `Styled::scale`, `Window::with_element_scale` with `element_scale_stack` and the paint-time transforms (`transform_bounds_for_paint`, `scale_length_for_paint`, `scale_corners_for_paint`, `transform_point_for_paint`) applied to quads, shadows, paths, text, svg, images and surfaces; the `div.rs` paint wrapper; example `examples/scale.rs` | WI-1433 land on `backlog-1` | `crates/gpui/src/style.rs`, `crates/gpui/src/styled.rs`, `crates/gpui/src/window.rs`, `crates/gpui/src/elements/div.rs`, `crates/gpui/Cargo.toml`, `crates/gpui/examples/scale.rs` |

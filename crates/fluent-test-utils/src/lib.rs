@@ -23,6 +23,11 @@ pub fn open_fluent_test_window<V: gpui::Render>(
 /// `InteractiveElement::debug_selector`, which is only recorded in builds with
 /// `debug_assertions` (the default for tests).
 pub trait FluentInteractionExt {
+    /// Renders the window with accessibility active and returns a stable,
+    /// compact list of each AccessKit node's role, accessible name and state.
+    /// Bounds, node ids and debug provenance are deliberately omitted.
+    fn accessibility_snapshot(&mut self) -> Vec<String>;
+
     /// Types a space-separated list of keystrokes (`"tab"`, `"shift-tab"`,
     /// `"enter"`, `"a"`) and runs the executor until parked.
     ///
@@ -100,6 +105,30 @@ pub trait FluentInteractionExt {
 }
 
 impl FluentInteractionExt for VisualTestContext {
+    fn accessibility_snapshot(&mut self) -> Vec<String> {
+        self.activate_accessibility();
+        self.run_until_parked();
+        let json = self.update(|window, cx| {
+            window.draw(cx).clear(cx);
+            window.debug_a11y_tree_json()
+        });
+        let tree: serde_json::Value = serde_json::from_str(
+            json.as_deref()
+                .expect("accessibility tree was not captured after rendering"),
+        )
+        .expect("GPUI accessibility debug output was not valid JSON");
+
+        let nodes = tree["nodes"]
+            .as_object()
+            .expect("accessibility debug output did not contain nodes");
+        let root = tree["root"]
+            .as_str()
+            .expect("accessibility debug output did not identify its root");
+        let mut snapshot = Vec::with_capacity(nodes.len());
+        append_accessibility_node(root, nodes, &mut snapshot);
+        snapshot
+    }
+
     fn type_keys(&mut self, keystrokes: &str) {
         self.simulate_keystrokes(keystrokes);
     }
@@ -146,6 +175,60 @@ impl FluentInteractionExt for VisualTestContext {
     fn assert_nothing_focused(&mut self) {
         let focused = self.update(|window, cx| window.focused(cx).is_some());
         assert!(!focused, "expected no element to hold focus");
+    }
+}
+
+fn append_accessibility_node(
+    id: &str,
+    nodes: &serde_json::Map<String, serde_json::Value>,
+    snapshot: &mut Vec<String>,
+) {
+    let Some(node) = nodes.get(id).and_then(serde_json::Value::as_object) else {
+        return;
+    };
+    let Some(aria) = node.get("aria").and_then(serde_json::Value::as_object) else {
+        return;
+    };
+
+    let role = aria
+        .get("role")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("Unknown");
+    let mut line = role.to_string();
+    if let Some(name) = aria.get("label").and_then(serde_json::Value::as_str) {
+        line.push_str(" \"");
+        line.push_str(name);
+        line.push('"');
+    }
+
+    let states = aria
+        .iter()
+        .filter(|(key, _)| {
+            !matches!(
+                key.as_str(),
+                "role" | "label" | "description" | "value" | "on_action"
+            )
+        })
+        .map(|(key, value)| format!("{key}={}", compact_json(value)))
+        .collect::<Vec<_>>();
+    if !states.is_empty() {
+        line.push_str(" [");
+        line.push_str(&states.join(", "));
+        line.push(']');
+    }
+    snapshot.push(line);
+
+    if let Some(children) = node.get("children").and_then(serde_json::Value::as_array) {
+        for child in children.iter().filter_map(serde_json::Value::as_str) {
+            append_accessibility_node(child, nodes, snapshot);
+        }
+    }
+}
+
+fn compact_json(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(value) => value.clone(),
+        other => other.to_string(),
     }
 }
 

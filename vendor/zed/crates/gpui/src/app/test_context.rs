@@ -891,6 +891,12 @@ impl VisualTestContext {
         }
     }
 
+    /// Activates the test window's accessibility adapter.
+    #[doc(hidden)]
+    pub fn activate_accessibility(&mut self) -> Option<accesskit::TreeUpdate> {
+        self.cx.test_window(self.window).activate_accessibility()
+    }
+
     /// Wait until there are no more pending tasks.
     pub fn run_until_parked(&self) {
         self.cx.background_executor.run_until_parked();
