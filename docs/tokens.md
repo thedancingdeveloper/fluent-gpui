@@ -68,12 +68,12 @@ a follow-up work item rather than silently substituted.
 
 | Fluent 2 alias group | Alias | `fluent-core` name |
 | --- | --- | --- |
-| Shadow | shadow2 | `missing` |
-| Shadow | shadow4 | `missing` |
-| Shadow | shadow8 | `missing` |
-| Shadow | shadow16 | `missing` |
-| Shadow | shadow28 | `missing` |
-| Shadow | shadow64 | `missing` |
+| Shadow | shadow2 | `ShadowTokens::shadow2` |
+| Shadow | shadow4 | `ShadowTokens::shadow4` |
+| Shadow | shadow8 | `ShadowTokens::shadow8` |
+| Shadow | shadow16 | `ShadowTokens::shadow16` |
+| Shadow | shadow28 | `ShadowTokens::shadow28` |
+| Shadow | shadow64 | `ShadowTokens::shadow64` |
 | Stroke width | thin | `missing` |
 | Stroke width | thick | `missing` |
 | Stroke width | thickest | `missing` |

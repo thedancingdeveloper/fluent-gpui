@@ -3,6 +3,7 @@ mod colors;
 mod components;
 mod motion;
 mod radii;
+mod shadows;
 mod spacing;
 mod theme;
 mod typography;
@@ -12,6 +13,7 @@ pub use colors::{gradient_from_hue, hue_for, tint, with_alpha, ColorScheme};
 pub use components::ComponentTokens;
 pub use motion::{popup_motion_surface, MotionTokens};
 pub use radii::RadiiTokens;
+pub use shadows::ShadowTokens;
 pub use spacing::SpacingTokens;
 pub use theme::{
     Brightness, LayoutDirection, LayoutDirectionProvider, Theme, ThemeMode, ThemeProvider,
@@ -40,6 +42,37 @@ mod tests {
         assert_eq!(r.md, 4.0);
         assert_eq!(r.lg, 8.0);
         assert_eq!(r.pill, 9999.0);
+    }
+
+    #[test]
+    fn shadow_tokens_values() {
+        use gpui::px;
+
+        let shadows = ShadowTokens::default();
+        let expected = [
+            (&shadows.shadow2, 1.0, 2.0, 2.0),
+            (&shadows.shadow4, 2.0, 4.0, 2.0),
+            (&shadows.shadow8, 4.0, 8.0, 2.0),
+            (&shadows.shadow16, 8.0, 16.0, 2.0),
+            (&shadows.shadow28, 14.0, 28.0, 8.0),
+            (&shadows.shadow64, 32.0, 64.0, 8.0),
+        ];
+
+        for (layers, key_offset_y, key_blur, ambient_blur) in expected {
+            assert_eq!(layers[0].offset.x, px(0.0));
+            assert_eq!(layers[0].offset.y, px(key_offset_y));
+            assert_eq!(layers[0].blur_radius, px(key_blur));
+            assert_eq!(layers[0].spread_radius, px(0.0));
+            assert_eq!(layers[0].color.a, 0.14);
+            assert!(!layers[0].inset);
+
+            assert_eq!(layers[1].offset.x, px(0.0));
+            assert_eq!(layers[1].offset.y, px(0.0));
+            assert_eq!(layers[1].blur_radius, px(ambient_blur));
+            assert_eq!(layers[1].spread_radius, px(0.0));
+            assert_eq!(layers[1].color.a, 0.12);
+            assert!(!layers[1].inset);
+        }
     }
 
     #[test]

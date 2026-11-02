@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- fluent-core: add public Fluent 2 `shadow2`, `shadow4`, `shadow8`, `shadow16`, `shadow28` and `shadow64` two-layer elevation tokens (WI-2982).
 - fluent-core: audit Fluent 2 alias token coverage in `docs/tokens.md`, mapping existing neutral, brand, status, radius and popup-motion names and recording missing state, shadow, stroke-width and motion families (WI-2925).
 - fluent-layout, fluent-app, fluent-primitives: mirror Dock, MenuBar, TabStrip and Field layouts for RTL while preserving the platform title-bar control position (WI-2927).
 - Add opt-in system light/dark theme following for FluentApp.
