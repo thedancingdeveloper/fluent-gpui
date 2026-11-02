@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::data_status::{status_block, DataStatusKind};
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, svg, App, ClickEvent, IntoElement, KeyDownEvent, MouseButton,
@@ -190,6 +191,7 @@ pub struct Tree {
     on_toggle: Option<TreeToggleHandler>,
     on_context_menu: Option<TreeContextHandler>,
     on_check: Option<TreeCheckHandler>,
+    status: Option<(DataStatusKind, SharedString)>,
 }
 
 impl Tree {
@@ -230,7 +232,14 @@ impl Tree {
             on_toggle: None,
             on_context_menu: None,
             on_check: None,
+            status: None,
         }
+    }
+
+    /// Show a loading, empty or error state instead of the items.
+    pub fn status(mut self, kind: DataStatusKind, message: impl Into<SharedString>) -> Self {
+        self.status = Some((kind, message.into()));
+        self
     }
 
     pub fn item(mut self, item: TreeItem) -> Self {
@@ -647,6 +656,18 @@ impl RenderOnce for Tree {
             .flex()
             .flex_col()
             .w_full();
+        let status = match self.status {
+            Some(status) => Some(status),
+            None if self.items.is_empty() => Some((DataStatusKind::Empty, "No items".into())),
+            None if flat.is_empty() && self.filter.is_some() => Some((
+                DataStatusKind::NoResults,
+                "No items match the filter".into(),
+            )),
+            None => None,
+        };
+        if let Some((kind, message)) = status {
+            return root.child(status_block("tree-status", kind, message, cx));
+        }
         for (idx, item) in self.items.into_iter().enumerate() {
             if let Some(item) = Self::render_item(item, 0, idx, render_state.clone(), cx) {
                 root = root.child(item);
