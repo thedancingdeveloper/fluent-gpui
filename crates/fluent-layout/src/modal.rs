@@ -274,6 +274,7 @@ impl Render for MessageDialog {
                     .child(
                         div()
                             .id("message-dialog-ok")
+                            .debug_selector(|| "message-dialog-ok".into())
                             .px(px(spacing.md))
                             .py(px(spacing.sm))
                             .rounded(px(radii.md))
@@ -405,6 +406,7 @@ impl Render for ConfirmModal {
                         // Confirm
                         div()
                             .id("modal-confirm")
+                            .debug_selector(|| "modal-confirm".into())
                             .px(px(spacing.md))
                             .py(px(spacing.sm))
                             .rounded(px(radii.md))
@@ -417,5 +419,172 @@ impl Render for ConfirmModal {
                             .child(confirm_label),
                     ),
             )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cell::Cell;
+    use std::rc::Rc;
+
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{point, px, Modifiers, TestAppContext};
+
+    use super::*;
+    use crate::{Dialog, DialogAction};
+
+    /// A relative root holding a clickable button under a `ModalHost`.
+    struct Root {
+        host: Entity<ModalHost>,
+        clicks: Rc<Cell<usize>>,
+    }
+
+    impl Render for Root {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let clicks = self.clicks.clone();
+            div()
+                .relative()
+                .size_full()
+                .child(
+                    div()
+                        .id("below")
+                        .debug_selector(|| "below".into())
+                        .size(px(100.))
+                        .on_click(move |_, _, _| clicks.set(clicks.get() + 1)),
+                )
+                .child(self.host.clone())
+        }
+    }
+
+    fn root(cx: &mut TestAppContext) -> (Rc<Cell<usize>>, &mut gpui::VisualTestContext) {
+        let clicks = Rc::new(Cell::new(0));
+        let c = clicks.clone();
+        let (_, cx) = open_fluent_test_window(cx, move |_, cx| {
+            cx.set_global(ModalStack { entries: vec![] });
+            Root {
+                host: cx.new(ModalHost::new),
+                clicks: c,
+            }
+        });
+        (clicks, cx)
+    }
+
+    fn stack_len(cx: &mut gpui::VisualTestContext) -> usize {
+        cx.update(|_, cx| cx.global::<ModalStack>().entries.len())
+    }
+
+    #[gpui::test]
+    fn show_pushes_and_ok_button_pops(cx: &mut TestAppContext) {
+        let (_, cx) = root(cx);
+        cx.update(|_, cx| {
+            MessageDialog::new("T", "body").show(ModalSize::Fixed(400., 180.), cx);
+        });
+        cx.run_until_parked();
+        assert_eq!(stack_len(cx), 1);
+        cx.update(|_, cx| assert!(!ModalStack::is_empty(cx)));
+        cx.click_selector("message-dialog-ok");
+        assert_eq!(stack_len(cx), 0);
+    }
+
+    #[gpui::test]
+    fn backdrop_click_dismisses_top_modal_only(cx: &mut TestAppContext) {
+        let (_, cx) = root(cx);
+        cx.update(|_, cx| {
+            MessageDialog::new("one", "a").show(ModalSize::Fixed(400., 180.), cx);
+            MessageDialog::new("two", "b").show(ModalSize::Fixed(400., 180.), cx);
+        });
+        cx.run_until_parked();
+        assert_eq!(stack_len(cx), 2);
+        cx.click_at(point(px(2.), px(2.)), MouseButton::Left, Modifiers::none());
+        assert_eq!(stack_len(cx), 1);
+    }
+
+    #[gpui::test]
+    fn click_inside_modal_does_not_dismiss(cx: &mut TestAppContext) {
+        let (_, cx) = root(cx);
+        cx.update(|_, cx| {
+            MessageDialog::new("T", "body").show(ModalSize::Fixed(400., 180.), cx);
+        });
+        cx.run_until_parked();
+        let b = cx.update(|w, _| w.viewport_size());
+        let centre = point(b.width / 2., b.height / 2.);
+        cx.click_at(centre, MouseButton::Left, Modifiers::none());
+        assert_eq!(stack_len(cx), 1);
+    }
+
+    #[gpui::test]
+    fn modal_blocks_clicks_to_layer_below(cx: &mut TestAppContext) {
+        let (clicks, cx) = root(cx);
+        cx.click_selector("below");
+        assert_eq!(clicks.get(), 1, "button works with no modal open");
+
+        cx.update(|_, cx| {
+            MessageDialog::new("T", "body").show(ModalSize::Fixed(400., 180.), cx);
+        });
+        cx.run_until_parked();
+        // The button lies under the backdrop's top-left corner.
+        cx.click_at(
+            point(px(50.), px(50.)),
+            MouseButton::Left,
+            Modifiers::none(),
+        );
+        assert_eq!(clicks.get(), 1, "click must not reach the layer below");
+        assert_eq!(stack_len(cx), 0, "it dismisses the modal instead");
+    }
+
+    #[gpui::test]
+    fn confirm_runs_callback_once_and_pops(cx: &mut TestAppContext) {
+        let (_, cx) = root(cx);
+        let confirmed = Rc::new(Cell::new(0));
+        let cancelled = Rc::new(Cell::new(0));
+        let (a, b) = (confirmed.clone(), cancelled.clone());
+        cx.update(|_, cx| {
+            ConfirmModal::new("T", "m")
+                .on_confirm(move |_| a.set(a.get() + 1))
+                .on_cancel(move |_| b.set(b.get() + 1))
+                .show(cx);
+        });
+        cx.run_until_parked();
+        cx.click_selector("modal-confirm");
+        assert_eq!((confirmed.get(), cancelled.get()), (1, 0));
+        assert_eq!(stack_len(cx), 0);
+    }
+
+    #[gpui::test]
+    fn dialog_close_button_dismisses(cx: &mut TestAppContext) {
+        let (_, cx) = root(cx);
+        cx.update(|_, cx| Dialog::new("D").show(ModalSize::Fit, cx));
+        cx.run_until_parked();
+        assert_eq!(stack_len(cx), 1);
+        cx.click_selector("dialog-dismiss");
+        assert_eq!(stack_len(cx), 0);
+    }
+
+    // `DialogView::render` `take()`s the dialog, so a second render of the
+    // view paints an empty `Dialog` and the actions vanish before they can be
+    // clicked. Reported on WI-2911; un-ignore once fixed.
+    #[gpui::test]
+    #[ignore = "DialogView drops its content after the first render (WI-2911 finding)"]
+    fn dialog_action_runs_and_does_not_dismiss(cx: &mut TestAppContext) {
+        let (_, cx) = root(cx);
+        let fired = Rc::new(Cell::new(0));
+        let f = fired.clone();
+        cx.update(|_, cx| {
+            Dialog::new("D")
+                .action(DialogAction::new("Go", move |_, _, _| f.set(f.get() + 1)).primary(true))
+                .show(ModalSize::Fit, cx);
+        });
+        cx.run_until_parked();
+        cx.click_selector("dialog-action-0");
+        assert_eq!(fired.get(), 1);
+        assert_eq!(stack_len(cx), 1, "an action does not itself dismiss");
+    }
+
+    #[gpui::test]
+    fn non_dismissible_dialog_has_no_close_button(cx: &mut TestAppContext) {
+        let (_, cx) = root(cx);
+        cx.update(|_, cx| Dialog::new("D").dismissible(false).show(ModalSize::Fit, cx));
+        cx.run_until_parked();
+        assert!(cx.selector_bounds("dialog-dismiss").is_none());
     }
 }

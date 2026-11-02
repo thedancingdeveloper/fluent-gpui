@@ -79,3 +79,56 @@ impl RenderOnce for Flyout {
         root.child(deferred(child).with_priority(self.priority))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{px, TestAppContext};
+
+    use super::*;
+
+    /// The entrance animation starts a couple of pixels off; allow for it.
+    fn near(a: gpui::Pixels, b: gpui::Pixels) -> bool {
+        (f32::from(a) - f32::from(b)).abs() <= 4.0
+    }
+
+    struct Host(FlyoutPlacement);
+
+    impl gpui::Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+            div().size_full().child(
+                div()
+                    .relative()
+                    .left(px(100.))
+                    .top(px(100.))
+                    .size(px(40.))
+                    .debug_selector(|| "trigger".into())
+                    .child(
+                        Flyout::new(div().size(px(30.)).debug_selector(|| "fly".into()))
+                            .placement(self.0)
+                            .trigger_size(40., 40.),
+                    ),
+            )
+        }
+    }
+
+    #[gpui::test]
+    fn below_start_sits_under_the_trigger(cx: &mut TestAppContext) {
+        let (_, cx) = open_fluent_test_window(cx, |_, _| Host(FlyoutPlacement::BelowStart));
+        cx.run_until_parked();
+        let t = cx.selector_bounds("trigger").unwrap();
+        let f = cx.selector_bounds("fly").unwrap();
+        assert!(near(f.origin.x, t.origin.x));
+        assert!(near(f.origin.y, t.origin.y + t.size.height));
+    }
+
+    #[gpui::test]
+    fn right_start_sits_beside_the_trigger(cx: &mut TestAppContext) {
+        let (_, cx) = open_fluent_test_window(cx, |_, _| Host(FlyoutPlacement::RightStart));
+        cx.run_until_parked();
+        let t = cx.selector_bounds("trigger").unwrap();
+        let f = cx.selector_bounds("fly").unwrap();
+        assert!(near(f.origin.x, t.origin.x + t.size.width));
+        assert!(near(f.origin.y, t.origin.y));
+    }
+}

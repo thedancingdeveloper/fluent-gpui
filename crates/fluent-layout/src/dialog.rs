@@ -111,6 +111,7 @@ impl RenderOnce for Dialog {
             actions = actions.child(
                 div()
                     .id(("dialog-action", idx as u64))
+                    .debug_selector(|| format!("dialog-action-{idx}"))
                     .px(px(spacing.md))
                     .py(px(spacing.sm))
                     .rounded(px(radii.md))
@@ -145,6 +146,7 @@ impl RenderOnce for Dialog {
             header = header.child(
                 div()
                     .id("dialog-dismiss")
+                    .debug_selector(|| "dialog-dismiss".into())
                     .flex_none()
                     .size(px(28.0))
                     .flex()
