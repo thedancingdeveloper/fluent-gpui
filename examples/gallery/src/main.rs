@@ -81,6 +81,32 @@ impl Render for ThemeMatrixDemo {
                             .bg(colors.status_error_bg)
                             .text_color(colors.status_error)
                             .child("Error status with explicit foreground, background, and border"),
+                    )
+                    .child(
+                        div()
+                            .p_2()
+                            .border_1()
+                            .border_color(colors.status_success_border)
+                            .bg(colors.status_success_bg)
+                            .text_color(colors.status_success)
+                            .child("Success status"),
+                    )
+                    .child(
+                        div()
+                            .p_2()
+                            .border_1()
+                            .border_color(colors.status_warning_border)
+                            .bg(colors.status_warning_bg)
+                            .text_color(colors.status_warning)
+                            .child("Warning status"),
+                    )
+                    .child(
+                        div()
+                            .p_2()
+                            .border_2()
+                            .border_color(colors.focus_ring)
+                            .text_color(colors.on_neutral)
+                            .child("Focus ring"),
                     ),
             )
     }
