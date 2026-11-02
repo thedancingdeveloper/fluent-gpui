@@ -1,5 +1,5 @@
 use fluent_app::{FluentApp, TitleBar};
-use fluent_core::{Theme, ThemeProvider as _};
+use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_layout::{
     DockPanel, DockPosition, MenuBar, ModalStack, Pane, PaneConstraints, PaneGroup, TabItem,
     TabStrip, Workspace,
@@ -63,6 +63,43 @@ impl Render for DateTimeDemo {
 }
 
 struct ThemeMatrixDemo;
+
+/// Shows Arabic and Hebrew sample content under the active layout direction.
+/// The rows reorder (logical start/end) but the text itself is never mirrored.
+struct RtlDemo;
+
+impl Render for RtlDemo {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let colors = cx.theme().colors.clone();
+        let rtl = LayoutDirection::current(cx).is_rtl();
+        let row = |label: &'static str, text: &'static str| {
+            let r = div().flex().items_center().gap_2();
+            let r = if rtl { r.flex_row_reverse() } else { r };
+            r.child(div().text_color(colors.on_subtle).child(label))
+                .child(div().child(text))
+        };
+        div()
+            .size_full()
+            .p_3()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .bg(colors.surface)
+            .text_color(colors.on_neutral)
+            .child("Layout direction (RTL)")
+            .child(
+                Button::new("rtl-toggle")
+                    .label(if rtl {
+                        "Switch to LTR"
+                    } else {
+                        "Switch to RTL"
+                    })
+                    .on_click(|_, _, cx| LayoutDirection::toggle(cx)),
+            )
+            .child(row("Arabic", "مرحبا بالعالم"))
+            .child(row("Hebrew", "שלום עולם"))
+    }
+}
 
 impl Render for ThemeMatrixDemo {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -564,6 +601,11 @@ fn main() {
         let badge_demo = cx.new(|_| CounterBadgeDemo);
         let matrix_demo = cx.new(|_| ThemeMatrixDemo);
         let persona_demo = cx.new(|_| PersonaDemo);
+        let rtl_demo = cx.new(|cx| {
+            cx.observe_global::<LayoutDirection>(|_, cx| cx.notify())
+                .detach();
+            RtlDemo
+        });
         let date_demo = cx.new(DateTimeDemo::new);
         let input_demo = cx.new(InputCaptureDemo::new);
         let video_demo = cx.new(VideoDemo::new);
@@ -585,10 +627,16 @@ fn main() {
                 .second(input_video.into())
                 .ratio(0.35)
         });
+        let rtl_detail = cx.new(|_| {
+            PaneGroup::vertical()
+                .first(rtl_demo.into())
+                .second(badge_detail.into())
+                .ratio(0.3)
+        });
         let matrix_detail = cx.new(|_| {
             PaneGroup::vertical()
                 .first(matrix_demo.into())
-                .second(badge_detail.into())
+                .second(rtl_detail.into())
                 .ratio(0.5)
         });
         let split_detail = cx.new(|_| {

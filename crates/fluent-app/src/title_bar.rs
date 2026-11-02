@@ -78,7 +78,7 @@ impl Render for TitleBar {
         let colors = theme.colors.clone();
         let spacing = theme.spacing;
         let typography = theme.typography;
-        let rtl = cx.global::<LayoutDirection>().is_rtl();
+        let rtl = LayoutDirection::current(cx).is_rtl();
 
         let (title, status) = if self.follow_window_title {
             cx.try_global::<WindowTitle>()

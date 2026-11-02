@@ -462,7 +462,7 @@ impl MenuBar {
     }
 
     fn is_rtl(&self, cx: &Context<Self>) -> bool {
-        cx.global::<LayoutDirection>().is_rtl()
+        LayoutDirection::current(cx).is_rtl()
     }
 
     fn enter_or_move_right(&mut self, cx: &mut Context<Self>) {
@@ -846,7 +846,7 @@ impl Render for MenuBar {
         let motion = theme.motion();
         let bar_height = components.menu_bar_height;
         let env = MenuRenderEnv::from_theme(theme);
-        let rtl = cx.global::<LayoutDirection>().is_rtl();
+        let rtl = LayoutDirection::current(cx).is_rtl();
 
         let self_weak = cx.entity().downgrade();
         let open_idx = self.open_index;
