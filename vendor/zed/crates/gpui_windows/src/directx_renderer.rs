@@ -115,6 +115,7 @@ struct DirectXGlobalElements {
     global_params_buffer: Option<ID3D11Buffer>,
     batch_params_buffer: Option<ID3D11Buffer>,
     sampler: Option<ID3D11SamplerState>,
+    nearest_sampler: Option<ID3D11SamplerState>,
 }
 
 struct Annotation<'a>(&'a ID3DUserDefinedAnnotation);
@@ -919,8 +920,8 @@ impl DirectXRenderer {
     /// Draw video frames, each from its own standalone texture.
     ///
     /// Frames whose texture was freed, or that have not had pixels uploaded
-    /// yet, are skipped. Consecutive frames that share one live texture are
-    /// drawn in one instanced call.
+    /// yet, are skipped. Consecutive frames that share one live texture and
+    /// filter are drawn in one instanced call.
     fn draw_video_frames(&mut self, frames: &[VideoFrame], range: Range<usize>) -> Result<()> {
         let devices = self.devices.as_ref().context("devices missing")?;
         let batch_params_buffer = self
@@ -932,15 +933,22 @@ impl DirectXRenderer {
         while start < range.end {
             let texture_id = VideoTextureId::new(frames[start].texture_id);
             let mut end = start + 1;
-            while end < range.end && frames[end].texture_id == frames[start].texture_id {
+            while end < range.end
+                && frames[end].texture_id == frames[start].texture_id
+                && frames[end].filter == frames[start].filter
+            {
                 end += 1;
             }
             if let Some(texture) = self.video_textures.get(&texture_id) {
+                let sampler = match frames[start].filter {
+                    VideoFilter::Linear => &self.globals.sampler,
+                    VideoFilter::Nearest => &self.globals.nearest_sampler,
+                };
                 self.pipelines.video_frames.draw_range_with_texture(
                     &devices.device_context,
                     &texture.view,
                     batch_params_buffer,
-                    slice::from_ref(&self.globals.sampler),
+                    slice::from_ref(sampler),
                     start as u32,
                     (end - start) as u32,
                 )?;
@@ -1212,11 +1220,29 @@ impl DirectXGlobalElements {
             device.CreateSamplerState(&desc, Some(&mut output))?;
             output
         };
+        let nearest_sampler = unsafe {
+            let desc = D3D11_SAMPLER_DESC {
+                Filter: D3D11_FILTER_MIN_MAG_MIP_POINT,
+                AddressU: D3D11_TEXTURE_ADDRESS_WRAP,
+                AddressV: D3D11_TEXTURE_ADDRESS_WRAP,
+                AddressW: D3D11_TEXTURE_ADDRESS_WRAP,
+                MipLODBias: 0.0,
+                MaxAnisotropy: 1,
+                ComparisonFunc: D3D11_COMPARISON_ALWAYS,
+                BorderColor: [0.0; 4],
+                MinLOD: 0.0,
+                MaxLOD: D3D11_FLOAT32_MAX,
+            };
+            let mut output = None;
+            device.CreateSamplerState(&desc, Some(&mut output))?;
+            output
+        };
 
         Ok(Self {
             global_params_buffer,
             batch_params_buffer,
             sampler,
+            nearest_sampler,
         })
     }
 }
