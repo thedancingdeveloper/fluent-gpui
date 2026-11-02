@@ -2,8 +2,8 @@ use fluent_app::{FluentApp, TitleBar};
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_layout::{
     DataCell, DataColumn, DataRow, DataStatusKind, DataTable, DataTableState, DockPanel,
-    DockPosition, MenuBar, MessageBar, MessageIntent, ModalStack, Pane, SelectableList,
-    SelectableListItem, TabItem, TabStrip, Tree, TreeItem, Workspace,
+    DockPosition, MenuBar, MessageBar, MessageIntent, ModalStack, Nav, NavCategory, NavItem, Pane,
+    SelectableList, SelectableListItem, TabItem, TabStrip, Tree, TreeItem, Workspace,
 };
 use fluent_primitives::{
     Avatar, Button, ButtonAppearance, Checkbox, CounterBadge, CounterBadgeAppearance,
@@ -959,7 +959,23 @@ fn main() {
         let pane_content = host.clone();
 
         // Left sidebar
-        let sidebar_content = cx.new(|_| FamilyNav::new(host.clone()));
+        let sidebar_content = cx.new(|cx| {
+            Nav::new(cx)
+                .category(
+                    NavCategory::new("Workspace")
+                        .item(NavItem::new("overview", "Overview").icon("⌂"))
+                        .item(
+                            NavItem::new("projects", "Projects")
+                                .icon("▣")
+                                .child(NavItem::new("active-projects", "Active projects")),
+                        ),
+                )
+                .category(
+                    NavCategory::new("Resources")
+                        .item(NavItem::new("settings", "Settings").icon("⚙")),
+                )
+                .selected("overview")
+        });
         let sidebar = cx.new(|cx| {
             DockPanel::new(cx, DockPosition::Left, "Navigation")
                 .size(240.0)

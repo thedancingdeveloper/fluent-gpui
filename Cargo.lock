@@ -1541,6 +1541,7 @@ dependencies = [
 name = "fluent-layout"
 version = "2.2.0"
 dependencies = [
+ "criterion",
  "fluent-core",
  "fluent-ribbon",
  "fluent-test-utils",
@@ -1551,6 +1552,7 @@ dependencies = [
 name = "fluent-primitives"
 version = "2.4.0"
 dependencies = [
+ "criterion",
  "fluent-core",
  "fluent-test-utils",
  "gpui",
