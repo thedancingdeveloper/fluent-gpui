@@ -2,8 +2,8 @@ use fluent_app::{FluentApp, TitleBar};
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_layout::{
     DataCell, DataColumn, DataRow, DataStatusKind, DataTable, DataTableState, DockPanel,
-    DockPosition, MenuBar, MessageBar, MessageIntent, ModalStack, Nav, NavCategory, NavItem, Pane,
-    SelectableList, SelectableListItem, TabItem, TabStrip, Tree, TreeItem, Workspace,
+    DockPosition, MenuBar, MessageBar, MessageIntent, ModalStack, Pane, SelectableList,
+    SelectableListItem, TabItem, TabStrip, Tree, TreeItem, Workspace,
 };
 use fluent_primitives::{
     Avatar, Button, ButtonAppearance, Checkbox, CounterBadge, CounterBadgeAppearance,
@@ -16,7 +16,7 @@ use fluent_ribbon::RibbonBar;
 
 mod families;
 use families::{DemoViews, FamilyHost, FamilyNav};
-use gpui::{div, prelude::*, rgb, Context, Entity, IntoElement, Render, SharedString, Window};
+use gpui::{div, prelude::*, px, rgb, Context, Entity, IntoElement, Render, SharedString, Window};
 
 // ---------------------------------------------------------------------------
 // Root gallery view — wires the full shell together
@@ -67,29 +67,6 @@ impl DataStatesDemo {
 /// second line, so row heights vary. Only the rows near the viewport are built.
 struct BigListDemo {
     selected: usize,
-}
-
-/// A 100,000-row DataTable story demonstrating the same lazy row construction
-/// used by production tables.
-struct BigTableDemo;
-
-impl Render for BigTableDemo {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        div().p_2().child(
-            DataTable::new()
-                .columns([
-                    DataColumn::new("name", "Name").width(220.0),
-                    DataColumn::new("value", "Value").width(100.0),
-                ])
-                .rows((0..100_000).map(|ix| {
-                    DataRow::new(
-                        format!("table-row-{ix}"),
-                        [format!("Row {ix}"), ix.to_string()],
-                    )
-                }))
-                .max_body_height(360.0),
-        )
-    }
 }
 
 struct BigTreeDemo;
@@ -959,23 +936,7 @@ fn main() {
         let pane_content = host.clone();
 
         // Left sidebar
-        let sidebar_content = cx.new(|cx| {
-            Nav::new(cx)
-                .category(
-                    NavCategory::new("Workspace")
-                        .item(NavItem::new("overview", "Overview").icon("⌂"))
-                        .item(
-                            NavItem::new("projects", "Projects")
-                                .icon("▣")
-                                .child(NavItem::new("active-projects", "Active projects")),
-                        ),
-                )
-                .category(
-                    NavCategory::new("Resources")
-                        .item(NavItem::new("settings", "Settings").icon("⚙")),
-                )
-                .selected("overview")
-        });
+        let sidebar_content = cx.new(|_| FamilyNav::new(host.clone()));
         let sidebar = cx.new(|cx| {
             DockPanel::new(cx, DockPosition::Left, "Navigation")
                 .size(240.0)
