@@ -92,7 +92,7 @@ impl Render for DockPanel {
         let spacing = theme.spacing;
         let typography = theme.typography;
         let components = theme.components;
-        let rtl = cx.global::<LayoutDirection>().is_rtl();
+        let rtl = LayoutDirection::current(cx).is_rtl();
 
         let panel_bg = colors.panel_bg;
         let panel_border = colors.panel_border;

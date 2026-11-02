@@ -109,7 +109,7 @@ impl Render for TabStrip {
         let typography = theme.typography;
         let radii = theme.radii;
         let components = theme.components;
-        let rtl = cx.global::<LayoutDirection>().is_rtl();
+        let rtl = LayoutDirection::current(cx).is_rtl();
 
         let active = self.active;
         let n_tabs = self.tabs.len();

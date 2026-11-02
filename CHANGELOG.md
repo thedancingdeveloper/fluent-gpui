@@ -11,6 +11,7 @@ per crate.
 ---
 
 ## Unreleased
+- fluent-core, fluent-primitives, fluent-layout, gallery: add `LayoutDirection::current/set/toggle/pick` as the single direction API, route components through it, and add an Arabic/Hebrew RTL demo to the gallery (WI-3010).
 - fluent-primitives: DateTimePicker gains DateTimeLocale (field order, separator, 12/24h), formatter/parser hooks, locale-ordered keyboard segment navigation with Home/End, and invalid-date messages; app owns locale and timezone (WI-3013).
 - fluent-layout: nested modals — Escape and backdrop click dismiss the topmost modal only, non-dismissible dialogs ignore both, focus stays trapped until the stack empties; contract documented on ModalStack (WI-3014).
 - fluent-layout: Toolbar exposes Toolbar and Button roles with accessible names, toggled state and overflow expansion (WI-3007).

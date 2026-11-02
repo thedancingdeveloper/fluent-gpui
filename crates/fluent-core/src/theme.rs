@@ -31,6 +31,38 @@ impl LayoutDirection {
     pub fn is_rtl(self) -> bool {
         self == Self::Rtl
     }
+
+    /// The active direction. This is the single entry point components use to
+    /// read the direction; it falls back to left-to-right when none is registered.
+    pub fn current(cx: &App) -> Self {
+        cx.layout_direction()
+    }
+
+    /// Set the active direction and notify global observers.
+    pub fn set(cx: &mut App, direction: Self) {
+        cx.set_global(direction);
+    }
+
+    /// Switch between left-to-right and right-to-left.
+    pub fn toggle(cx: &mut App) {
+        let next = if Self::current(cx).is_rtl() {
+            Self::Ltr
+        } else {
+            Self::Rtl
+        };
+        Self::set(cx, next);
+    }
+
+    /// Pick the physical value for a logical start/end pair: `start` for LTR,
+    /// `end` for RTL. Use it for icons, alignment and spacing sides. Text is
+    /// never mirrored; only layout and directional glyphs are.
+    pub fn pick<T>(self, ltr: T, rtl: T) -> T {
+        if self.is_rtl() {
+            rtl
+        } else {
+            ltr
+        }
+    }
 }
 
 /// Controls how an application chooses its active theme.
@@ -231,6 +263,8 @@ impl ThemeProvider for App {
 }
 
 /// Provides access to the active [`LayoutDirection`] from any GPUI context.
+///
+/// Prefer [`LayoutDirection::current`] in components; it is the documented entry point.
 pub trait LayoutDirectionProvider {
     fn layout_direction(&self) -> LayoutDirection;
 }
