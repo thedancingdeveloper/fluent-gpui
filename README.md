@@ -202,6 +202,11 @@ primitive gets its states added to the matching family page in
 
 ---
 
+## Consumer guides
+
+- [Quick start](docs/quick-start.md) — dependency setup, themed window, form, ribbon, and data table.
+- [Component index](docs/components.md) — public exports, states, keyboard contracts, and gallery routes.
+
 ## 5. Versioning and cadence
 
 - Every tag records the Zed commit it was cut from (`+zed.<short-sha>`).
