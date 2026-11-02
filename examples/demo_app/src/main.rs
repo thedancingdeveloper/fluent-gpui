@@ -1,9 +1,9 @@
 use fluent_app::FluentApp;
 use fluent_core::ThemeProvider as _;
 use fluent_layout::{
-    CommandPalette, ConfirmModal, ContextMenu, DockPanel, DockPosition, MenuBar, MenuItemDef,
-    ModalHost, ModalStack, PaletteEntry, Pane, SettingsNav, SettingsNavItem, SettingsNavSection,
-    TabItem, TabStrip, Workspace,
+    CommandPalette, ConfirmModal, ContextMenu, DataColumn, DataRow, DataTable, DockPanel,
+    DockPosition, MenuBar, MenuItemDef, ModalHost, ModalStack, PaletteEntry, Pane, SettingsNav,
+    SettingsNavItem, SettingsNavSection, TabItem, TabStrip, Workspace,
 };
 use fluent_ribbon::RibbonBar;
 use gpui::{
@@ -321,6 +321,26 @@ impl Render for DashboardView {
                     .font_weight(FontWeight::SEMIBOLD)
                     .text_color(colors.on_neutral)
                     .child("Starred"),
+            )
+            .child(
+                div().px(px(spacing.xl)).pb(px(spacing.md)).child(
+                    DataTable::new()
+                        .columns([
+                            DataColumn::new("project", "Project"),
+                            DataColumn::new("owner", "Owner"),
+                            DataColumn::new("status", "Status"),
+                        ])
+                        .rows(all_projects.iter().map(|project| {
+                            DataRow::new(
+                                project.id.clone(),
+                                [
+                                    project.name.clone(),
+                                    project.owner.clone(),
+                                    project.status.label().into(),
+                                ],
+                            )
+                        })),
+                ),
             )
             .child(
                 div()

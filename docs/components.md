@@ -1,0 +1,81 @@
+# Component index
+
+One line per public component export, sorted alphabetically. “States” names the
+important visual or interaction variants; “keyboard” records the contract that
+consumers can rely on; “gallery” is the route family in `examples/gallery`.
+
+- Accordion — primitives; expanded/collapsed, disabled; Enter/Space toggles, arrows move focus; **Status and feedback**
+- AppDot — primitives; online/offline/connecting; focus follows the host; **Status and feedback**
+- Avatar — primitives; image/initials/fallback; no internal keyboard interaction; **Text and labels**
+- Badge — primitives; neutral/accent/danger; no internal keyboard interaction; **Status and feedback**
+- Breadcrumb — layout; current/link/separator; Tab follows links; **Data and lists**
+- Button — primitives; appearances, shapes, sizes, disabled; Enter/Space activates; **Buttons and links**
+- Card — primitives; default/interactive; Tab only when an action is supplied; **Status and feedback**
+- Checkbox — primitives; checked/unchecked/indeterminate/disabled; Space toggles; **Selection controls**
+- Chip — primitives; default/selected/dismissible; Enter/Space activates, Delete dismisses; **Buttons and links**
+- Combobox — primitives; open/closed, selected, disabled; arrows navigate, Enter selects, Escape closes; **Selection controls**
+- CommandPalette — layout; hidden/open, grouped results; arrows navigate, Enter runs, Escape closes; **Buttons and links**
+- ConnectionBadge — primitives; connected/disconnected/connecting; no internal keyboard interaction; **Status and feedback**
+- ContextMenu — layout; hidden/open, enabled/disabled items; arrows navigate, Enter activates, Escape closes; **Buttons and links**
+- CounterBadge — primitives; count/zero/overflow/dot; no internal keyboard interaction; **Status and feedback**
+- DataTable — layout; ready/loading/empty/error/no-results, selected/sorted; arrows/Home/End/PageUp/PageDown navigate rows; **Data and lists**
+- DateTimePicker — primitives; segments, popup, validation; arrows/Home/End move and Up/Down adjust segments; **Date and input**
+- Dialog — layout; modal/open/closed; Tab is trapped, Escape dismisses; **Status and feedback**
+- Divider — primitives; horizontal/vertical; no keyboard interaction; **Status and feedback**
+- DockPanel — layout; docked/floating, collapsed; keyboard follows its child; **Data and lists**
+- DocumentViewer — layout; loading/ready/error, rich blocks; keyboard follows document content; **Data and lists**
+- Drawer — layout; overlay/push, left/right/top/bottom, sizes; Tab is trapped, Escape closes; **Data and lists**
+- Dropdown — primitives; open/closed, selected, disabled; arrows navigate, Enter selects, Escape closes; **Selection controls**
+- Expander — primitives; expanded/collapsed; Enter/Space toggles; **Status and feedback**
+- Field — primitives; required/helper/validating/error; Tab enters its control; **Forms**
+- FilePickerField — app; empty/selected/loading/error; Tab focuses the picker action, Enter/Space opens; **Date and input**
+- Flyout — layout; hidden/open, placements; Tab follows content, Escape closes; **Status and feedback**
+- Icon — primitives; sizes; not focusable by itself; **Buttons and links**
+- IconButton — primitives; appearances, disabled, pressed; Enter/Space activates; **Buttons and links**
+- InfoLabel — primitives; default/with tooltip; Tab focuses the info affordance; **Text and labels**
+- InputCapture — primitives; active/inactive; Escape exits capture, keys are reported to the callback; **Date and input**
+- Label — primitives; body/caption/subtitle; not focusable by itself; **Text and labels**
+- Link — primitives; default/subtle/disabled; Enter activates; **Buttons and links**
+- MenuBar — layout; menus/open/disabled items; arrows navigate, Enter opens, Escape closes; **Buttons and links**
+- MenuButton — layout; closed/open/disabled; Enter/Space opens, arrows navigate, Escape closes; **Buttons and links**
+- MessageBar — layout; info/success/warning/error; Tab reaches actions, Escape dismisses when enabled; **Status and feedback**
+- MessageDialog — layout; open/closed, confirmation; Tab reaches actions, Escape dismisses; **Status and feedback**
+- ModalHost — layout; empty/active modal; Tab is trapped, Escape dismisses; **Status and feedback**
+- Nav — layout; selected/expanded/disabled categories; arrows move, Enter selects; **Data and lists**
+- Pagination — layout; first/previous/current/next/last; Tab reaches page buttons, Enter activates; **Data and lists**
+- Pane — layout; active/empty; keyboard belongs to its child; **Data and lists**
+- PaneGroup — layout; split/resizable, collapsed; keyboard follows the active pane; **Data and lists**
+- Persona — primitives; sizes, image/initials, presence; no internal keyboard interaction; **Text and labels**
+- Popover — layout; open/closed; Tab is trapped while open, Escape closes; **Status and feedback**
+- ProgressBar — primitives; determinate/indeterminate; no keyboard interaction; **Status and feedback**
+- RadioGroup — primitives; selected/unselected/disabled; arrows change selection, Space selects; **Selection controls**
+- Rating — primitives; empty/partial/full, readonly; arrows change value when interactive; **Status and feedback**
+- RibbonBar — ribbon; tabs/contextual tabs/collapsed/overflow; arrows move tabs, Enter activates; **Buttons and links**
+- Searchbox — primitives; empty/filled/error/disabled; typing edits, Escape clears or dismisses; **Date and input**
+- SelectableList — layout; selected/disabled/loading/empty; arrows/Home/End navigate, Enter selects; **Data and lists**
+- SelectableListItem — layout; selected/disabled; arrows navigate, Enter selects; **Data and lists**
+- SettingsNav — layout; active/disabled sections; arrows move, Enter selects; **Data and lists**
+- Slider — primitives; horizontal/vertical, disabled; arrows/Home/End adjust value; **Selection controls**
+- SpinButton — primitives; min/max/step/disabled; arrows/Home/End adjust value; **Selection controls**
+- Spinner — primitives; small/medium/large; no keyboard interaction; **Status and feedback**
+- Switch — primitives; on/off/disabled; Space toggles; **Selection controls**
+- TabItem — layout; active/closable; Enter activates, Delete closes when enabled; **Buttons and links**
+- TabStrip — layout; active/closable; arrows move, Enter activates, Delete closes when enabled; **Buttons and links**
+- Tag — primitives; appearances, sizes, shapes, dismissible; Enter/Space activates, Delete dismisses; **Status and feedback**
+- TagGroup — primitives; single/multiple/dismissible; arrows move, Delete dismisses; **Status and feedback**
+- TerminalGrid — primitives; focused/unfocused, selection; arrows/Home/End move the terminal cursor; **Terminal and video**
+- TerminalView — primitives; focused/unfocused, selection; arrows/Home/End move the terminal cursor; **Terminal and video**
+- Textarea — primitives; empty/filled/error/disabled; arrows/Home/End edit, Ctrl+A selects; **Date and input**
+- TextInput — primitives; empty/filled/masked/error/disabled; arrows/Home/End edit and move caret, Ctrl+A selects; **Date and input**
+- Toast — layout; info/success/warning/error, timeout; Tab reaches actions, Escape dismisses; **Status and feedback**
+- ToggleButton — primitives; on/off/disabled; Enter/Space toggles; **Buttons and links**
+- TokenInput — primitives; empty/tokens/suggestions; arrows navigate, Enter commits, Backspace removes; **Date and input**
+- Toolbar — layout; horizontal/vertical, disabled items; arrows move, Enter activates; **Buttons and links**
+- Tooltip — primitives; hidden/visible; appears on hover/focus, no internal keyboard interaction; **Status and feedback**
+- Tree — layout; expanded/collapsed/checked/selected; arrows navigate, Enter/Space activates; **Data and lists**
+- TreeItem — layout; expanded/collapsed/checked/selected; arrows navigate, Enter/Space activates; **Data and lists**
+- VideoSurface — primitives; loading/ready/error, scaling; Space toggles playback when enabled; **Terminal and video**
+- VirtualList — layout; empty/large/variable-height; arrows/Home/End navigate the focused item; **Data and lists**
+- WindowChrome — app; active/inactive, maximized; platform title-bar commands use standard window keys; **Theme and direction**
+- WindowTitle — app; active/inactive; standard platform window keys apply; **Theme and direction**
+- Workspace — layout; panes/sidebar/tabs; keyboard follows the active child; **Data and lists**
