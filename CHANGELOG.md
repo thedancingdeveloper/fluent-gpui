@@ -11,6 +11,7 @@ per crate.
 ---
 
 ## Unreleased
+- fluent-layout, gallery: virtualised `SelectableList` rows (`rows(count, item_at)`, optional variable row heights, scroll-into-view on keyboard selection, AccessKit position-in-set/set-size) on a new `VirtualList` element, and a 100,000-row gallery story (WI-3033).
 - fluent-primitives, gallery: `Slider` (horizontal/vertical, step, range, disabled, Slider role with value text, arrow/Home/End/PageUp/PageDown keys) and `SpinButton` (step buttons, min/max clamp, Up/Down keys, format and parse hooks, SpinButton role) with gallery stories; no pointer drag or typed text entry yet (WI-3032).
 - fluent-core, fluent-primitives, docs: `ControlStates` (`neutral/accent/subtle/danger_control()`) map every control state to theme aliases; Button, Card and Field read them instead of raw tokens; Danger button pressed fill is now the error border colour, the disabled neutral border uses the disabled stroke; control-state completeness test; high-contrast pressed foregrounds now use HighlightText; docs/tokens.md updated (WI-3021).
 - gallery, docs: routes grouped by Fluent 2 component family with state matrices for buttons, links, selection controls and labels, a light/dark/high-contrast/RTL variant row on every page, and README guidance for using the gallery as a regression matrix (WI-3018).

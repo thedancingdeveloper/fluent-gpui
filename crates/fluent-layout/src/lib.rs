@@ -22,6 +22,7 @@ pub mod tab_strip;
 pub mod toast;
 pub mod toolbar;
 pub mod tree;
+pub mod virtual_list;
 pub mod workspace;
 
 pub use command::CommandDef;
@@ -51,4 +52,5 @@ pub use tab_strip::{TabItem, TabStrip};
 pub use toast::{Toast, ToastHost, ToastPlacement, ToastStack};
 pub use toolbar::{Toolbar, ToolbarItem};
 pub use tree::{set_tree_checked, Tree, TreeCheckState, TreeItem};
+pub use virtual_list::VirtualList;
 pub use workspace::Workspace;
