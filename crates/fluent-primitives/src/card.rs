@@ -21,6 +21,7 @@ pub struct Card {
 }
 
 impl Card {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new() -> Self {
         Self {
             id: None,
@@ -35,6 +36,7 @@ impl Card {
         }
     }
 
+    /// Sets the id configuration for this control.
     pub fn id(mut self, id: impl Into<ElementId>) -> Self {
         self.id = Some(id.into());
         self
@@ -52,26 +54,31 @@ impl Card {
         self
     }
 
+    /// Sets the row configuration for this control.
     pub fn row(mut self) -> Self {
         self.row = true;
         self
     }
 
+    /// Sets the flex 1 configuration for this control.
     pub fn flex_1(mut self) -> Self {
         self.flex_1 = true;
         self
     }
 
+    /// Sets the items center configuration for this control.
     pub fn items_center(mut self) -> Self {
         self.items_center = true;
         self
     }
 
+    /// Sets the hoverable configuration for this control.
     pub fn hoverable(mut self) -> Self {
         self.hoverable = true;
         self
     }
 
+    /// Registers a handler for click events.
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -80,11 +87,13 @@ impl Card {
         self
     }
 
+    /// Sets the child configuration for this control.
     pub fn child(mut self, child: impl IntoElement) -> Self {
         self.children.push(child.into_any_element());
         self
     }
 
+    /// Sets the children configuration for this control.
     pub fn children(mut self, children: impl IntoIterator<Item = impl IntoElement>) -> Self {
         for c in children {
             self.children.push(c.into_any_element());

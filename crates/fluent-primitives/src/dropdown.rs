@@ -42,6 +42,7 @@ pub struct Dropdown {
 }
 
 impl Dropdown {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -61,11 +62,13 @@ impl Dropdown {
         }
     }
 
+    /// Returns the current selected.
     pub fn selected(mut self, value: impl Into<SharedString>) -> Self {
         self.selected = Some(value.into());
         self
     }
 
+    /// Sets the placeholder configuration for this control.
     pub fn placeholder(mut self, text: impl Into<SharedString>) -> Self {
         self.placeholder = text.into();
         self
@@ -77,11 +80,13 @@ impl Dropdown {
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Sets the option configuration for this control.
     pub fn option(
         mut self,
         value: impl Into<SharedString>,
@@ -91,25 +96,30 @@ impl Dropdown {
         self
     }
 
+    /// Sets the options configuration for this control.
     pub fn options(mut self, options: impl IntoIterator<Item = DropdownOption>) -> Self {
         self.options = options.into_iter().collect();
         self
     }
 
+    /// Registers a handler for select events.
     pub fn on_select(mut self, f: impl Fn(SharedString, &mut App) + 'static) -> Self {
         self.on_select = Some(Box::new(f));
         self
     }
 
+    /// Sets the selected value.
     pub fn set_selected(&mut self, value: impl Into<SharedString>, cx: &mut Context<Self>) {
         self.selected = Some(value.into());
         cx.notify();
     }
 
+    /// Returns the selected value value.
     pub fn selected_value(&self) -> Option<&SharedString> {
         self.selected.as_ref()
     }
 
+    /// Sets the options value.
     pub fn set_options(
         &mut self,
         options: impl IntoIterator<Item = DropdownOption>,

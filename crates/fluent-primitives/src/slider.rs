@@ -15,7 +15,9 @@ const LENGTH: f32 = 200.0;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum SliderOrientation {
     #[default]
+    /// The horizontal option.
     Horizontal,
+    /// The vertical option.
     Vertical,
 }
 
@@ -77,6 +79,7 @@ pub struct Slider {
 }
 
 impl Slider {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -94,6 +97,7 @@ impl Slider {
         }
     }
 
+    /// Returns the current value.
     pub fn value(mut self, value: f64) -> Self {
         self.value = value;
         self
@@ -115,15 +119,18 @@ impl Slider {
         self
     }
 
+    /// Sets the orientation configuration for this control.
     pub fn orientation(mut self, orientation: SliderOrientation) -> Self {
         self.orientation = orientation;
         self
     }
 
+    /// Sets the vertical configuration for this control.
     pub fn vertical(self) -> Self {
         self.orientation(SliderOrientation::Vertical)
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
@@ -141,6 +148,7 @@ impl Slider {
         self
     }
 
+    /// Sets the tab index configuration for this control.
     pub fn tab_index(mut self, index: isize) -> Self {
         self.tab_index = Some(index);
         self

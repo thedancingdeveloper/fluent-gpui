@@ -1,3 +1,6 @@
+#![deny(missing_docs)]
+//! Fluent 2 controls and supporting types for GPUI applications.
+
 mod accordion;
 mod app_dot;
 mod avatar;

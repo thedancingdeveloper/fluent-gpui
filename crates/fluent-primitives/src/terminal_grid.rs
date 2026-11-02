@@ -185,7 +185,7 @@ impl Line {
 pub const DEFAULT_SCROLLBACK: usize = 10_000;
 
 /// The cell grid: a screen of `rows` x `cols` cells, a bounded scrollback above it, a cursor,
-/// and a record of which screen rows changed. See the [module docs](self).
+/// and a record of which screen rows changed.
 #[derive(Clone, Debug)]
 pub struct TerminalGrid {
     cols: usize,

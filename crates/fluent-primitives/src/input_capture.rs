@@ -64,7 +64,7 @@ use gpui::{
     Pixels, Point, Render, ScrollDelta, ScrollEvent, Subscription, WeakEntity, Window,
 };
 
-/// One captured input event. See the [module docs](self).
+/// One captured input event.
 #[derive(Clone, Debug)]
 pub enum InputCaptureEvent {
     /// A key press (`pressed: true`) or release.
@@ -363,7 +363,7 @@ pub fn code_for_evdev_code(code: u32) -> Option<&'static str> {
 /// A focusable surface that captures raw key, pointer and wheel input while grabbed.
 ///
 /// Create it with `cx.new(InputCapture::new)` and subscribe to its
-/// [`InputCaptureEvent`]s. See the [module docs](self) for grab, release and key-code details.
+/// [`InputCaptureEvent`]s.
 pub struct InputCapture {
     focus_handle: FocusHandle,
     grabbed: bool,

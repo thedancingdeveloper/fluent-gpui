@@ -29,6 +29,7 @@ pub struct Expander {
 }
 
 impl Expander {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>, title: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -43,11 +44,13 @@ impl Expander {
         }
     }
 
+    /// Sets the expanded configuration for this control.
     pub fn expanded(mut self, expanded: bool) -> Self {
         self.expanded = expanded;
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self

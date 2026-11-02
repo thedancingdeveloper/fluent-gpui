@@ -12,6 +12,7 @@ pub struct SectionHeader {
 }
 
 impl SectionHeader {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(title: impl Into<SharedString>) -> Self {
         Self {
             title: title.into(),

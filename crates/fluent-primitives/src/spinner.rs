@@ -14,6 +14,7 @@ pub struct Spinner {
 }
 
 impl Spinner {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new() -> Self {
         Self {
             size: 20.0,
@@ -27,6 +28,7 @@ impl Spinner {
         self
     }
 
+    /// Sets the size configuration for this control.
     pub fn size(mut self, size: f32) -> Self {
         self.size = size;
         self

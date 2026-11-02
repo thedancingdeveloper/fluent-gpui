@@ -6,9 +6,12 @@ use crate::{Avatar, PresenceBadge, PresenceBadgeState};
 /// Size presets for a persona row.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum PersonaSize {
+    /// The small option.
     Small,
     #[default]
+    /// The medium option.
     Medium,
+    /// The large option.
     Large,
 }
 
@@ -33,6 +36,7 @@ pub struct Persona {
 }
 
 impl Persona {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(avatar: Avatar, primary: impl Into<SharedString>) -> Self {
         Self {
             avatar,
@@ -43,16 +47,19 @@ impl Persona {
         }
     }
 
+    /// Sets the secondary configuration for this control.
     pub fn secondary(mut self, secondary: impl Into<SharedString>) -> Self {
         self.secondary = Some(secondary.into());
         self
     }
 
+    /// Sets the presence configuration for this control.
     pub fn presence(mut self, state: PresenceBadgeState) -> Self {
         self.presence = Some(state);
         self
     }
 
+    /// Sets the size configuration for this control.
     pub fn size(mut self, size: PersonaSize) -> Self {
         self.size = size;
         self

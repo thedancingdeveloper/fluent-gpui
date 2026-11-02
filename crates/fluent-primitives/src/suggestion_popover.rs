@@ -11,15 +11,22 @@ type HoverHandler = Arc<dyn Fn(usize, &mut App) + 'static>;
 type CloseHandler = Arc<dyn Fn(&MouseDownEvent, &mut Window, &mut App) + 'static>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// A Fluent primitive for representing suggestion item in an interface.
 pub struct SuggestionItem {
+    /// The id value.
     pub id: SharedString,
+    /// The label value.
     pub label: SharedString,
+    /// The detail value.
     pub detail: Option<SharedString>,
+    /// The meta value.
     pub meta: Option<SharedString>,
+    /// The disabled value.
     pub disabled: bool,
 }
 
 impl SuggestionItem {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<SharedString>, label: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -30,16 +37,19 @@ impl SuggestionItem {
         }
     }
 
+    /// Sets the detail configuration for this control.
     pub fn detail(mut self, detail: impl Into<SharedString>) -> Self {
         self.detail = Some(detail.into());
         self
     }
 
+    /// Sets the meta configuration for this control.
     pub fn meta(mut self, meta: impl Into<SharedString>) -> Self {
         self.meta = Some(meta.into());
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
@@ -47,29 +57,35 @@ impl SuggestionItem {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
+/// A Fluent primitive for representing suggestion list state in an interface.
 pub struct SuggestionListState {
     highlighted: Option<usize>,
 }
 
 impl SuggestionListState {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Sets the highlighted configuration for this control.
     pub fn highlighted(&self) -> Option<usize> {
         self.highlighted
     }
 
+    /// Sets the highlighted value.
     pub fn set_highlighted(&mut self, highlighted: Option<usize>) {
         self.highlighted = highlighted;
     }
 
+    /// Returns the highlighted item value.
     pub fn highlighted_item<'a>(&self, items: &'a [SuggestionItem]) -> Option<&'a SuggestionItem> {
         self.highlighted
             .and_then(|index| items.get(index))
             .filter(|item| !item.disabled)
     }
 
+    /// Moves highlight.
     pub fn move_highlight(&mut self, items: &[SuggestionItem], delta: isize) -> Option<usize> {
         let enabled = enabled_indices(items);
         if enabled.is_empty() {
@@ -94,16 +110,19 @@ impl SuggestionListState {
         self.highlighted
     }
 
+    /// Moves the highlight to the first enabled suggestion.
     pub fn first(&mut self, items: &[SuggestionItem]) -> Option<usize> {
         self.highlighted = enabled_indices(items).first().copied();
         self.highlighted
     }
 
+    /// Moves the highlight to the last enabled suggestion.
     pub fn last(&mut self, items: &[SuggestionItem]) -> Option<usize> {
         self.highlighted = enabled_indices(items).last().copied();
         self.highlighted
     }
 
+    /// Updates suggestion state for a navigation key and returns the resulting action.
     pub fn handle_key(&mut self, key: &str, items: &[SuggestionItem]) -> SuggestionKeyAction {
         match key {
             "down" => SuggestionKeyAction::Move(self.move_highlight(items, 1)),
@@ -123,14 +142,20 @@ impl SuggestionListState {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// Available suggestion key action options for configuring the control.
 pub enum SuggestionKeyAction {
+    /// The none option.
     None,
+    /// The move option.
     Move(Option<usize>),
+    /// The select option.
     Select(SharedString),
+    /// The close option.
     Close,
 }
 
 #[derive(IntoElement)]
+/// A Fluent primitive for representing suggestion popover in an interface.
 pub struct SuggestionPopover {
     open: bool,
     exiting: bool,
@@ -148,6 +173,7 @@ pub struct SuggestionPopover {
 }
 
 impl SuggestionPopover {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(position: Point<gpui::Pixels>) -> Self {
         Self {
             open: true,
@@ -166,56 +192,67 @@ impl SuggestionPopover {
         }
     }
 
+    /// Sets the open configuration for this control.
     pub fn open(mut self, open: bool) -> Self {
         self.open = open;
         self
     }
 
+    /// Sets the exiting configuration for this control.
     pub fn exiting(mut self, exiting: bool) -> Self {
         self.exiting = exiting;
         self
     }
 
+    /// Sets the anchor configuration for this control.
     pub fn anchor(mut self, anchor: Anchor) -> Self {
         self.anchor = anchor;
         self
     }
 
+    /// Sets the items configuration for this control.
     pub fn items(mut self, items: impl IntoIterator<Item = SuggestionItem>) -> Self {
         self.items = items.into_iter().collect();
         self
     }
 
+    /// Sets the item configuration for this control.
     pub fn item(mut self, item: SuggestionItem) -> Self {
         self.items.push(item);
         self
     }
 
+    /// Sets the highlighted configuration for this control.
     pub fn highlighted(mut self, highlighted: impl Into<Option<usize>>) -> Self {
         self.highlighted = highlighted.into();
         self
     }
 
+    /// Sets the empty text configuration for this control.
     pub fn empty_text(mut self, empty_text: impl Into<SharedString>) -> Self {
         self.empty_text = empty_text.into();
         self
     }
 
+    /// Sets the min width configuration for this control.
     pub fn min_width(mut self, min_width: f32) -> Self {
         self.min_width = min_width;
         self
     }
 
+    /// Sets the max height configuration for this control.
     pub fn max_height(mut self, max_height: f32) -> Self {
         self.max_height = max_height;
         self
     }
 
+    /// Returns whether the key moves focus through the suggestion list.
     pub fn motion_key(mut self, motion_key: u64) -> Self {
         self.motion_key = motion_key;
         self
     }
 
+    /// Registers a handler for select events.
     pub fn on_select(
         mut self,
         on_select: impl Fn(SuggestionItem, &ClickEvent, &mut Window, &mut App) + 'static,
@@ -224,11 +261,13 @@ impl SuggestionPopover {
         self
     }
 
+    /// Registers a handler for hover events.
     pub fn on_hover(mut self, on_hover: impl Fn(usize, &mut App) + 'static) -> Self {
         self.on_hover = Some(Arc::new(on_hover));
         self
     }
 
+    /// Registers a handler for close events.
     pub fn on_close(
         mut self,
         on_close: impl Fn(&MouseDownEvent, &mut Window, &mut App) + 'static,

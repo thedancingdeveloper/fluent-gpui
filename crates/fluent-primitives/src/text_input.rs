@@ -61,6 +61,7 @@ impl Default for TextInput {
 }
 
 impl TextInput {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new() -> Self {
         Self::default()
     }
@@ -72,31 +73,37 @@ impl TextInput {
         self
     }
 
+    /// Returns the current value.
     pub fn value(mut self, value: impl Into<SharedString>) -> Self {
         self.set_value_inner(value.into());
         self
     }
 
+    /// Sets the placeholder configuration for this control.
     pub fn placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
         self.placeholder = placeholder.into();
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Sets the masked configuration for this control.
     pub fn masked(mut self, masked: bool) -> Self {
         self.masked = masked;
         self
     }
 
+    /// Sets the error configuration for this control.
     pub fn error(mut self, error: bool) -> Self {
         self.error = error;
         self
     }
 
+    /// Registers a handler for change events.
     pub fn on_change(mut self, f: impl Fn(SharedString, &mut App) + 'static) -> Self {
         self.on_change = Some(Box::new(f));
         self
@@ -109,37 +116,45 @@ impl TextInput {
         self
     }
 
+    /// Sets the on submit value.
     pub fn set_on_submit(&mut self, f: impl Fn(SharedString, &mut App) -> bool + 'static) {
         self.on_submit = Some(Box::new(f));
     }
 
+    /// Returns the current text.
     pub fn text(&self) -> &str {
         &self.value
     }
 
+    /// Sets the value value.
     pub fn set_value(&mut self, value: impl Into<SharedString>, cx: &mut Context<Self>) {
         self.set_value_inner(value.into());
         cx.notify();
     }
 
+    /// Sets the placeholder value.
     pub fn set_placeholder(&mut self, placeholder: impl Into<SharedString>) {
         self.placeholder = placeholder.into();
     }
 
+    /// Returns whether masked.
     pub fn is_masked(&self) -> bool {
         self.masked
     }
 
+    /// Sets the masked value.
     pub fn set_masked(&mut self, masked: bool, cx: &mut Context<Self>) {
         self.masked = masked;
         cx.notify();
     }
 
+    /// Sets the disabled value.
     pub fn set_disabled(&mut self, disabled: bool, cx: &mut Context<Self>) {
         self.disabled = disabled;
         cx.notify();
     }
 
+    /// Sets the error value.
     pub fn set_error(&mut self, error: bool, cx: &mut Context<Self>) {
         self.error = error;
         cx.notify();

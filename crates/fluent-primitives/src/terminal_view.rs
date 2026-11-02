@@ -177,7 +177,7 @@ impl PaintCache {
     }
 }
 
-/// The monospace cell-grid view. See the [module docs](self).
+/// The monospace cell-grid view.
 pub struct TerminalView {
     grid: Entity<TerminalGrid>,
     capture: Entity<InputCapture>,

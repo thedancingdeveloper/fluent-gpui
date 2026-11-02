@@ -27,6 +27,7 @@ pub struct IconButton {
 }
 
 impl IconButton {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>, icon: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -47,11 +48,13 @@ impl IconButton {
         self
     }
 
+    /// Sets the appearance configuration for this control.
     pub fn appearance(mut self, appearance: ButtonAppearance) -> Self {
         self.appearance = appearance;
         self
     }
 
+    /// Sets the size configuration for this control.
     pub fn size(mut self, size: ButtonSize) -> Self {
         self.size = size;
         self
@@ -63,11 +66,13 @@ impl IconButton {
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Registers a handler for click events.
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,

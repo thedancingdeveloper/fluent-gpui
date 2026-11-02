@@ -17,6 +17,7 @@ pub struct Avatar {
 }
 
 impl Avatar {
+    /// Returns the initials value.
     pub fn initials(initials: impl Into<SharedString>) -> Self {
         Self {
             initials: Some(initials.into()),
@@ -26,6 +27,7 @@ impl Avatar {
         }
     }
 
+    /// Returns the image value.
     pub fn image(path: impl Into<SharedString>) -> Self {
         Self {
             initials: None,
@@ -35,11 +37,13 @@ impl Avatar {
         }
     }
 
+    /// Sets the hue configuration for this control.
     pub fn hue(mut self, deg: f32) -> Self {
         self.hue = Some(deg);
         self
     }
 
+    /// Sets the size configuration for this control.
     pub fn size(mut self, size: f32) -> Self {
         self.size = size;
         self

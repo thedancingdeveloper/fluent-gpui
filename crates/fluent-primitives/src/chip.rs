@@ -13,6 +13,7 @@ pub struct Chip {
 }
 
 impl Chip {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -21,6 +22,7 @@ impl Chip {
         }
     }
 
+    /// Registers a handler for dismiss events.
     pub fn on_dismiss(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,

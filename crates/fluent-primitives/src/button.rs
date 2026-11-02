@@ -9,10 +9,15 @@ use gpui::{
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ButtonAppearance {
     #[default]
+    /// The secondary option.
     Secondary,
+    /// The primary option.
     Primary,
+    /// The outline option.
     Outline,
+    /// The subtle option.
     Subtle,
+    /// The transparent option.
     Transparent,
 }
 
@@ -35,8 +40,11 @@ impl ButtonAppearance {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ButtonShape {
     #[default]
+    /// The rounded option.
     Rounded,
+    /// The square option.
     Square,
+    /// The circular option.
     Circular,
 }
 
@@ -44,15 +52,20 @@ pub enum ButtonShape {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ButtonSize {
     #[default]
+    /// The medium option.
     Medium,
+    /// The small option.
     Small,
+    /// The large option.
     Large,
 }
 
 impl ButtonSize {
     #[allow(non_upper_case_globals)]
+    /// The normal constant.
     pub const Normal: Self = Self::Medium;
     #[allow(non_upper_case_globals)]
+    /// The compact constant.
     pub const Compact: Self = Self::Small;
 }
 
@@ -60,7 +73,9 @@ impl ButtonSize {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ButtonIconPosition {
     #[default]
+    /// The before option.
     Before,
+    /// The after option.
     After,
 }
 
@@ -88,6 +103,7 @@ pub struct Button {
 }
 
 impl Button {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -103,31 +119,37 @@ impl Button {
         }
     }
 
+    /// Returns the current label.
     pub fn label(mut self, label: impl Into<SharedString>) -> Self {
         self.label = Some(label.into());
         self
     }
 
+    /// Sets the icon configuration for this control.
     pub fn icon(mut self, path: impl Into<SharedString>) -> Self {
         self.icon = Some(path.into());
         self
     }
 
+    /// Sets the icon position configuration for this control.
     pub fn icon_position(mut self, position: ButtonIconPosition) -> Self {
         self.icon_position = position;
         self
     }
 
+    /// Sets the appearance configuration for this control.
     pub fn appearance(mut self, appearance: ButtonAppearance) -> Self {
         self.appearance = appearance;
         self
     }
 
+    /// Sets the shape configuration for this control.
     pub fn shape(mut self, shape: ButtonShape) -> Self {
         self.shape = shape;
         self
     }
 
+    /// Sets the size configuration for this control.
     pub fn size(mut self, size: ButtonSize) -> Self {
         self.size = size;
         self
@@ -139,11 +161,13 @@ impl Button {
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Registers a handler for click events.
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -317,6 +341,7 @@ pub struct SplitButton {
 }
 
 impl SplitButton {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -328,16 +353,19 @@ impl SplitButton {
         }
     }
 
+    /// Sets the appearance configuration for this control.
     pub fn appearance(mut self, appearance: ButtonAppearance) -> Self {
         self.appearance = appearance;
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Registers a handler for click events.
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -346,6 +374,7 @@ impl SplitButton {
         self
     }
 
+    /// Registers a handler for menu click events.
     pub fn on_menu_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -391,6 +420,7 @@ pub struct CompoundButton {
 }
 
 impl CompoundButton {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(
         id: impl Into<ElementId>,
         label: impl Into<SharedString>,
@@ -405,16 +435,19 @@ impl CompoundButton {
         }
     }
 
+    /// Sets the appearance configuration for this control.
     pub fn appearance(mut self, appearance: ButtonAppearance) -> Self {
         self.button = self.button.appearance(appearance);
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.button = self.button.disabled(disabled);
         self
     }
 
+    /// Registers a handler for click events.
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,

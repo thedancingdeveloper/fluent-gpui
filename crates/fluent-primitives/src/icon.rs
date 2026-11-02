@@ -7,14 +7,19 @@ use gpui::{
 /// Canonical icon display sizes.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum IconSize {
+    /// The sm option.
     Sm,
     #[default]
+    /// The md option.
     Md,
+    /// The lg option.
     Lg,
+    /// The xl option.
     Xl,
 }
 
 impl IconSize {
+    /// Returns the px value.
     pub fn px(self) -> f32 {
         match self {
             Self::Sm => 16.0,
@@ -41,6 +46,7 @@ pub struct Icon {
 }
 
 impl Icon {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(path: impl Into<SharedString>) -> Self {
         Self {
             path: path.into(),
@@ -49,11 +55,13 @@ impl Icon {
         }
     }
 
+    /// Sets the size configuration for this control.
     pub fn size(mut self, size: IconSize) -> Self {
         self.size = size;
         self
     }
 
+    /// Returns the current color.
     pub fn color(mut self, color: impl Into<Hsla>) -> Self {
         self.color = Some(color.into());
         self

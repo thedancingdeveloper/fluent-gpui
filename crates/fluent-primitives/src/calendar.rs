@@ -7,12 +7,17 @@ use gpui::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+/// A Fluent primitive for representing calendar date in an interface.
 pub struct CalendarDate {
+    /// The year value.
     pub year: i32,
+    /// The month value.
     pub month: u8,
+    /// The day value.
     pub day: u8,
 }
 impl CalendarDate {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(year: i32, month: u8, day: u8) -> Option<Self> {
         let max = days_in_month(year, month)?;
         (day > 0 && day <= max).then_some(Self { year, month, day })
@@ -20,6 +25,7 @@ impl CalendarDate {
 }
 
 #[derive(Clone)]
+/// A Fluent primitive for representing calendar in an interface.
 pub struct Calendar {
     id: ElementId,
     value: CalendarDate,
@@ -31,6 +37,7 @@ pub struct Calendar {
     on_change: Option<CalendarChange>,
 }
 impl Calendar {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>, value: CalendarDate) -> Self {
         Self {
             id: id.into(),
@@ -43,30 +50,37 @@ impl Calendar {
             on_change: None,
         }
     }
+    /// Returns the current value.
     pub fn value(mut self, value: CalendarDate) -> Self {
         self.value = value;
         self.month = CalendarDate { day: 1, ..value };
         self
     }
+    /// Sets the first day of week configuration for this control.
     pub fn first_day_of_week(mut self, day: u8) -> Self {
         self.first_day_of_week = day % 7;
         self
     }
+    /// Sets the locale first day of week configuration for this control.
     pub fn locale_first_day_of_week(self, day: u8) -> Self {
         self.first_day_of_week(day)
     }
+    /// Sets the min configuration for this control.
     pub fn min(mut self, date: CalendarDate) -> Self {
         self.min = Some(date);
         self
     }
+    /// Sets the max configuration for this control.
     pub fn max(mut self, date: CalendarDate) -> Self {
         self.max = Some(date);
         self
     }
+    /// Returns the current label.
     pub fn label(mut self, label: impl Into<SharedString>) -> Self {
         self.label = label.into();
         self
     }
+    /// Registers a handler for change events.
     pub fn on_change(mut self, f: impl Fn(CalendarDate, &mut App) + 'static) -> Self {
         self.on_change = Some(std::rc::Rc::new(f));
         self
@@ -84,6 +98,7 @@ impl Calendar {
         self.allowed(candidate).then_some(candidate)
     }
 
+    /// Returns the current selected.
     pub fn selected(&self) -> CalendarDate {
         self.value
     }

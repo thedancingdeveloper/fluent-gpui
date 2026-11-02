@@ -24,6 +24,7 @@ pub struct ToggleButton {
 }
 
 impl ToggleButton {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -37,16 +38,19 @@ impl ToggleButton {
         }
     }
 
+    /// Returns the current label.
     pub fn label(mut self, label: impl Into<SharedString>) -> Self {
         self.label = Some(label.into());
         self
     }
 
+    /// Sets the icon configuration for this control.
     pub fn icon(mut self, path: impl Into<SharedString>) -> Self {
         self.icon = Some(path.into());
         self
     }
 
+    /// Returns the current selected.
     pub fn selected(mut self, selected: bool) -> Self {
         self.selected = selected;
         self
@@ -58,11 +62,13 @@ impl ToggleButton {
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Sets the size configuration for this control.
     pub fn size(mut self, size: ButtonSize) -> Self {
         self.size = size;
         self

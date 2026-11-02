@@ -8,20 +8,28 @@ use gpui::{
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// Available radio group orientation options for configuring the control.
 pub enum RadioGroupOrientation {
     #[default]
+    /// The vertical option.
     Vertical,
+    /// The horizontal option.
     Horizontal,
 }
 
 #[derive(Clone, Debug)]
+/// A Fluent primitive for representing radio option in an interface.
 pub struct RadioOption {
+    /// The value value.
     pub value: SharedString,
+    /// The label value.
     pub label: SharedString,
+    /// The disabled value.
     pub disabled: bool,
 }
 
 impl RadioOption {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(value: impl Into<SharedString>, label: impl Into<SharedString>) -> Self {
         Self {
             value: value.into(),
@@ -30,6 +38,7 @@ impl RadioOption {
         }
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
@@ -51,6 +60,7 @@ pub struct RadioGroup {
 }
 
 impl RadioGroup {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -70,6 +80,7 @@ impl RadioGroup {
         self
     }
 
+    /// Sets the option configuration for this control.
     pub fn option(
         mut self,
         value: impl Into<SharedString>,
@@ -79,16 +90,19 @@ impl RadioGroup {
         self
     }
 
+    /// Sets the options configuration for this control.
     pub fn options(mut self, options: impl IntoIterator<Item = RadioOption>) -> Self {
         self.options = options.into_iter().collect();
         self
     }
 
+    /// Returns the current selected.
     pub fn selected(mut self, value: impl Into<SharedString>) -> Self {
         self.selected = Some(value.into());
         self
     }
 
+    /// Sets the orientation configuration for this control.
     pub fn orientation(mut self, orientation: RadioGroupOrientation) -> Self {
         self.orientation = orientation;
         self
@@ -100,11 +114,13 @@ impl RadioGroup {
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Registers a handler for select events.
     pub fn on_select(
         mut self,
         f: impl Fn(SharedString, &ClickEvent, &mut Window, &mut App) + 'static,

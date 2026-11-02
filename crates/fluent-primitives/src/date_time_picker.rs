@@ -11,15 +11,22 @@ const MIN_YEAR: i32 = 1;
 const MAX_YEAR: i32 = 9999;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// A Fluent primitive for representing date time value in an interface.
 pub struct DateTimeValue {
+    /// The year value.
     pub year: i32,
+    /// The month value.
     pub month: u8,
+    /// The day value.
     pub day: u8,
+    /// The hour value.
     pub hour: u8,
+    /// The minute value.
     pub minute: u8,
 }
 
 impl DateTimeValue {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(year: i32, month: u8, day: u8, hour: u8, minute: u8) -> Option<Self> {
         if !(MIN_YEAR..=MAX_YEAR).contains(&year) || hour > 23 || minute > 59 {
             return None;
@@ -37,6 +44,7 @@ impl DateTimeValue {
         })
     }
 
+    /// Parses segmented input as a local date and time.
     pub fn parse_local(value: &str) -> Option<Self> {
         let trimmed = value.trim();
         let split = trimmed.find('T').or_else(|| trimmed.find(' '))?;
@@ -61,6 +69,7 @@ impl DateTimeValue {
         Self::new(year, month, day, hour, minute)
     }
 
+    /// Formats the value for use in a local date-time input.
     pub fn to_local_input_value(self) -> String {
         format!(
             "{:04}-{:02}-{:02}T{:02}:{:02}",
@@ -68,6 +77,7 @@ impl DateTimeValue {
         )
     }
 
+    /// Formats the value for display to the user.
     pub fn display_value(self) -> String {
         format!(
             "{:04}-{:02}-{:02} {:02}:{:02}",
@@ -75,10 +85,12 @@ impl DateTimeValue {
         )
     }
 
+    /// Returns whether leap year.
     pub fn is_leap_year(year: i32) -> bool {
         year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
     }
 
+    /// Returns the number of days in this value’s month.
     pub fn days_in_month(year: i32, month: u8) -> Option<u8> {
         if !(MIN_YEAR..=MAX_YEAR).contains(&year) {
             return None;
@@ -92,6 +104,7 @@ impl DateTimeValue {
         }
     }
 
+    /// Returns a copy adjusted by the requested segment and amount.
     pub fn adjust(self, segment: DateTimeSegment, delta: i32) -> Self {
         match segment {
             DateTimeSegment::Year => self.add_years(delta),
@@ -209,8 +222,11 @@ impl DateTimeValue {
 /// Order of the date fields in a locale's display and entry format.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DateOrder {
+    /// The year month day option.
     YearMonthDay,
+    /// The day month year option.
     DayMonthYear,
+    /// The month day year option.
     MonthDayYear,
 }
 
@@ -218,17 +234,23 @@ pub enum DateOrder {
 /// gives a message suitable for showing next to the field.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DateTimeParseError {
+    /// The empty option.
     Empty,
     /// The text does not match the locale's layout; `expected` is an example.
     Format {
+        /// The value value.
         expected: String,
     },
+    /// The invalid year option.
     InvalidYear,
+    /// The invalid month option.
     InvalidMonth,
     /// The day does not exist in that month; `max` is the month's last day.
     InvalidDay {
+        /// The value value.
         max: Option<u8>,
     },
+    /// The invalid time option.
     InvalidTime,
 }
 
@@ -266,11 +288,17 @@ pub type DateTimeParser =
 /// [`DateTimePicker::parser`] for anything this struct cannot express.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DateTimeLocale {
+    /// The tag value.
     pub tag: SharedString,
+    /// The date order value.
     pub date_order: DateOrder,
+    /// The date separator value.
     pub date_separator: char,
+    /// The hour12 value.
     pub hour12: bool,
+    /// The am label value.
     pub am_label: SharedString,
+    /// The pm label value.
     pub pm_label: SharedString,
 }
 
@@ -334,6 +362,7 @@ impl DateTimeLocale {
         }
     }
 
+    /// Formats the value for display or serialization.
     pub fn format(&self, v: DateTimeValue) -> String {
         let sep = self.date_separator;
         let date = match self.date_order {
@@ -374,6 +403,7 @@ impl DateTimeLocale {
         })
     }
 
+    /// Parses an input value when it has a supported format.
     pub fn parse(&self, input: &str) -> Result<DateTimeValue, DateTimeParseError> {
         let bad = || DateTimeParseError::Format {
             expected: self.example(),
@@ -446,12 +476,18 @@ impl DateTimeLocale {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// Available date time segment options for configuring the control.
 pub enum DateTimeSegment {
+    /// The year option.
     Year,
+    /// The month option.
     Month,
     #[default]
+    /// The day option.
     Day,
+    /// The hour option.
     Hour,
+    /// The minute option.
     Minute,
 }
 
@@ -543,16 +579,19 @@ impl Default for DateTimePicker {
 }
 
 impl DateTimePicker {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Returns the current value.
     pub fn value(mut self, value: DateTimeValue) -> Self {
         self.value = Some(value);
         self.draft = value;
         self
     }
 
+    /// Sets the maybe value configuration for this control.
     pub fn maybe_value(mut self, value: Option<DateTimeValue>) -> Self {
         self.value = value;
         if let Some(value) = value {
@@ -561,26 +600,31 @@ impl DateTimePicker {
         self
     }
 
+    /// Sets the default value configuration for this control.
     pub fn default_value(mut self, value: DateTimeValue) -> Self {
         self.draft = value;
         self
     }
 
+    /// Sets the placeholder configuration for this control.
     pub fn placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
         self.placeholder = placeholder.into();
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Sets the error configuration for this control.
     pub fn error(mut self, error: bool) -> Self {
         self.error = error;
         self
     }
 
+    /// Registers a handler for change events.
     pub fn on_change(mut self, f: impl Fn(Option<DateTimeValue>, &mut App) + 'static) -> Self {
         self.on_change = Some(Box::new(f));
         self
@@ -654,10 +698,12 @@ impl DateTimePicker {
         parsed
     }
 
+    /// Sets the selected value configuration for this control.
     pub fn selected_value(&self) -> Option<DateTimeValue> {
         self.value
     }
 
+    /// Sets the value value.
     pub fn set_value(&mut self, value: Option<DateTimeValue>, cx: &mut Context<Self>) {
         self.value = value;
         if let Some(value) = value {
@@ -666,11 +712,13 @@ impl DateTimePicker {
         cx.notify();
     }
 
+    /// Sets the disabled value.
     pub fn set_disabled(&mut self, disabled: bool, cx: &mut Context<Self>) {
         self.disabled = disabled;
         cx.notify();
     }
 
+    /// Sets the error value.
     pub fn set_error(&mut self, error: bool, cx: &mut Context<Self>) {
         self.error = error;
         cx.notify();

@@ -9,8 +9,11 @@ use gpui::{
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum CheckboxState {
     #[default]
+    /// The unchecked option.
     Unchecked,
+    /// The checked option.
     Checked,
+    /// The indeterminate option.
     Indeterminate,
 }
 
@@ -29,6 +32,7 @@ pub struct Checkbox {
 }
 
 impl Checkbox {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -47,11 +51,13 @@ impl Checkbox {
         self
     }
 
+    /// Returns the current state.
     pub fn state(mut self, state: CheckboxState) -> Self {
         self.state = state;
         self
     }
 
+    /// Sets the checked configuration for this control.
     pub fn checked(mut self, checked: bool) -> Self {
         self.state = if checked {
             CheckboxState::Checked
@@ -67,6 +73,7 @@ impl Checkbox {
         self
     }
 
+    /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self

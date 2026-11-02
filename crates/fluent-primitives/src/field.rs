@@ -59,9 +59,13 @@ type SemanticsApplier =
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum FieldValidationState {
     #[default]
+    /// The none option.
     None,
+    /// The success option.
     Success,
+    /// The warning option.
     Warning,
+    /// The error option.
     Error,
 }
 
@@ -81,6 +85,7 @@ pub struct Field {
 }
 
 impl Field {
+    /// Creates a new instance for use in a Fluent interface.
     pub fn new(control: impl IntoElement) -> Self {
         Self {
             label: None,
@@ -109,6 +114,7 @@ impl Field {
         field
     }
 
+    /// Returns the current label.
     pub fn label(mut self, label: impl Into<SharedString>) -> Self {
         self.label = Some(label.into());
         self.info_label = None;
@@ -125,16 +131,19 @@ impl Field {
         self
     }
 
+    /// Sets the required configuration for this control.
     pub fn required(mut self, required: bool) -> Self {
         self.required = required;
         self
     }
 
+    /// Sets the helper text configuration for this control.
     pub fn helper_text(mut self, text: impl Into<SharedString>) -> Self {
         self.helper_text = Some(text.into());
         self
     }
 
+    /// Sets the validation configuration for this control.
     pub fn validation(
         mut self,
         state: FieldValidationState,
