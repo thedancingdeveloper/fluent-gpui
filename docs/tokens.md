@@ -83,8 +83,14 @@ a follow-up work item rather than silently substituted.
 
 | Fluent 2 alias group | Alias | `fluent-core` name |
 | --- | --- | --- |
-| Curve | accelerate/decelerate/easy-ease | `missing` |
-| Duration | ultra-fast/fast/normal/slow/ultra-slow | `missing` |
+| Curve | accelerate | `MotionTokens::accelerate` |
+| Curve | decelerate | `MotionTokens::decelerate` |
+| Curve | easy-ease | `MotionTokens::easy_ease` |
+| Duration | ultra-fast | `MotionTokens::ultra_fast_duration_ms` |
+| Duration | fast | `MotionTokens::fast_duration_ms` |
+| Duration | normal | `MotionTokens::normal_duration_ms` |
+| Duration | slow | `MotionTokens::slow_duration_ms` |
+| Duration | ultra-slow | `MotionTokens::ultra_slow_duration_ms` |
 | Popup duration | enter | `MotionTokens::popup_enter_duration_ms` |
 | Popup duration | exit | `MotionTokens::popup_exit_duration_ms` |
 | Popup offset | default | `MotionTokens::popup_offset` |
