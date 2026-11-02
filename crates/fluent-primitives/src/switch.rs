@@ -142,7 +142,7 @@ impl RenderOnce for Switch {
 
 #[cfg(test)]
 mod tests {
-    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use fluent_test_utils::{assert_a11y_node, open_fluent_test_window, FluentInteractionExt as _};
     use gpui::{Context, Entity, InputEvent as _, KeyUpEvent, Keystroke, Render, TestAppContext};
 
     use super::*;
@@ -235,15 +235,12 @@ mod tests {
             let snap = snapshot(cx, move || {
                 Switch::new("s").label("Wi-Fi").on(on).into_any_element()
             });
-            assert_eq!(
-                snap,
-                vec![
-                    "Window".to_string(),
-                    format!(
-                        "Switch \"Wi-Fi\" [toggled={}]",
-                        if on { "True" } else { "False" }
-                    )
-                ]
+            assert_eq!(snap.len(), 2, "{snap:?}");
+            assert_a11y_node(
+                &snap,
+                "Switch",
+                Some("Wi-Fi"),
+                &[if on { "toggled=True" } else { "toggled=False" }],
             );
         }
     }
