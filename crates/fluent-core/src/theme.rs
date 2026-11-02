@@ -11,6 +11,53 @@ pub enum Brightness {
     Light,
 }
 
+/// Controls how an application chooses its active theme.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ThemeMode {
+    /// Use the operating system's current light or dark preference.
+    System,
+    /// Always use the dark theme.
+    #[default]
+    Dark,
+    /// Always use the light theme.
+    Light,
+}
+
+impl ThemeMode {
+    pub fn from_window_appearance(appearance: gpui::WindowAppearance) -> Self {
+        match appearance {
+            gpui::WindowAppearance::Dark | gpui::WindowAppearance::VibrantDark => Self::Dark,
+            gpui::WindowAppearance::Light | gpui::WindowAppearance::VibrantLight => Self::Light,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ThemeMode;
+    use gpui::WindowAppearance;
+
+    #[test]
+    fn maps_window_appearances_to_theme_modes() {
+        assert_eq!(
+            ThemeMode::from_window_appearance(WindowAppearance::Dark),
+            ThemeMode::Dark
+        );
+        assert_eq!(
+            ThemeMode::from_window_appearance(WindowAppearance::VibrantDark),
+            ThemeMode::Dark
+        );
+        assert_eq!(
+            ThemeMode::from_window_appearance(WindowAppearance::Light),
+            ThemeMode::Light
+        );
+        assert_eq!(
+            ThemeMode::from_window_appearance(WindowAppearance::VibrantLight),
+            ThemeMode::Light
+        );
+    }
+}
+
 /// The top-level theme object stored as a GPUI global.
 ///
 /// Access it from any context via the [`ThemeProvider`] trait extension:

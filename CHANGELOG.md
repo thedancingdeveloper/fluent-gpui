@@ -11,6 +11,8 @@ per crate.
 ---
 
 ## Unreleased
+
+- Add opt-in system light/dark theme following for FluentApp.
 - fluent-core: high-contrast theme (`ColorScheme::high_contrast`, `Theme::high_contrast`, `Theme::apply_high_contrast`) mapped from the system colours Canvas, CanvasText, Highlight, GrayText and ButtonFace, with strokes in place of fills; covered by the token and contrast tests (7:1 checks); the gallery ribbon View group switches Dark, Light and High contrast (WI-2923).
 - fluent-layout: AccessKit semantics for Tree (tree/treeitem with level, expanded, selected), DataTable (grid/row/columnheader/cell), TabStrip (tablist/tab), SelectableList (list/listitem), MenuBar, MenuButton and ContextMenu (menubar/menu/menuitem); snapshot test per widget (WI-2918).
 - fluent-layout: keyboard access for MenuBar and ContextMenu: F10 or a tap of Alt focuses the menu bar, `&` access keys (underlined) open menus and pick items (Alt+key from anywhere), Escape and F10 hand focus back; `context_menu_key_target` and `is_context_menu_key` open a context menu on Shift+F10 or the Menu key at the focused element (WI-2922).

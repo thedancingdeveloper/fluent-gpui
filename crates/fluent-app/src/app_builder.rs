@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use fluent_core::Theme;
+use fluent_core::{Theme, ThemeMode};
 use fluent_layout::{modal::ModalStack, ToastStack};
 use gpui::{
     prelude::*, px, size, App, AssetSource, Bounds, Context, Entity, IntoElement, Render,
@@ -76,7 +76,7 @@ pub struct FluentApp {
     app_id: Option<String>,
     window_status: Option<SharedString>,
     on_window_should_close: Option<WindowShouldCloseHandler>,
-    dark: bool,
+    theme_mode: ThemeMode,
     assets: Option<Arc<dyn AssetSource>>,
 }
 
@@ -90,7 +90,7 @@ impl FluentApp {
             app_id: None,
             window_status: None,
             on_window_should_close: None,
-            dark: true,
+            theme_mode: ThemeMode::Dark,
             assets: None,
         }
     }
@@ -130,12 +130,18 @@ impl FluentApp {
     }
 
     pub fn dark_theme(mut self) -> Self {
-        self.dark = true;
+        self.theme_mode = ThemeMode::Dark;
         self
     }
 
     pub fn light_theme(mut self) -> Self {
-        self.dark = false;
+        self.theme_mode = ThemeMode::Light;
+        self
+    }
+
+    /// Follow the operating system's light or dark preference.
+    pub fn system_theme(mut self) -> Self {
+        self.theme_mode = ThemeMode::System;
         self
     }
 
@@ -156,16 +162,23 @@ impl FluentApp {
         let app_id = self.app_id;
         let window_status = self.window_status;
         let on_window_should_close = self.on_window_should_close;
-        let dark = self.dark;
+        let theme_mode = self.theme_mode;
         let assets = self.assets;
 
         gpui_platform::application()
             .with_assets(FluentAssets::new(assets))
             .run(move |cx: &mut App| {
-                if dark {
-                    Theme::init(cx);
-                } else {
-                    cx.set_global(Theme::light());
+                let apply_system_theme = |cx: &mut App, appearance| {
+                    match ThemeMode::from_window_appearance(appearance) {
+                        ThemeMode::Dark => Theme::apply_dark(cx),
+                        ThemeMode::Light => Theme::apply_light(cx),
+                        ThemeMode::System => unreachable!(),
+                    }
+                };
+                match theme_mode {
+                    ThemeMode::Dark => Theme::apply_dark(cx),
+                    ThemeMode::Light => Theme::apply_light(cx),
+                    ThemeMode::System => apply_system_theme(cx, cx.window_appearance()),
                 }
                 ModalStack::init(cx);
                 ToastStack::init(cx);
@@ -191,6 +204,13 @@ impl FluentApp {
                         ..Default::default()
                     },
                     move |window, cx: &mut App| {
+                        if theme_mode == ThemeMode::System {
+                            window
+                                .observe_window_appearance(move |window, cx| {
+                                    apply_system_theme(cx, window.appearance());
+                                })
+                                .detach();
+                        }
                         if let Some(app_id) = app_id.as_deref() {
                             window.set_app_id(app_id);
                         }
