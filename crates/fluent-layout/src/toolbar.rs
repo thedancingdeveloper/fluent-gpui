@@ -481,4 +481,48 @@ mod tests {
         cx.type_keys("end enter");
         assert_eq!(hits.get(), 3);
     }
+
+    struct Toggles {
+        action_hits: Rc<Cell<usize>>,
+        toggled: Rc<Cell<Option<bool>>>,
+        disabled_hits: Rc<Cell<usize>>,
+    }
+
+    impl Render for Toggles {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let (a, t, d) = (
+                self.action_hits.clone(),
+                self.toggled.clone(),
+                self.disabled_hits.clone(),
+            );
+            Toolbar::new()
+                .item(ToolbarItem::action("a", "A", move |_, _, _| {
+                    a.set(a.get() + 1)
+                }))
+                .item(ToolbarItem::toggle("t", "T", false, move |v, _, _, _| {
+                    t.set(Some(v))
+                }))
+                .item(
+                    ToolbarItem::action("d", "D", move |_, _, _| d.set(d.get() + 1)).disabled(true),
+                )
+        }
+    }
+
+    #[gpui::test]
+    fn clicking_dispatches_action_and_toggle_but_not_disabled(cx: &mut TestAppContext) {
+        let action_hits = Rc::new(Cell::new(0));
+        let toggled = Rc::new(Cell::new(None));
+        let disabled_hits = Rc::new(Cell::new(0));
+        let (_host, cx) = open_fluent_test_window(cx, |_, _| Toggles {
+            action_hits: action_hits.clone(),
+            toggled: toggled.clone(),
+            disabled_hits: disabled_hits.clone(),
+        });
+        cx.click_selector("toolbar-item-0");
+        assert_eq!(action_hits.get(), 1);
+        cx.click_selector("toolbar-item-1");
+        assert_eq!(toggled.get(), Some(true));
+        cx.click_selector("toolbar-item-2");
+        assert_eq!(disabled_hits.get(), 0);
+    }
 }

@@ -81,3 +81,50 @@ impl Render for Pane {
         pane_div.child(content_div)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Entity, TestAppContext, VisualTestContext};
+
+    use super::*;
+    use crate::tab_strip::{TabItem, TabStrip};
+
+    fn pane(cx: &mut TestAppContext) -> (Entity<Pane>, Entity<TabStrip>, &mut VisualTestContext) {
+        let mut strip = None;
+        let (pane, cx) = open_fluent_test_window(cx, |_, cx| {
+            let ts = cx.new(|cx| {
+                let mut ts = TabStrip::new(cx);
+                for id in ["a", "b", "c"] {
+                    ts.add_tab(TabItem::new(id).label(id));
+                }
+                ts
+            });
+            strip = Some(ts.clone());
+            Pane::new(cx).with_tab_strip(ts)
+        });
+        (pane, strip.unwrap(), cx)
+    }
+
+    #[gpui::test]
+    fn clicking_tabs_switches_active_item(cx: &mut TestAppContext) {
+        let (_pane, strip, cx) = pane(cx);
+        strip.read_with(cx, |t, _| assert_eq!(t.active, 0));
+        cx.click_selector("tab-2");
+        strip.read_with(cx, |t, _| assert_eq!(t.active, 2));
+        cx.click_selector("tab-1");
+        strip.read_with(cx, |t, _| assert_eq!(t.active, 1));
+    }
+
+    #[gpui::test]
+    fn set_tab_strip_and_content_update_pane(cx: &mut TestAppContext) {
+        let (pane, _strip, cx) = pane(cx);
+        pane.read_with(cx, |p, _| {
+            assert!(p.tab_strip.is_some());
+            assert!(p.content.is_none());
+        });
+        let content = cx.new(|_| Pane::default());
+        pane.update(cx, |p, cx| p.set_content(content.into(), cx));
+        pane.read_with(cx, |p, _| assert!(p.content.is_some()));
+    }
+}
