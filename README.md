@@ -187,6 +187,20 @@ cargo run -p gallery
 
 Other examples: `hello_world`, `widgets`, `form`, `demo_app`.
 
+### The gallery as a regression matrix
+
+The gallery groups its routes by Fluent 2 component family (buttons and
+links, selection controls, text and labels, status and feedback, data and
+lists, date and input, terminal and video, theme and direction). Pick a
+family in the left sidebar. Each page shows the state variants of its
+controls side by side (default, selected, disabled, indeterminate, error).
+The variant row on every page switches light, dark, high contrast and RTL, so
+one pass through the families covers every state in every variant. After a
+change to a primitive or to theme tokens, walk the families in all four
+variants and compare against `docs/VISUAL_TARGETS.md`. A new public
+primitive gets its states added to the matching family page in
+`examples/gallery/src/families.rs`.
+
 ---
 
 ## 5. Versioning and cadence

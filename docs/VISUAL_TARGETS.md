@@ -192,6 +192,16 @@ Current implementation:
 
 ---
 
+## Gallery coverage matrix
+
+`examples/gallery` is organised by Fluent 2 component family. Each family page
+shows its state variants (default, selected, disabled, indeterminate, error) and
+carries a variant row for light, dark, high contrast and RTL. A visual check of
+a change is one pass through the families in each variant. See the README
+section "The gallery as a regression matrix".
+
+---
+
 ## Design Rules for Future Work
 
 - Add framework primitives only when at least one real app needs the pattern and the abstraction is reusable.
