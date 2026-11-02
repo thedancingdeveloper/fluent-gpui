@@ -4,7 +4,7 @@ use crate::focus::FluentFocus as _;
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, App, ClickEvent, ElementId, Hsla, IntoElement, KeyDownEvent, RenderOnce,
-    SharedString, Window,
+    Role, SharedString, Toggled, Window,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -42,6 +42,7 @@ impl RadioOption {
 pub struct RadioGroup {
     id: ElementId,
     options: Vec<RadioOption>,
+    label: Option<SharedString>,
     selected: Option<SharedString>,
     orientation: RadioGroupOrientation,
     disabled: bool,
@@ -54,12 +55,19 @@ impl RadioGroup {
         Self {
             id: id.into(),
             options: Vec::new(),
+            label: None,
             selected: None,
             orientation: RadioGroupOrientation::Vertical,
             disabled: false,
             tab_index: None,
             on_select: None,
         }
+    }
+
+    /// The accessible name of the group (the legend of the choice).
+    pub fn label(mut self, label: impl Into<SharedString>) -> Self {
+        self.label = Some(label.into());
+        self
     }
 
     pub fn option(
@@ -128,6 +136,8 @@ impl RenderOnce for RadioGroup {
 
         let mut root = div()
             .id(self.id)
+            .role(Role::RadioGroup)
+            .when_some(self.label.clone(), |d, name| d.aria_label(name))
             .flex()
             .gap(px(spacing.md))
             .when(self.orientation == RadioGroupOrientation::Horizontal, |d| {
@@ -158,6 +168,13 @@ impl RenderOnce for RadioGroup {
             let mut row = div()
                 .id(("radio-option", idx as u64))
                 .debug_selector(move || format!("radio-option-{idx}"))
+                .role(Role::RadioButton)
+                .aria_label(option.label.clone())
+                .aria_toggled(if checked {
+                    Toggled::True
+                } else {
+                    Toggled::False
+                })
                 .flex()
                 .flex_row()
                 .items_center()
@@ -318,5 +335,42 @@ mod tests {
             assert_eq!(host.selected.as_ref(), "two");
             assert_eq!(host.changes, 1);
         });
+    }
+
+    struct A11yHost(Box<dyn Fn() -> gpui::AnyElement>);
+
+    impl Render for A11yHost {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            (self.0)()
+        }
+    }
+
+    fn snapshot(
+        cx: &mut TestAppContext,
+        build: impl Fn() -> gpui::AnyElement + 'static,
+    ) -> Vec<String> {
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| A11yHost(Box::new(build)));
+        cx.accessibility_snapshot()
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_radio_group(cx: &mut TestAppContext) {
+        let snap = snapshot(cx, || {
+            RadioGroup::new("r")
+                .label("Size")
+                .option("s", "Small")
+                .option("l", "Large")
+                .selected("l")
+                .into_any_element()
+        });
+        assert_eq!(
+            snap,
+            vec![
+                "Window".to_string(),
+                "RadioGroup \"Size\"".to_string(),
+                "RadioButton \"Small\" [toggled=False]".to_string(),
+                "RadioButton \"Large\" [toggled=True]".to_string(),
+            ]
+        );
     }
 }
