@@ -1,8 +1,10 @@
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, prelude::*, px, svg, AnyElement, App, ClickEvent, Div, ElementId, FontWeight, IntoElement,
-    RenderOnce, Role, SharedString, Stateful, Window,
+    div, prelude::*, px, svg, AnyElement, App, ClickEvent, Div, ElementId, FocusHandle, FontWeight,
+    IntoElement, KeyDownEvent, RenderOnce, Role, SharedString, Stateful, Window,
 };
+
+pub(crate) type ExpanderToggle = Box<dyn Fn(bool, &ClickEvent, &mut Window, &mut App) + 'static>;
 
 /// A Fluent 2-styled expander (collapsible section): a header row with a
 /// chevron and a title that toggles a content area.
@@ -20,7 +22,10 @@ pub struct Expander {
     expanded: bool,
     disabled: bool,
     content: Option<AnyElement>,
-    on_toggle: Option<Box<dyn Fn(bool, &ClickEvent, &mut Window, &mut App) + 'static>>,
+    on_toggle: Option<ExpanderToggle>,
+    focus_handle: Option<FocusHandle>,
+    tab_stop: Option<bool>,
+    on_key_down: Option<Box<dyn Fn(&KeyDownEvent, &mut Window, &mut App) + 'static>>,
 }
 
 impl Expander {
@@ -32,6 +37,9 @@ impl Expander {
             disabled: false,
             content: None,
             on_toggle: None,
+            focus_handle: None,
+            tab_stop: None,
+            on_key_down: None,
         }
     }
 
@@ -59,6 +67,26 @@ impl Expander {
         self.on_toggle = Some(Box::new(handler));
         self
     }
+
+    pub(crate) fn is_disabled(&self) -> bool {
+        self.disabled
+    }
+
+    pub(crate) fn take_on_toggle(&mut self) -> Option<ExpanderToggle> {
+        self.on_toggle.take()
+    }
+
+    pub(crate) fn with_focus(
+        mut self,
+        handle: FocusHandle,
+        tab_stop: bool,
+        on_key_down: impl Fn(&KeyDownEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.focus_handle = Some(handle);
+        self.tab_stop = Some(tab_stop);
+        self.on_key_down = Some(Box::new(on_key_down));
+        self
+    }
 }
 
 /// The header element with its accessibility semantics: a button named by the
@@ -84,6 +112,9 @@ impl RenderOnce for Expander {
         let expanded = self.expanded;
         let next_state = !expanded;
         let on_toggle = self.on_toggle;
+        let focus_handle = self.focus_handle;
+        let tab_stop = self.tab_stop;
+        let on_key_down = self.on_key_down;
 
         let fg = if disabled {
             colors.on_neutral_disabled
@@ -127,12 +158,16 @@ impl RenderOnce for Expander {
         if !disabled {
             header = header
                 .focusable()
-                .tab_stop(true)
+                .when_some(focus_handle, |header, handle| header.track_focus(&handle))
+                .tab_stop(tab_stop.unwrap_or(true))
                 .cursor_pointer()
                 .hover(move |s| s.bg(hover_bg))
                 .focus_visible(move |s| s.border_color(focus_border));
             if let Some(handler) = on_toggle {
                 header = header.on_click(move |ev, win, app| handler(next_state, ev, win, app));
+            }
+            if let Some(handler) = on_key_down {
+                header = header.on_key_down(handler);
             }
         }
 

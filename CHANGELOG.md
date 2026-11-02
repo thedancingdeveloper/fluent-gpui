@@ -11,6 +11,7 @@ per crate.
 ---
 
 ## Unreleased
+- Primitives: add `Accordion`, grouping `Expander` items with single/multiple open modes, collapsible control and arrow-key header navigation (WI-2933).
 
 - fluent-primitives: add `InfoLabel` with a click/Enter info popover and `Field` integration (WI-2936).
 - fluent-primitives: add indeterminate ProgressBar animation, semantic status colours, medium/large thicknesses, clamped values, and progress accessibility semantics (WI-2937).
