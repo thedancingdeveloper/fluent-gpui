@@ -2,8 +2,8 @@ use fluent_app::{FluentApp, TitleBar};
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_layout::{
     DataCell, DataColumn, DataRow, DataStatusKind, DataTable, DataTableState, DockPanel,
-    DockPosition, MenuBar, MessageBar, MessageIntent, ModalStack, Pane, TabItem, TabStrip, Tree,
-    TreeItem, Workspace,
+    DockPosition, MenuBar, MessageBar, MessageIntent, ModalStack, Pane, SelectableList,
+    SelectableListItem, TabItem, TabStrip, Tree, TreeItem, Workspace,
 };
 use fluent_primitives::{
     Avatar, Button, ButtonAppearance, Checkbox, CounterBadge, CounterBadgeAppearance,
@@ -60,6 +60,51 @@ impl DataStatesDemo {
             ]);
         }
         table
+    }
+}
+
+/// A virtualised SelectableList over 100,000 rows; every third row wraps a
+/// second line, so row heights vary. Only the rows near the viewport are built.
+struct BigListDemo {
+    selected: usize,
+}
+
+impl Render for BigListDemo {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let view = cx.entity();
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .p_2()
+            .child(div().text_size(gpui::px(12.0)).child(format!(
+                "100,000 rows (variable height), row {} selected: click, or use Up/Down/PageUp/PageDown/Home/End",
+                self.selected + 1
+            )))
+            .child(
+                SelectableList::new("gallery-big-list")
+                    .rows(100_000, |ix| {
+                        let item = SelectableListItem::new(format!("row-{ix}"), format!("Row {ix}"))
+                            .meta(format!("#{ix}"));
+                        if ix % 3 == 0 {
+                            item.subtitle("A second line that only every third row has")
+                        } else {
+                            item
+                        }
+                    })
+                    .variable_row_heights(true)
+                    .row_height(44.0)
+                    .selected_index(self.selected)
+                    .max_body_height(360.0)
+                    .on_select(move |id, _, cx| {
+                        if let Some(ix) = id.strip_prefix("row-").and_then(|n| n.parse().ok()) {
+                            view.update(cx, |demo, cx| {
+                                demo.selected = ix;
+                                cx.notify();
+                            });
+                        }
+                    }),
+            )
     }
 }
 
@@ -840,6 +885,7 @@ fn main() {
         let persona_demo = cx.new(|_| PersonaDemo);
         let download_demo = cx.new(|_| DownloadProgressDemo);
         let data_states = cx.new(|_| DataStatesDemo);
+        let big_list = cx.new(|_| BigListDemo { selected: 0 });
         let date_demo = cx.new(DateTimeDemo::new);
         let input_demo = cx.new(InputCaptureDemo::new);
         let terminal_demo = cx.new(TerminalDemo::new);
@@ -859,7 +905,7 @@ fn main() {
         let host = cx.new(|_| {
             FamilyHost::new(DemoViews {
                 status: vec![badge_demo.into(), persona_demo.into(), download_demo.into()],
-                data: vec![data_states.into()],
+                data: vec![data_states.into(), big_list.into()],
                 date_input: vec![date_demo.into(), input_demo.into(), range_demo.into()],
                 media: vec![terminal_demo.into(), video_demo.into()],
                 theme: vec![matrix_demo.into(), rtl_demo.into()],
