@@ -13,7 +13,9 @@ pub use components::ComponentTokens;
 pub use motion::{popup_motion_surface, MotionTokens};
 pub use radii::RadiiTokens;
 pub use spacing::SpacingTokens;
-pub use theme::{Brightness, Theme, ThemeMode, ThemeProvider};
+pub use theme::{
+    Brightness, LayoutDirection, LayoutDirectionProvider, Theme, ThemeMode, ThemeProvider,
+};
 pub use typography::{TypeRamp, TypographyTokens};
 
 #[cfg(test)]

@@ -11,6 +11,28 @@ pub enum Brightness {
     Light,
 }
 
+/// The reading direction used by the application layout.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum LayoutDirection {
+    #[default]
+    Ltr,
+    Rtl,
+}
+
+impl Global for LayoutDirection {}
+
+impl LayoutDirection {
+    /// Register left-to-right layout as the default application direction.
+    pub fn init(cx: &mut App) {
+        cx.set_global(Self::default());
+    }
+
+    /// Whether directional visuals should be mirrored.
+    pub fn is_rtl(self) -> bool {
+        self == Self::Rtl
+    }
+}
+
 /// Controls how an application chooses its active theme.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ThemeMode {
@@ -112,6 +134,7 @@ impl Theme {
 
     /// Register the dark theme as the active global. Call once during app startup.
     pub fn init(cx: &mut App) {
+        LayoutDirection::init(cx);
         cx.set_global(Theme::dark());
     }
 
@@ -200,5 +223,18 @@ pub trait ThemeProvider {
 impl ThemeProvider for App {
     fn theme(&self) -> &Theme {
         self.global::<Theme>()
+    }
+}
+
+/// Provides access to the active [`LayoutDirection`] from any GPUI context.
+pub trait LayoutDirectionProvider {
+    fn layout_direction(&self) -> LayoutDirection;
+}
+
+impl LayoutDirectionProvider for App {
+    fn layout_direction(&self) -> LayoutDirection {
+        self.try_global::<LayoutDirection>()
+            .copied()
+            .unwrap_or_default()
     }
 }
