@@ -74,7 +74,7 @@ impl FluentAssets {
     fn builtin(path: &str) -> Option<&'static [u8]> {
         Some(match path {
             "icons/add.svg" | "icons/folder_add.svg" => ADD,
-            "icons/arrow_forward.svg" => ARROW_FORWARD,
+            "icons/arrow_forward.svg" | "icons/arrow_right.svg" => ARROW_FORWARD,
             "icons/checkmark.svg" | "icons/check.svg" => CHECKMARK,
             "icons/chevron_down.svg" => CHEVRON_DOWN,
             "icons/chevron_right.svg" | "icons/chevron.svg" => CHEVRON_RIGHT,
@@ -121,7 +121,7 @@ impl FluentAssets {
             "icons/prev.svg" | "icons/previous.svg" => PREV,
             "icons/next.svg" => NEXT,
             "icons/send.svg" => SEND,
-            "icons/back.svg" | "icons/chevron_left.svg" => BACK,
+            "icons/back.svg" | "icons/chevron_left.svg" | "icons/arrow_left.svg" => BACK,
             "icons/more.svg" => MORE,
             "icons/refresh.svg" => REFRESH,
             "icons/image.svg" => IMAGE,
@@ -232,5 +232,59 @@ mod tests {
 
         assert_eq!(&*loaded, CHEVRON_RIGHT);
         assert_ne!(&*loaded, GENERIC);
+    }
+
+    /// Every icon path the library, gallery and examples reference must hit a
+    /// specific builtin, not the generic square fallback.
+    #[test]
+    fn every_referenced_icon_has_a_specific_builtin() {
+        const REFERENCED: &[&str] = &[
+            "add",
+            "arrow_forward",
+            "arrow_left",
+            "arrow_right",
+            "back",
+            "chat",
+            "checkmark",
+            "chevron_down",
+            "chevron_left",
+            "chevron_right",
+            "chevron_up",
+            "clear",
+            "clipboard_paste",
+            "copy",
+            "cut",
+            "dark_theme",
+            "delete",
+            "dismiss",
+            "document",
+            "download",
+            "find_replace",
+            "folder",
+            "folder_add",
+            "folder_open",
+            "folder_sync",
+            "grid",
+            "light_theme",
+            "list_tree",
+            "maximize",
+            "minimize",
+            "more",
+            "panel_open",
+            "paste",
+            "plug",
+            "search",
+            "settings",
+            "spinner",
+            "upload",
+        ];
+        for name in REFERENCED {
+            let path = format!("icons/{name}.svg");
+            let bytes = FluentAssets::builtin(&path);
+            assert!(
+                bytes.is_some_and(|b| b != GENERIC),
+                "{path} falls back to the generic icon"
+            );
+        }
     }
 }
