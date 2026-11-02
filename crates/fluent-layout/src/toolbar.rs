@@ -3,7 +3,7 @@ use std::sync::Arc;
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, svg, App, ClickEvent, ElementId, FocusHandle, IntoElement, KeyDownEvent,
-    RenderOnce, SharedString, Window,
+    RenderOnce, Role, SharedString, Toggled, Window,
 };
 
 type ToolbarClick = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
@@ -229,6 +229,8 @@ impl Toolbar {
                 let mut el = div()
                     .id(("toolbar-action", idx as u64))
                     .debug_selector(move || format!("toolbar-item-{idx}"))
+                    .role(Role::Button)
+                    .aria_label(label.clone())
                     .flex()
                     .flex_row()
                     .items_center()
@@ -287,6 +289,13 @@ impl Toolbar {
                 let mut el = div()
                     .id(("toolbar-toggle", idx as u64))
                     .debug_selector(move || format!("toolbar-item-{idx}"))
+                    .role(Role::Button)
+                    .aria_toggled(if selected {
+                        Toggled::True
+                    } else {
+                        Toggled::False
+                    })
+                    .aria_label(label.clone())
                     .flex()
                     .flex_row()
                     .items_center()
@@ -364,6 +373,8 @@ impl RenderOnce for Toolbar {
 
         let mut root = div()
             .id(self.id.clone())
+            .role(Role::Toolbar)
+            .aria_orientation(gpui::accesskit::Orientation::Horizontal)
             .flex()
             .flex_row()
             .items_center()
@@ -398,6 +409,9 @@ impl RenderOnce for Toolbar {
         if !overflow.is_empty() {
             let mut overflow_button = div()
                 .id("toolbar-overflow")
+                .role(Role::Button)
+                .aria_label("More")
+                .aria_expanded(self.overflow_open)
                 .flex()
                 .items_center()
                 .justify_center()
@@ -524,5 +538,20 @@ mod tests {
         assert_eq!(toggled.get(), Some(true));
         cx.click_selector("toolbar-item-2");
         assert_eq!(disabled_hits.get(), 0);
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_toolbar_roles(cx: &mut TestAppContext) {
+        let (_host, cx) = open_fluent_test_window(cx, |_, _| Toggles {
+            action_hits: Rc::new(Cell::new(0)),
+            toggled: Rc::new(Cell::new(None)),
+            disabled_hits: Rc::new(Cell::new(0)),
+        });
+        let snap = cx.accessibility_snapshot();
+        let joined = snap.join("\n");
+        assert!(joined.contains("Toolbar"), "{joined}");
+        assert!(joined.contains("Button \"A\""), "{joined}");
+        assert!(joined.contains("Button \"T\""), "{joined}");
+        assert!(joined.contains("Button \"D\""), "{joined}");
     }
 }
