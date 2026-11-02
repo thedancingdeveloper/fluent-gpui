@@ -1,5 +1,8 @@
-use fluent_core::ThemeProvider as _;
-use gpui::{prelude::*, px, svg, App, Hsla, IntoElement, RenderOnce, SharedString, Window};
+use fluent_core::{LayoutDirection, LayoutDirectionProvider as _, ThemeProvider as _};
+use gpui::{
+    prelude::*, px, size, svg, App, Hsla, IntoElement, RenderOnce, SharedString, Transformation,
+    Window,
+};
 
 /// Canonical icon display sizes.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -57,10 +60,54 @@ impl Icon {
     }
 }
 
+fn is_directional_icon(path: &str) -> bool {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    let name = name.strip_suffix(".svg").unwrap_or(name);
+    [
+        "chevron_left",
+        "chevron_right",
+        "arrow_left",
+        "arrow_right",
+        "back",
+        "forward",
+    ]
+    .contains(&name)
+}
+
 impl RenderOnce for Icon {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let size = px(self.size.px());
+        let icon_size = px(self.size.px());
         let color = self.color.unwrap_or_else(|| cx.theme().colors.on_neutral);
-        svg().path(self.path).size(size).text_color(color)
+        let mut icon = svg()
+            .path(self.path.clone())
+            .size(icon_size)
+            .text_color(color);
+        if cx.layout_direction() == LayoutDirection::Rtl && is_directional_icon(&self.path) {
+            icon = icon.with_transformation(Transformation::scale(size(-1.0, 1.0)));
+        }
+        icon
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_directional_icon;
+    use fluent_core::LayoutDirection;
+
+    #[test]
+    fn identifies_directional_icon_names() {
+        assert!(is_directional_icon("icons/chevron_right.svg"));
+        assert!(is_directional_icon("icons/arrow_left.svg"));
+        assert!(is_directional_icon("icons/back.svg"));
+        assert!(is_directional_icon("forward.svg"));
+        assert!(!is_directional_icon("icons/chevron_down.svg"));
+        assert!(!is_directional_icon("icons/search.svg"));
+    }
+
+    #[test]
+    fn layout_direction_defaults_to_ltr() {
+        assert_eq!(LayoutDirection::default(), LayoutDirection::Ltr);
+        assert!(!LayoutDirection::default().is_rtl());
+        assert!(LayoutDirection::Rtl.is_rtl());
     }
 }
