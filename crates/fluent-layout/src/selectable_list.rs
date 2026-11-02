@@ -3,7 +3,7 @@ use std::sync::Arc;
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, svg, uniform_list, App, ClickEvent, ElementId, FontWeight, IntoElement,
-    KeyDownEvent, MouseButton, MouseDownEvent, RenderOnce, SharedString, Window,
+    KeyDownEvent, MouseButton, MouseDownEvent, RenderOnce, Role, SharedString, Window,
 };
 
 type ListSelectHandler = Arc<dyn Fn(SharedString, &mut Window, &mut App) + 'static>;
@@ -244,6 +244,8 @@ impl RenderOnce for SelectableList {
         let on_activate = self.on_activate.clone();
 
         let mut root = div()
+            .id("selectable-list")
+            .role(Role::List)
             .tab_index(0)
             .key_context("SelectableList")
             .on_key_down(
@@ -374,6 +376,9 @@ fn render_row(
     };
     let mut row = div()
         .id(("selectable-list-row", idx as u64))
+        .role(Role::ListItem)
+        .aria_label(item.title.clone())
+        .aria_selected(selected)
         .flex()
         .flex_row()
         .items_center()
@@ -593,6 +598,37 @@ mod tests {
                 .map(|id| id.to_string())
                 .as_deref(),
             Some("three")
+        );
+    }
+
+    #[gpui::test]
+    fn accessibility_snapshot_reports_list_and_listitems(cx: &mut gpui::TestAppContext) {
+        use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+        struct SnapHost;
+        impl gpui::Render for SnapHost {
+            fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+                gpui::div().flex().flex_row().size(gpui::px(300.0)).child(
+                    SelectableList::new("snap-list")
+                        .items([
+                            SelectableListItem::new("a", "Alpha"),
+                            SelectableListItem::new("b", "Beta"),
+                        ])
+                        .selected("b"),
+                )
+            }
+        }
+        let (_, vcx) = open_fluent_test_window(cx, |_, _| SnapHost);
+        for _ in 0..4 {
+            vcx.accessibility_snapshot();
+        }
+        assert_eq!(
+            vcx.accessibility_snapshot(),
+            vec![
+                "Window".to_string(),
+                "List".to_string(),
+                "ListItem \"Alpha\" [selected=false]".to_string(),
+                "ListItem \"Beta\" [selected=true]".to_string(),
+            ]
         );
     }
 }
