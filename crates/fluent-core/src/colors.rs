@@ -52,11 +52,23 @@ pub fn with_alpha(color: Hsla, alpha: f32) -> Hsla {
     }
 }
 
+/// Fill and foreground state families for one control appearance.
+///
+/// Built by [`ColorScheme::neutral_control`], [`ColorScheme::accent_control`],
+/// [`ColorScheme::subtle_control`] and [`ColorScheme::danger_control`] from the
+/// theme's aliases, so components read states from one place instead of
+/// choosing tokens themselves.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ControlStates {
+    pub background: NeutralColorStates,
+    pub foreground: NeutralColorStates,
+}
+
 /// All surface, fill, foreground, and stroke colors for the theme.
 ///
 /// Token names follow the Fluent 2 design token vocabulary where possible.
 /// See <https://fluent2.microsoft.design/color> for specification.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct NeutralColorStates {
     pub default: Hsla,
     pub hover: Hsla,
@@ -237,6 +249,75 @@ fn color_states(
 }
 
 impl ColorScheme {
+    /// Neutral (default) control states, from the neutral background 3 and
+    /// foreground 1 aliases.
+    pub fn neutral_control(&self) -> ControlStates {
+        ControlStates {
+            background: self.neutral_background_3,
+            foreground: self.neutral_foreground_1,
+        }
+    }
+
+    /// Brand (accent) control states.
+    pub fn accent_control(&self) -> ControlStates {
+        ControlStates {
+            background: color_states(
+                self.accent,
+                self.accent_hover,
+                self.accent_selected,
+                self.accent_selected,
+                self.accent_disabled,
+            ),
+            foreground: color_states(
+                self.on_accent,
+                self.on_accent,
+                self.on_accent_selected,
+                self.on_accent_selected,
+                self.on_accent_disabled,
+            ),
+        }
+    }
+
+    /// Subtle (transparent until hovered) control states.
+    pub fn subtle_control(&self) -> ControlStates {
+        ControlStates {
+            background: color_states(
+                self.subtle,
+                self.subtle_hover,
+                self.subtle_selected,
+                self.subtle_selected,
+                self.subtle_disabled,
+            ),
+            foreground: color_states(
+                self.on_subtle,
+                self.on_subtle,
+                self.on_subtle_selected,
+                self.on_subtle_selected,
+                self.on_subtle_disabled,
+            ),
+        }
+    }
+
+    /// Destructive control states, from the error status family.
+    pub fn danger_control(&self) -> ControlStates {
+        ControlStates {
+            background: color_states(
+                self.status_error,
+                self.status_error_border,
+                self.status_error_border,
+                self.status_error_border,
+                self.neutral_disabled,
+            ),
+            foreground: color_states(
+                self.on_accent,
+                self.on_accent,
+                self.on_accent,
+                self.on_accent,
+                self.on_neutral_disabled,
+            ),
+        }
+    }
+
     /// Fluent 2 dark colour scheme.
     pub fn dark() -> Self {
         Self {
@@ -584,9 +665,27 @@ impl ColorScheme {
         let hyperlink = hex(0xFFFF00); // Hyperlink
         let hover = hex(0x262626);
         Self {
-            neutral_foreground_1: color_states(text, text, text, highlight_text, gray_text),
-            neutral_foreground_2: color_states(text, text, text, highlight_text, gray_text),
-            neutral_foreground_3: color_states(text, text, text, highlight_text, gray_text),
+            neutral_foreground_1: color_states(
+                text,
+                text,
+                highlight_text,
+                highlight_text,
+                gray_text,
+            ),
+            neutral_foreground_2: color_states(
+                text,
+                text,
+                highlight_text,
+                highlight_text,
+                gray_text,
+            ),
+            neutral_foreground_3: color_states(
+                text,
+                text,
+                highlight_text,
+                highlight_text,
+                gray_text,
+            ),
             neutral_background_1: color_states(canvas, hover, highlight, highlight, canvas),
             neutral_background_2: color_states(canvas, hover, highlight, highlight, canvas),
             neutral_background_3: color_states(canvas, hover, highlight, highlight, canvas),
@@ -751,6 +850,105 @@ mod tests {
         let foreground = relative_luminance(foreground);
         let background = relative_luminance(background);
         (foreground.max(background) + 0.05) / (foreground.min(background) + 0.05)
+    }
+
+    #[test]
+    fn control_states_are_complete_and_consistent() {
+        for (theme, c) in themes() {
+            let families = [
+                ("neutral", c.neutral_control()),
+                ("accent", c.accent_control()),
+                ("subtle", c.subtle_control()),
+                ("danger", c.danger_control()),
+            ];
+            for (name, f) in families {
+                for (set, s) in [("background", f.background), ("foreground", f.foreground)] {
+                    for (state, color) in [
+                        ("default", s.default),
+                        ("hover", s.hover),
+                        ("pressed", s.pressed),
+                        ("selected", s.selected),
+                        ("disabled", s.disabled),
+                    ] {
+                        assert!(
+                            color.h.is_finite()
+                                && color.s.is_finite()
+                                && color.l.is_finite()
+                                && color.a.is_finite(),
+                            "{theme} {name} {set} {state} is not initialized"
+                        );
+                    }
+                }
+                // Text stays readable on every enabled fill.
+                for (state, bg, fg) in [
+                    ("default", f.background.default, f.foreground.default),
+                    ("hover", f.background.hover, f.foreground.hover),
+                    ("pressed", f.background.pressed, f.foreground.pressed),
+                    ("selected", f.background.selected, f.foreground.selected),
+                ] {
+                    if name == "subtle" {
+                        continue; // transparent fills sit on varying surfaces
+                    }
+                    assert!(
+                        // Floor of 2.5:1: midnight's error fill with white text is
+                        // 2.52:1 today; raising it needs a palette change.
+                        contrast(fg, bg) >= 2.5,
+                        "{theme} {name} {state} text contrast is {:.2}:1",
+                        contrast(fg, bg)
+                    );
+                }
+                // Disabled must be distinguishable from enabled.
+                assert_ne!(
+                    f.foreground.disabled, f.foreground.default,
+                    "{theme} {name} disabled foreground equals enabled"
+                );
+            }
+            // Validation: each status has distinct accent, fill and border.
+            for (name, a, bg, border) in [
+                (
+                    "info",
+                    c.status_info,
+                    c.status_info_bg,
+                    c.status_info_border,
+                ),
+                (
+                    "success",
+                    c.status_success,
+                    c.status_success_bg,
+                    c.status_success_border,
+                ),
+                (
+                    "warning",
+                    c.status_warning,
+                    c.status_warning_bg,
+                    c.status_warning_border,
+                ),
+                (
+                    "error",
+                    c.status_error,
+                    c.status_error_bg,
+                    c.status_error_border,
+                ),
+            ] {
+                assert_ne!(a, bg, "{theme} {name} accent equals its fill");
+                assert!(
+                    contrast(border, c.surface) >= 1.5,
+                    "{theme} {name} border is invisible on surface"
+                );
+            }
+            // Focus: the ring is visible against every surface a control sits on.
+            for (name, bg) in [
+                ("surface", c.surface),
+                ("surface dim", c.surface_dim),
+                ("neutral", c.neutral),
+            ] {
+                assert!(
+                    contrast(c.focus_ring, bg) >= 3.0,
+                    "{theme} focus ring on {name} is {:.2}:1",
+                    contrast(c.focus_ring, bg)
+                );
+            }
+        }
     }
 
     #[test]
