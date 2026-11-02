@@ -5,9 +5,8 @@ edition = "2021"
 publish = false
 
 [dependencies]
-gpui              = { workspace = true }
+gpui          = { workspace = true }
 fluent-core   = { workspace = true }
 fluent-ribbon = { workspace = true }
 fluent-layout = { workspace = true }
 fluent-app    = { workspace = true }
-fluent-primitives = { workspace = true }
