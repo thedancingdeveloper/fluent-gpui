@@ -3568,6 +3568,11 @@ pub struct KeystrokeEvent {
 
     /// The context stack at the time
     pub context_stack: Vec<KeyContext>,
+
+    /// The physical scancode of the key event this keystroke came from, as
+    /// [`KeyDownEvent::scan_code`](crate::KeyDownEvent::scan_code) (estate patch `key-scan-code`). `None` for a keystroke that
+    /// is not from a platform key-down, such as a replayed pending keystroke.
+    pub scan_code: Option<u32>,
 }
 
 struct NullHttpClient;

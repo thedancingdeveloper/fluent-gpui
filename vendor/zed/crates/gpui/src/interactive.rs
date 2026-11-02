@@ -32,6 +32,13 @@ pub struct KeyDownEvent {
     /// Whether to prefer character input over keybindings for this keystroke.
     /// In some cases, like AltGr on Windows, modifiers are significant for character input.
     pub prefer_character_input: bool,
+
+    /// The platform's physical scancode for the key, when the platform reports one (estate
+    /// patch `key-scan-code`). Windows: the PS/2 set-1 make code from `WM_KEYDOWN`'s `lParam`
+    /// bits 16-23, with `0xE000` added for extended keys (right Ctrl, arrows, ...). Linux
+    /// (X11 and Wayland): the evdev key code, the XKB keycode minus 8. `None` for synthetic
+    /// and simulated input.
+    pub scan_code: Option<u32>,
 }
 
 impl Sealed for KeyDownEvent {}
@@ -47,6 +54,13 @@ impl KeyEvent for KeyDownEvent {}
 pub struct KeyUpEvent {
     /// The keystroke that was released.
     pub keystroke: Keystroke,
+
+    /// The platform's physical scancode for the key, when the platform reports one (estate
+    /// patch `key-scan-code`). Windows: the PS/2 set-1 make code from `WM_KEYUP`'s `lParam`
+    /// bits 16-23, with `0xE000` added for extended keys (right Ctrl, arrows, ...). Linux
+    /// (X11 and Wayland): the evdev key code, the XKB keycode minus 8. `None` for synthetic
+    /// and simulated input.
+    pub scan_code: Option<u32>,
 }
 
 impl Sealed for KeyUpEvent {}

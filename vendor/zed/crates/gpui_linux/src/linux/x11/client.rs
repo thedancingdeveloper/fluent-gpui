@@ -1204,6 +1204,8 @@ impl X11Client {
                     keystroke,
                     is_held: false,
                     prefer_character_input: false,
+                    // The X11 keycode is the evdev code plus 8.
+                    scan_code: u32::from(event.detail).checked_sub(8),
                 }));
             }
             Event::KeyRelease(event) => {
@@ -1226,7 +1228,10 @@ impl X11Client {
                     keystroke
                 };
                 drop(state);
-                window.handle_input(PlatformInput::KeyUp(gpui::KeyUpEvent { keystroke }));
+                window.handle_input(PlatformInput::KeyUp(gpui::KeyUpEvent {
+                    keystroke,
+                    scan_code: u32::from(event.detail).checked_sub(8),
+                }));
             }
             Event::XinputButtonPress(event) => {
                 let window = self.get_window(event.event)?;
