@@ -9,51 +9,15 @@ a follow-up work item rather than silently substituted.
 
 | Fluent 2 alias group | Alias/state | `fluent-core` name | Notes |
 | --- | --- | --- | --- |
-| Neutral foreground | 1/default | `ColorScheme::on_neutral` | Primary text/icon foreground |
-| Neutral foreground | 1/hover | `missing` | No dedicated hover foreground |
-| Neutral foreground | 1/pressed | `missing` | No dedicated pressed foreground |
-| Neutral foreground | 1/selected | `ColorScheme::on_neutral_selected` | Selected text/icon foreground |
-| Neutral foreground | 1/disabled | `ColorScheme::on_neutral_disabled` | Disabled text/icon foreground |
-| Neutral foreground | 2/default | `ColorScheme::on_subtle` | Secondary text/icon foreground |
-| Neutral foreground | 2/hover | `missing` | No dedicated hover foreground |
-| Neutral foreground | 2/pressed | `missing` | No dedicated pressed foreground |
-| Neutral foreground | 2/selected | `ColorScheme::on_subtle_selected` | Selected secondary foreground |
-| Neutral foreground | 2/disabled | `ColorScheme::on_subtle_disabled` | Disabled secondary foreground |
-| Neutral foreground | 3/default | `missing` | Tertiary foreground is not explicit |
-| Neutral foreground | 3/hover | `missing` | Tertiary hover foreground is not explicit |
-| Neutral foreground | 3/pressed | `missing` | Tertiary pressed foreground is not explicit |
-| Neutral foreground | 3/selected | `missing` | Tertiary selected foreground is not explicit |
-| Neutral foreground | 3/disabled | `missing` | Tertiary disabled foreground is not explicit |
-| Neutral background | 1/default | `ColorScheme::surface` | Page/window background |
-| Neutral background | 1/hover | `missing` | No dedicated background hover alias |
-| Neutral background | 1/pressed | `missing` | No dedicated background pressed alias |
-| Neutral background | 1/selected | `missing` | No dedicated background selected alias |
-| Neutral background | 1/disabled | `missing` | No dedicated background disabled alias |
-| Neutral background | 2/default | `ColorScheme::surface_dim` | Secondary/dim surface |
-| Neutral background | 2/hover | `missing` | No dedicated background hover alias |
-| Neutral background | 2/pressed | `missing` | No dedicated background pressed alias |
-| Neutral background | 2/selected | `missing` | No dedicated background selected alias |
-| Neutral background | 2/disabled | `missing` | No dedicated background disabled alias |
-| Neutral background | 3/default | `ColorScheme::neutral` | Neutral interactive fill |
-| Neutral background | 3/hover | `ColorScheme::neutral_hover` | Neutral interactive hover fill |
-| Neutral background | 3/pressed | `ColorScheme::neutral_selected` | Used for selected/pressed fill |
-| Neutral background | 3/selected | `ColorScheme::neutral_selected` | Neutral selected fill |
-| Neutral background | 3/disabled | `ColorScheme::neutral_disabled` | Neutral disabled fill |
-| Neutral stroke | 1/default | `ColorScheme::stroke_neutral` | Default border/outline |
-| Neutral stroke | 1/hover | `missing` | No dedicated hover stroke |
-| Neutral stroke | 1/pressed | `missing` | No dedicated pressed stroke |
-| Neutral stroke | 1/selected | `missing` | No dedicated selected stroke |
-| Neutral stroke | 1/disabled | `ColorScheme::stroke_neutral_disabled` | Disabled border |
-| Neutral stroke | 2/default | `ColorScheme::stroke_neutral_dim` | Secondary/dimmer border |
-| Neutral stroke | 2/hover | `missing` | No dedicated hover stroke |
-| Neutral stroke | 2/pressed | `missing` | No dedicated pressed stroke |
-| Neutral stroke | 2/selected | `missing` | No dedicated selected stroke |
-| Neutral stroke | 2/disabled | `missing` | No dedicated disabled stroke |
-| Neutral stroke | 3/default | `ColorScheme::stroke_neutral_subtle` | Subtle divider/separator stroke |
-| Neutral stroke | 3/hover | `missing` | No dedicated hover stroke |
-| Neutral stroke | 3/pressed | `missing` | No dedicated pressed stroke |
-| Neutral stroke | 3/selected | `missing` | No dedicated selected stroke |
-| Neutral stroke | 3/disabled | `missing` | No dedicated disabled stroke |
+| Neutral foreground | 1/all states | `ColorScheme::neutral_foreground_1.{default,hover,pressed,selected,disabled}` | Primary text/icon foreground |
+| Neutral foreground | 2/all states | `ColorScheme::neutral_foreground_2.{default,hover,pressed,selected,disabled}` | Secondary text/icon foreground |
+| Neutral foreground | 3/all states | `ColorScheme::neutral_foreground_3.{default,hover,pressed,selected,disabled}` | Tertiary text/icon foreground |
+| Neutral background | 1/all states | `ColorScheme::neutral_background_1.{default,hover,pressed,selected,disabled}` | Page/window background |
+| Neutral background | 2/all states | `ColorScheme::neutral_background_2.{default,hover,pressed,selected,disabled}` | Secondary/dim surface |
+| Neutral background | 3/all states | `ColorScheme::neutral_background_3.{default,hover,pressed,selected,disabled}` | Neutral interactive fill |
+| Neutral stroke | 1/all states | `ColorScheme::neutral_stroke_1.{default,hover,pressed,selected,disabled}` | Default border/outline |
+| Neutral stroke | 2/all states | `ColorScheme::neutral_stroke_2.{default,hover,pressed,selected,disabled}` | Secondary/dimmer border |
+| Neutral stroke | 3/all states | `ColorScheme::neutral_stroke_3.{default,hover,pressed,selected,disabled}` | Subtle divider/separator stroke |
 | Brand | default/interactive | `ColorScheme::accent` | Brand/accent fill |
 | Brand | hover | `ColorScheme::accent_hover` | Brand hover fill |
 | Brand | pressed/selected | `ColorScheme::accent_selected` | Brand selected/pressed fill |
