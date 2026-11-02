@@ -103,7 +103,6 @@ build is close to upstream GPUI:
 
 | Feature | Gives you | When off |
 |---------|-----------|----------|
-| `video-surface` | GPU video texture allocation, upload and paint, for streaming RGBA frames (remote desktop, media) | The video API is not compiled; code that uses it fails to build, so gate your own use behind the same feature |
 | `backdrop-blur` | `backdrop_blur(radius, tint)` acrylic-style backgrounds | Fluent surfaces fall back to a solid, tinted fill of the same colour. No error, no API change |
 
 Enable them on the crate that exposes them, for example
