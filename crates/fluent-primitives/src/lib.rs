@@ -39,7 +39,7 @@ mod video_surface;
 
 pub use app_dot::AppDot;
 pub use avatar::Avatar;
-pub use badge::{Badge, BadgeVariant};
+pub use badge::{Badge, BadgeVariant, CounterBadge, CounterBadgeAppearance};
 pub use button::{Button, ButtonAppearance, ButtonShape, ButtonSize};
 pub use card::Card;
 pub use checkbox::{Checkbox, CheckboxState};
