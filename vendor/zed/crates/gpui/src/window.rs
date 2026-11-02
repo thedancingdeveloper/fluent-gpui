@@ -22,9 +22,10 @@ use crate::{
     StrikethroughStyle, Style, SubpixelSprite, Subscription, SystemWindowTab,
     SystemWindowTabController, TabStopMap, Task, TextInputConfiguration, TextInputStateChange,
     TextRenderingMode, TextStyle, TextStyleRefinement, ThermalState, TransformationMatrix,
-    Underline, UnderlineStyle, VideoTextureId, WindowAppearance, WindowBackgroundAppearance,
-    WindowBounds, WindowControls, WindowDecorations, WindowInsets, WindowOptions, WindowParams,
-    WindowTextSystem, WindowVisibility, point, prelude::*, px, rems, size, transparent_black,
+    Underline, UnderlineStyle, VideoFilter, VideoTextureId, WindowAppearance,
+    WindowBackgroundAppearance, WindowBounds, WindowControls, WindowDecorations, WindowInsets,
+    WindowOptions, WindowParams, WindowTextSystem, WindowVisibility, point, prelude::*, px, rems,
+    size, transparent_black,
 };
 
 use crate::gestures::{GestureTuning, RecognizedTouchGesture, TouchGestureRecognizer};
@@ -5462,13 +5463,14 @@ impl Window {
     /// Paint a video texture into the current frame.
     ///
     /// The whole texture is sampled into `bounds`, clipped by the current
-    /// content mask and rounded by `corner_radii`. A texture that was freed,
+    /// content mask and rounded by `corner_radii`, using `filter`. A texture that was freed,
     /// or that has not had a frame uploaded yet, paints nothing.
     pub fn paint_video_frame(
         &mut self,
         bounds: Bounds<Pixels>,
         corner_radii: Corners<Pixels>,
         id: VideoTextureId,
+        filter: VideoFilter,
     ) {
         use crate::VideoFrame;
 
@@ -5491,7 +5493,7 @@ impl Window {
             corner_radii: corner_radii.scale(self.scale_factor()),
             texture_id: id.0,
             opacity: self.element_opacity(),
-            pad2: 0,
+            filter,
         });
         if let Some(texture) = self.video_textures.borrow().get(&id) {
             use crate::VideoFramePixels;

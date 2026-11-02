@@ -20,8 +20,8 @@
 //! device pixel grid, so the picture is sampled without filtering; a frame larger than the bounds
 //! is centred and clipped. The bars left around the frame are painted as a letterbox.
 //!
-//! gpui's video sampler is linear, so a Fit frame that is scaled is filtered; true
-//! nearest-neighbour scaling needs a renderer change and is not available yet.
+//! Fit frames use nearest-neighbour sampling to preserve source pixels when scaled; Native frames
+//! use the linear sampler because their one-to-one layout does not require interpolation.
 //!
 //! # Layout and input
 //!
@@ -48,7 +48,7 @@ use fluent_core::ThemeProvider as _;
 use gpui::{
     canvas, div, fill, point, prelude::*, px, size, AnyWindowHandle, App, Bounds, ContentMask,
     Context, Corners, EventEmitter, Hsla, IntoElement, Pixels, Point, Render, Role, SharedString,
-    Size, Stateful, Subscription, VideoTextureId, WeakEntity, Window,
+    Size, Stateful, Subscription, VideoFilter, VideoTextureId, WeakEntity, Window,
 };
 
 /// The largest frame side, in pixels, that gpui accepts for a video texture.
@@ -234,6 +234,8 @@ pub enum VideoRecord {
     Paint {
         /// Where the frame was drawn.
         content: Bounds<Pixels>,
+        /// The texture filter requested for this scaling mode.
+        filter: VideoFilter,
     },
 }
 
@@ -574,16 +576,23 @@ impl VideoSurface {
 
         let frame = state.texture.map(|t| size(t.width, t.height));
         let layout = VideoLayout::compute(bounds, frame.unwrap_or_default(), scaling, scale_factor);
+        let filter = match scaling {
+            VideoScaling::Fit => VideoFilter::Nearest,
+            VideoScaling::Native => VideoFilter::Linear,
+        };
         state.layout = Some(layout);
 
         window.paint_quad(fill(bounds, letterbox));
         if let Some(texture) = state.texture {
             window.with_content_mask(Some(ContentMask { bounds }), |window| match texture.id {
-                Some(id) => window.paint_video_frame(layout.content, Corners::default(), id),
+                Some(id) => {
+                    window.paint_video_frame(layout.content, Corners::default(), id, filter)
+                }
                 None => window.paint_quad(fill(layout.content, placeholder)),
             });
             state.record(|| VideoRecord::Paint {
                 content: layout.content,
+                filter,
             });
         }
         drop(state);
@@ -878,7 +887,8 @@ mod tests {
         assert_eq!(
             recorder.records().last(),
             Some(&VideoRecord::Paint {
-                content: bounds(100.0, 0.0, 200.0, 200.0)
+                content: bounds(100.0, 0.0, 200.0, 200.0),
+                filter: VideoFilter::Nearest,
             })
         );
 
@@ -901,6 +911,17 @@ mod tests {
         assert_eq!(dirty, [rect]);
         assert_eq!(&patched[12..16], &[9, 9, 9, 9]);
         assert_eq!(&patched[0..12], &pixels[0..12]);
+
+        recorder.clear();
+        surface.update(vcx, |s, cx| s.set_scaling(VideoScaling::Native, cx));
+        draw(vcx);
+        assert!(recorder.records().iter().any(|record| matches!(
+            record,
+            VideoRecord::Paint {
+                filter: VideoFilter::Linear,
+                ..
+            }
+        )));
 
         let outside = FrameRect {
             x: 2,
