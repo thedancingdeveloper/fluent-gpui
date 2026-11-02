@@ -11,6 +11,7 @@ per crate.
 ---
 
 ## Unreleased
+- fluent-core, gallery: extend high-contrast AAA token tests to brand, subtle and status pairs; add success, warning and focus-ring states to the gallery theme matrix (WI-3009).
 - fluent-primitives, fluent-layout: complete list and picker keyboard contracts for Home/End, paging, Alt+Down, selection, dismissal, and focus-preserving navigation (WI-3008).
 - Primitives: add `Accordion`, grouping `Expander` items with single/multiple open modes, collapsible control and arrow-key header navigation (WI-2933).
 
