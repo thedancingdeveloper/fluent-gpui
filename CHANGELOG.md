@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- fluent-primitives: add indeterminate ProgressBar animation, semantic status colours, medium/large thicknesses, clamped values, and progress accessibility semantics (WI-2937).
 - fluent-primitives: add configurable `CounterBadge` counts, overflow labels, zero visibility, dot mode and filled/ghost appearance (WI-2935).
 - Add Field validation states, status messages, required markers, hints, and input borders.
 - fluent-app: add async native file/folder/save picker helpers and a read-only `FilePickerField` with Browse action (WI-2940).
