@@ -229,9 +229,9 @@ impl WgpuResources {
         self.path_intermediate_view = None;
         self.path_msaa_texture = None;
         self.path_msaa_view = None;
-        self.backdrop_texture = None;
-        self.backdrop_view = None;
-        self.backdrop_bind_group = None;
+        // Keep the backdrop placeholder alive across surface resizes. Every
+        // quad pipeline binds it, including frames which contain no blur. A
+        // real capture is still resized lazily by `capture_backdrop`.
     }
 }
 
