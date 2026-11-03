@@ -113,6 +113,7 @@ struct GroupedState {
     focus: Vec<FocusHandle>,
     count: usize,
     hinted: bool,
+    pending_focus: Option<usize>,
 }
 
 impl RenderOnce for GroupedVirtualList {
@@ -130,8 +131,9 @@ impl RenderOnce for GroupedVirtualList {
             focus: Vec::new(),
             count: 0,
             hinted: false,
+            pending_focus: None,
         });
-        let (list_state, expanded, focus, count) = state.update(cx, |s, cx| {
+        let (list_state, expanded, focus, count, settling) = state.update(cx, |s, cx| {
             if s.expanded.len() != group_count {
                 s.expanded = groups.iter().map(|g| g.expanded).collect();
             }
@@ -145,12 +147,31 @@ impl RenderOnce for GroupedVirtualList {
                 s.count = count;
                 s.hinted = false;
             }
+            if !s.hinted && s.list.viewport_bounds().size.height > px(0.) {
+                s.list.reset_with_uniform_height(count, px(estimate));
+                s.hinted = true;
+            }
+            let settling = s.pending_focus.is_some();
+            if s.hinted {
+                if let Some(target) = s.pending_focus {
+                    s.list.scroll_to_reveal_item(target);
+                }
+            }
             while s.focus.len() < count {
                 s.focus.push(cx.focus_handle());
             }
             s.focus.truncate(count);
-            (s.list.clone(), s.expanded.clone(), s.focus.clone(), count)
+            (
+                s.list.clone(),
+                s.expanded.clone(),
+                s.focus.clone(),
+                count,
+                settling,
+            )
         });
+        if settling {
+            window.request_animation_frame();
+        }
         let mut offsets = Vec::with_capacity(group_count);
         let mut ix = 0;
         for (i, g) in groups.iter().enumerate() {
@@ -169,7 +190,8 @@ impl RenderOnce for GroupedVirtualList {
             let focus_handle = focus_for_rows[flat].clone();
             let navigation_focus = focus_for_rows.clone();
             let navigation_list = list_for_rows.clone();
-            let navigate = move |event: &KeyDownEvent, window: &mut Window, cx: &mut App| {
+            let navigation_state = state_for_rows.clone();
+            let navigate = move |event: &KeyDownEvent, _window: &mut Window, cx: &mut App| {
                 let target = match event.keystroke.key.as_str() {
                     "up" => flat.checked_sub(1),
                     "down" => (flat + 1 < navigation_focus.len()).then_some(flat + 1),
@@ -178,10 +200,23 @@ impl RenderOnce for GroupedVirtualList {
                     _ => None,
                 };
                 if let Some(target) = target {
-                    navigation_focus[target].focus(window, cx);
+                    navigation_state.update(cx, |state, cx| {
+                        state.pending_focus = Some(target);
+                        cx.notify();
+                    });
                     navigation_list.scroll_to_reveal_item(target);
                 }
             };
+            let pending_focus = state_for_rows.read(app).pending_focus;
+            if pending_focus == Some(flat) {
+                focus_handle.focus(w, app);
+                state_for_rows.update(app, |state, cx| {
+                    if state.pending_focus == Some(flat) {
+                        state.pending_focus = None;
+                        cx.notify();
+                    }
+                });
+            }
             if item.is_none() {
                 let group = &groups_for_rows[gi];
                 let expanded_now = expanded_for_rows[gi];
@@ -394,5 +429,48 @@ mod tests {
         cx.click_selector("group-header-0");
         cx.type_keys("enter");
         assert!(cx.selector_bounds("group-row-1").is_some());
+    }
+
+    #[gpui::test]
+    fn keyboard_navigation_reveals_end_and_clamps_at_bounds(cx: &mut gpui::TestAppContext) {
+        use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+        use gpui::{Context, Render};
+
+        struct Host;
+        impl Render for Host {
+            fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+                GroupedVirtualList::new(
+                    "test-keyboard-navigation",
+                    vec![VirtualListGroup::new("a", "Alpha", 10_000)],
+                    |_, row, _, _| {
+                        gpui::div()
+                            .h(px(24.))
+                            .child(format!("row {row}"))
+                            .into_any_element()
+                    },
+                )
+            }
+        }
+
+        let (_, cx) = open_fluent_test_window(cx, |_, _| Host);
+        cx.update(|window, cx| window.focus_next(cx));
+        cx.type_keys("up");
+        assert!(cx.selector_bounds("group-header-0").is_some());
+        cx.type_keys("down");
+        assert!(cx.selector_bounds("group-row-1").is_some());
+        cx.type_keys("home");
+        assert!(cx.selector_bounds("group-header-0").is_some());
+        cx.type_keys("end");
+        for _ in 0..5 {
+            cx.run_until_parked();
+        }
+        cx.type_keys("end");
+        for _ in 0..5 {
+            cx.run_until_parked();
+        }
+        cx.type_keys("down");
+        cx.type_keys("up");
+        cx.run_until_parked();
+        assert!(cx.selector_bounds("group-header-0").is_some());
     }
 }
