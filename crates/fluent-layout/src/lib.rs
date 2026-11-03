@@ -25,6 +25,8 @@ pub mod drawer;
 /// Public API item.
 pub mod flyout;
 /// Public API item.
+pub mod grouped_virtual_list;
+/// Public API item.
 pub mod menu_bar;
 /// Public API item.
 pub mod menu_button;
@@ -75,6 +77,7 @@ pub use document_viewer::{DocumentViewer, RichDocument, RichDocumentBlock, RichT
 pub use drag_drop::{drag_source, drop_target, is_payload, DragOperation, DragPayload, DropPolicy};
 pub use drawer::{Drawer, DrawerMode, DrawerPosition, DrawerSize};
 pub use flyout::{Flyout, FlyoutPlacement};
+pub use grouped_virtual_list::{GroupedVirtualList, VirtualListGroup};
 pub use menu_bar::{MenuBar, MenuItemDef};
 pub use menu_button::MenuButton;
 pub use message_bar::{MessageBar, MessageIntent};

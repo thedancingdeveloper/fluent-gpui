@@ -9,12 +9,31 @@ use fluent_core::gpui::{
     div, prelude::*, AnyElement, AnyView, Context, Entity, IntoElement, Render, Window,
 };
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
-use fluent_layout::{drag_source, drop_target, DragOperation, DropPolicy};
+use fluent_layout::{
+    drag_source, drop_target, DragOperation, DropPolicy, GroupedVirtualList, VirtualListGroup,
+};
 use fluent_primitives::{
     Button, ButtonAppearance, ButtonIconPosition, ButtonShape, ButtonSize, Checkbox, CheckboxState,
     Chip, Divider, Expander, InputCapture, Label, LabelSize, Link, LinkAppearance, RadioGroup,
     Switch, TerminalView, ToggleButton, VideoSurface,
 };
+
+pub struct GroupedListPage;
+
+impl Render for GroupedListPage {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        let groups = vec![
+            VirtualListGroup::new("inbox", "Inbox", 8),
+            VirtualListGroup::new("archive", "Archive", 6).expanded(false),
+            VirtualListGroup::new("large", "Large collection", 1000),
+        ];
+        GroupedVirtualList::new("gallery-grouped-list", groups, |group, row, _, _| {
+            Label::new(format!("Group {group} · item {row}")).into_any_element()
+        })
+        .row_height(32.0)
+        .into_any_element()
+    }
+}
 
 pub struct VideoPage {
     pub surface: Entity<VideoSurface>,
