@@ -63,10 +63,11 @@ fn main() {
         let input_page = cx.new(|_| families::InputPage { capture });
 
         let expander_page = cx.new(|_| families::ExpanderPage);
+        let drag_drop_page = cx.new(|_| families::DragDropPage);
         let family_host = cx.new(|_| {
             FamilyHost::new(DemoViews {
                 status: Vec::new(),
-                data: Vec::new(),
+                data: vec![drag_drop_page.into()],
                 date_input: Vec::new(),
                 media: vec![video_page.clone().into(), terminal_page.clone().into()],
                 theme: vec![input_page.clone().into(), expander_page.clone().into()],

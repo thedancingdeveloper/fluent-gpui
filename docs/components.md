@@ -23,6 +23,7 @@ consumers can rely on; “gallery” is the route family in `examples/gallery`.
 - Dialog — layout; modal/open/closed; Tab is trapped, Escape dismisses; **Status and feedback**
 - Divider — primitives; horizontal/vertical; no keyboard interaction; **Status and feedback**
 - DockPanel — layout; docked/floating, collapsed; keyboard follows its child; **Data and lists**
+- DragOperation / DragPayload / DropPolicy — layout; typed move/copy payloads, cancellable acceptance, keyboard move; **Data and lists**
 - DocumentViewer — layout; loading/ready/error, rich blocks; keyboard follows document content; **Data and lists**
 - Drawer — layout; overlay/push, left/right/top/bottom, sizes; Tab is trapped, Escape closes; **Data and lists**
 - Dropdown — primitives; open/closed, selected, disabled; arrows navigate, Enter selects, Escape closes; **Selection controls**
