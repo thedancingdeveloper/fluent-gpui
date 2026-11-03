@@ -45,14 +45,14 @@ ignore = true
 # snapshot or its platform dependencies. Keep the exceptions explicit so a
 # newly introduced advisory still fails this check.
 ignore = [
-    { id = "RUSTSEC-2026-0204", reason = "crossbeam-epoch is pinned by the vendored Zed snapshot; update is tracked with the next dependency refresh" },
-    { id = "RUSTSEC-2026-0194", reason = "quick-xml is pinned by the vendored Zed snapshot; update requires a compatible upstream refresh" },
-    { id = "RUSTSEC-2026-0195", reason = "quick-xml is pinned by the vendored Zed snapshot; update requires a compatible upstream refresh" },
-    { id = "RUSTSEC-2026-0206", reason = "rustybuzz is required by the vendored text stack; replacement is an upstream dependency decision" },
-    { id = "RUSTSEC-2026-0192", reason = "ttf-parser is required by the vendored text stack; replacement is an upstream dependency decision" },
-    { id = "RUSTSEC-2026-0371", reason = "zbus_names is required by the vendored Linux accessibility stack; replacement is an upstream dependency decision" },
-    { id = "RUSTSEC-2026-0370", reason = "zvariant is required by the vendored Linux accessibility stack; replacement is an upstream dependency decision" },
-    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive is required by the vendored Linux accessibility stack; replacement is an upstream dependency decision" },
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml is pinned by vendored wayland-scanner and zed-scap; compatible refresh is blocked upstream (WI-3116)" },
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml is pinned by vendored wayland-scanner and zed-scap; compatible refresh is blocked upstream (WI-3116)" },
+    { id = "RUSTSEC-2026-0204", reason = "crossbeam-epoch is pinned by the vendored Zed snapshot; compatible refresh is blocked upstream (WI-3116)" },
+    { id = "RUSTSEC-2026-0206", reason = "rustybuzz 0.20.1 is pinned through vendored Zed's usvg 0.46.0; it parses only app-bundled font data (WI-3116)" },
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser 0.25.1 is pinned through vendored Zed's fontdb 0.23.0; it parses only app-bundled font data (WI-3116)" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names 4.3.5 is pinned by vendored Zed's zbus 5.15/accessibility stack; it handles local session-bus metadata (WI-3116)" },
+    { id = "RUSTSEC-2026-0370", reason = "zvariant 5.15.1 is pinned by vendored Zed's zbus 5.15/accessibility stack; it handles local session-bus values (WI-3116)" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive 5.15.1 is pinned by vendored Zed's zbus 5.15/accessibility stack; it generates local session-bus serialization (WI-3116)" },
 ]
 
 [bans]
