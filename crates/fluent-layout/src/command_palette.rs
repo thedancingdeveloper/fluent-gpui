@@ -24,6 +24,7 @@ pub type PaletteEntryAction = Rc<dyn Fn(&PaletteEntry, &mut App) + 'static>;
 /// A single searchable entry in the `CommandPalette`.
 #[derive(Clone)]
 pub struct PaletteEntry {
+    /// Public API item.
     pub id: SharedString,
     /// Primary display text — also used in filtering.
     pub label: SharedString,
@@ -61,6 +62,7 @@ impl fmt::Debug for PaletteEntry {
 }
 
 impl PaletteEntry {
+    /// Public API item.
     pub fn new(id: impl Into<SharedString>, label: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -75,40 +77,48 @@ impl PaletteEntry {
         }
     }
 
+    /// Public API item.
     pub fn subtitle(mut self, s: impl Into<SharedString>) -> Self {
         self.subtitle = Some(s.into());
         self
     }
 
+    /// Public API item.
     pub fn group(mut self, group: impl Into<SharedString>) -> Self {
         self.group = Some(group.into());
         self
     }
 
+    /// Public API item.
     pub fn hint(mut self, hint: impl Into<SharedString>) -> Self {
         self.hint = Some(hint.into());
         self
     }
 
+    /// Public API item.
     pub fn shortcut(self, shortcut: impl Into<SharedString>) -> Self {
         self.hint(shortcut)
     }
 
+    /// Public API item.
     pub fn icon(mut self, path: impl Into<SharedString>) -> Self {
         self.icon = Some(path.into());
         self
     }
 
+    /// Public API item.
     pub fn keyword(mut self, kw: impl Into<SharedString>) -> Self {
         self.keywords.push(kw.into());
         self
     }
 
+    /// Public API item.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Public API item.
     pub fn action(mut self, f: impl Fn(&PaletteEntry, &mut App) + 'static) -> Self {
         self.action = Some(Rc::new(f));
         self
@@ -131,6 +141,7 @@ impl PaletteEntry {
 /// as a fallback for older call sites.
 #[allow(clippy::type_complexity)]
 pub struct CommandPalette {
+    /// Public API item.
     pub open: bool,
     focus_handle: FocusHandle,
     query: String,
@@ -138,10 +149,12 @@ pub struct CommandPalette {
     filtered: Vec<usize>,
     selected: usize,
     max_results: Option<usize>,
+    /// Public API item.
     pub on_select: Option<Box<dyn Fn(&PaletteEntry, &mut App) + 'static>>,
 }
 
 impl CommandPalette {
+    /// Public API item.
     pub fn new(cx: &mut Context<Self>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
         Self {
@@ -158,41 +171,48 @@ impl CommandPalette {
 
     // ---- Public API ----
 
+    /// Public API item.
     pub fn entries(mut self, entries: Vec<PaletteEntry>) -> Self {
         self.entries = entries;
         self.refilter();
         self
     }
 
+    /// Public API item.
     pub fn max_results(mut self, max_results: usize) -> Self {
         self.max_results = Some(max_results.max(1));
         self.refilter();
         self
     }
 
+    /// Public API item.
     pub fn set_entries(&mut self, entries: Vec<PaletteEntry>, cx: &mut Context<Self>) {
         self.entries = entries;
         self.refilter();
         cx.notify();
     }
 
+    /// Public API item.
     pub fn set_max_results(&mut self, max_results: Option<usize>, cx: &mut Context<Self>) {
         self.max_results = max_results.map(|max_results| max_results.max(1));
         self.refilter();
         cx.notify();
     }
 
+    /// Public API item.
     pub fn set_query(&mut self, query: impl Into<String>, cx: &mut Context<Self>) {
         self.query = query.into();
         self.refilter();
         cx.notify();
     }
 
+    /// Public API item.
     pub fn on_select(mut self, f: impl Fn(&PaletteEntry, &mut App) + 'static) -> Self {
         self.on_select = Some(Box::new(f));
         self
     }
 
+    /// Public API item.
     pub fn show(&mut self, cx: &mut Context<Self>) {
         self.open = true;
         self.query.clear();
@@ -201,6 +221,7 @@ impl CommandPalette {
         cx.notify();
     }
 
+    /// Public API item.
     pub fn hide(&mut self, cx: &mut Context<Self>) {
         self.open = false;
         cx.notify();

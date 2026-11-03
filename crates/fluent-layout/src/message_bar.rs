@@ -6,11 +6,16 @@ use gpui::{
 type DismissHandler = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// Public API item.
 pub enum MessageIntent {
     #[default]
+    /// Public API item.
     Info,
+    /// Public API item.
     Success,
+    /// Public API item.
     Warning,
+    /// Public API item.
     Error,
 }
 
@@ -25,6 +30,7 @@ pub struct MessageBar {
 }
 
 impl MessageBar {
+    /// Public API item.
     pub fn new(message: impl Into<SharedString>) -> Self {
         Self {
             intent: MessageIntent::Info,
@@ -35,11 +41,13 @@ impl MessageBar {
         }
     }
 
+    /// Public API item.
     pub fn intent(mut self, intent: MessageIntent) -> Self {
         self.intent = intent;
         self
     }
 
+    /// Public API item.
     pub fn title(mut self, title: impl Into<SharedString>) -> Self {
         self.title = Some(title.into());
         self
@@ -55,6 +63,7 @@ impl MessageBar {
         self
     }
 
+    /// Public API item.
     pub fn on_dismiss(mut self, f: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static) -> Self {
         self.on_dismiss = Some(Box::new(f));
         self

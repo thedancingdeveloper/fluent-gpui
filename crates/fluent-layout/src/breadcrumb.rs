@@ -6,12 +6,16 @@ use gpui::{
 };
 
 #[derive(Clone, Debug)]
+/// Public API item.
 pub struct BreadcrumbItem {
+    /// Public API item.
     pub id: SharedString,
+    /// Public API item.
     pub label: SharedString,
 }
 
 impl BreadcrumbItem {
+    /// Public API item.
     pub fn new(id: impl Into<SharedString>, label: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -24,8 +28,11 @@ impl BreadcrumbItem {
 /// and place the middle items in an accessible overflow menu.
 #[allow(clippy::type_complexity)]
 pub struct Breadcrumb {
+    /// Public API item.
     pub items: Vec<BreadcrumbItem>,
+    /// Public API item.
     pub current: usize,
+    /// Public API item.
     pub max_visible: usize,
     on_select: Option<Arc<dyn Fn(usize, &mut Window, &mut Context<Self>) + 'static>>,
 }
@@ -42,28 +49,34 @@ impl Default for Breadcrumb {
 }
 
 impl Breadcrumb {
+    /// Public API item.
     pub fn new(cx: &mut Context<Self>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
         cx.observe_global::<LayoutDirection>(|_, cx| cx.notify())
             .detach();
         Self::default()
     }
+    /// Public API item.
     pub fn items(mut self, items: impl IntoIterator<Item = BreadcrumbItem>) -> Self {
         self.items = items.into_iter().collect();
         self
     }
+    /// Public API item.
     pub fn item(mut self, item: BreadcrumbItem) -> Self {
         self.items.push(item);
         self
     }
+    /// Public API item.
     pub fn current(mut self, current: usize) -> Self {
         self.current = current;
         self
     }
+    /// Public API item.
     pub fn max_visible(mut self, max_visible: usize) -> Self {
         self.max_visible = max_visible.max(2);
         self
     }
+    /// Public API item.
     pub fn on_select(
         mut self,
         f: impl Fn(usize, &mut Window, &mut Context<Self>) + 'static,
@@ -201,16 +214,20 @@ impl Render for Breadcrumb {
 /// Compact paging control with previous/next buttons and a roving page cursor.
 #[derive(Clone, Debug)]
 pub struct Pagination {
+    /// Public API item.
     pub page: usize,
+    /// Public API item.
     pub page_count: usize,
 }
 impl Pagination {
+    /// Public API item.
     pub fn new(page_count: usize) -> Self {
         Self {
             page: 0,
             page_count: page_count.max(1),
         }
     }
+    /// Public API item.
     pub fn page(mut self, page: usize) -> Self {
         self.page = page.min(self.page_count.saturating_sub(1));
         self

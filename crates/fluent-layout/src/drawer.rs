@@ -27,10 +27,14 @@ pub enum DrawerPosition {
 /// Fluent drawer width presets.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum DrawerSize {
+    /// Public API item.
     Small,
     #[default]
+    /// Public API item.
     Medium,
+    /// Public API item.
     Large,
+    /// Public API item.
     Custom(f32),
 }
 
@@ -64,6 +68,7 @@ pub struct Drawer {
 }
 
 impl Drawer {
+    /// Public API item.
     pub fn new(content: AnyView, cx: &mut Context<Self>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
         cx.observe_global::<LayoutDirection>(|_, cx| cx.notify())
@@ -81,35 +86,42 @@ impl Drawer {
         }
     }
 
+    /// Public API item.
     pub fn mode(mut self, mode: DrawerMode) -> Self {
         self.mode = mode;
         self
     }
 
+    /// Public API item.
     pub fn position(mut self, position: DrawerPosition) -> Self {
         self.position = position;
         self
     }
 
+    /// Public API item.
     pub fn size(mut self, size: DrawerSize) -> Self {
         self.size = size;
         self
     }
 
+    /// Public API item.
     pub fn dismissible(mut self, dismissible: bool) -> Self {
         self.dismissible = dismissible;
         self
     }
 
+    /// Public API item.
     pub fn initially_open(mut self, open: bool) -> Self {
         self.open = open;
         self
     }
 
+    /// Public API item.
     pub fn is_open(&self) -> bool {
         self.open
     }
 
+    /// Public API item.
     pub fn set_open(&mut self, open: bool, cx: &mut Context<Self>) {
         if self.open != open {
             self.open = open;
@@ -117,10 +129,12 @@ impl Drawer {
         }
     }
 
+    /// Public API item.
     pub fn toggle(&mut self, cx: &mut Context<Self>) {
         self.set_open(!self.open, cx);
     }
 
+    /// Public API item.
     pub fn set_mode(&mut self, mode: DrawerMode, cx: &mut Context<Self>) {
         if self.mode != mode {
             self.mode = mode;
@@ -128,6 +142,7 @@ impl Drawer {
         }
     }
 
+    /// Public API item.
     pub fn set_position(&mut self, position: DrawerPosition, cx: &mut Context<Self>) {
         if self.position != position {
             self.position = position;

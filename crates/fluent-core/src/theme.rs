@@ -7,7 +7,9 @@ use crate::{
 /// Whether the theme is rendered in dark or light mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Brightness {
+    /// Public API item.
     Dark,
+    /// Public API item.
     Light,
 }
 
@@ -15,7 +17,9 @@ pub enum Brightness {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum LayoutDirection {
     #[default]
+    /// Public API item.
     Ltr,
+    /// Public API item.
     Rtl,
 }
 
@@ -78,6 +82,7 @@ pub enum ThemeMode {
 }
 
 impl ThemeMode {
+    /// Public API item.
     pub fn from_window_appearance(appearance: gpui::WindowAppearance) -> Self {
         match appearance {
             gpui::WindowAppearance::Dark | gpui::WindowAppearance::VibrantDark => Self::Dark,
@@ -121,11 +126,17 @@ mod tests {
 /// ```
 #[derive(Clone, Debug)]
 pub struct Theme {
+    /// Public API item.
     pub brightness: Brightness,
+    /// Public API item.
     pub colors: ColorScheme,
+    /// Public API item.
     pub spacing: SpacingTokens,
+    /// Public API item.
     pub radii: RadiiTokens,
+    /// Public API item.
     pub typography: TypographyTokens,
+    /// Public API item.
     pub components: ComponentTokens,
 }
 
@@ -156,10 +167,12 @@ impl Theme {
         }
     }
 
+    /// Public API item.
     pub fn is_dark(&self) -> bool {
         self.brightness == Brightness::Dark
     }
 
+    /// Public API item.
     pub fn motion(&self) -> MotionTokens {
         MotionTokens::default()
     }
@@ -253,6 +266,7 @@ impl Theme {
 /// `cx.theme()` on any context type works via Rust's auto-deref — no separate
 /// blanket impl is needed (and none is provided to avoid coherence issues).
 pub trait ThemeProvider {
+    /// Public API item.
     fn theme(&self) -> &Theme;
 }
 
@@ -266,6 +280,7 @@ impl ThemeProvider for App {
 ///
 /// Prefer [`LayoutDirection::current`] in components; it is the documented entry point.
 pub trait LayoutDirectionProvider {
+    /// Public API item.
     fn layout_direction(&self) -> LayoutDirection;
 }
 

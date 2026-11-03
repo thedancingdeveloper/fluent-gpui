@@ -19,6 +19,7 @@ pub struct ExtensionFilter {
 }
 
 impl ExtensionFilter {
+    /// Public API item.
     pub fn new(
         label: impl Into<SharedString>,
         extensions: impl IntoIterator<Item = impl Into<String>>,
@@ -34,10 +35,12 @@ impl ExtensionFilter {
         }
     }
 
+    /// Public API item.
     pub fn label(&self) -> &SharedString {
         &self.label
     }
 
+    /// Public API item.
     pub fn extensions(&self) -> &[String] {
         &self.extensions
     }
@@ -161,6 +164,7 @@ pub struct FilePickerField {
 }
 
 impl FilePickerField {
+    /// Public API item.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -172,26 +176,31 @@ impl FilePickerField {
         }
     }
 
+    /// Public API item.
     pub fn path(mut self, path: impl Into<PathBuf>) -> Self {
         self.path = Some(path.into());
         self
     }
 
+    /// Public API item.
     pub fn placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
         self.placeholder = placeholder.into();
         self
     }
 
+    /// Public API item.
     pub fn browse_label(mut self, label: impl Into<SharedString>) -> Self {
         self.browse_label = label.into();
         self
     }
 
+    /// Public API item.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Public API item.
     pub fn on_browse(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,

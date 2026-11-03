@@ -7,9 +7,13 @@ use gpui::{
 /// Which edge a dock panel is attached to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DockPosition {
+    /// Public API item.
     Left,
+    /// Public API item.
     Right,
+    /// Public API item.
     Bottom,
+    /// Public API item.
     Top,
 }
 
@@ -30,17 +34,24 @@ impl Render for DockResizeDrag {
 /// The panel edge is draggable: grab the 4px resize handle to change the width
 /// (left/right panels) or height (top/bottom panels).
 pub struct DockPanel {
+    /// Public API item.
     pub position: DockPosition,
+    /// Public API item.
     pub title: SharedString,
+    /// Public API item.
     pub content: Option<AnyView>,
+    /// Public API item.
     pub size: f32,
+    /// Public API item.
     pub collapsed: bool,
+    /// Public API item.
     pub pinned: bool,
     /// Captured at drag-start: (initial_size, initial_cursor_pos).
     resize_start: Option<(f32, f32)>,
 }
 
 impl DockPanel {
+    /// Public API item.
     pub fn new(
         cx: &mut Context<Self>,
         position: DockPosition,
@@ -64,21 +75,25 @@ impl DockPanel {
         }
     }
 
+    /// Public API item.
     pub fn size(mut self, size: f32) -> Self {
         self.size = size;
         self
     }
 
+    /// Public API item.
     pub fn content(mut self, view: AnyView) -> Self {
         self.content = Some(view);
         self
     }
 
+    /// Public API item.
     pub fn set_content(&mut self, view: AnyView, cx: &mut Context<Self>) {
         self.content = Some(view);
         cx.notify();
     }
 
+    /// Public API item.
     pub fn toggle_collapsed(&mut self, cx: &mut Context<Self>) {
         self.collapsed = !self.collapsed;
         cx.notify();

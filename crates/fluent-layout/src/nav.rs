@@ -9,15 +9,22 @@ use gpui::{
 };
 
 #[derive(Clone, Debug)]
+/// Public API item.
 pub struct NavItem {
+    /// Public API item.
     pub id: SharedString,
+    /// Public API item.
     pub label: SharedString,
+    /// Public API item.
     pub icon: Option<SharedString>,
+    /// Public API item.
     pub children: Vec<NavItem>,
+    /// Public API item.
     pub expanded: bool,
 }
 
 impl NavItem {
+    /// Public API item.
     pub fn new(id: impl Into<SharedString>, label: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -28,31 +35,40 @@ impl NavItem {
         }
     }
 
+    /// Public API item.
     pub fn icon(mut self, icon: impl Into<SharedString>) -> Self {
         self.icon = Some(icon.into());
         self
     }
+    /// Public API item.
     pub fn child(mut self, child: NavItem) -> Self {
         self.children.push(child);
         self
     }
+    /// Public API item.
     pub fn expanded(mut self, expanded: bool) -> Self {
         self.expanded = expanded;
         self
     }
+    /// Public API item.
     pub fn collapsed(self) -> Self {
         self.expanded(false)
     }
 }
 
 #[derive(Clone, Debug)]
+/// Public API item.
 pub struct NavCategory {
+    /// Public API item.
     pub title: SharedString,
+    /// Public API item.
     pub items: Vec<NavItem>,
+    /// Public API item.
     pub expanded: bool,
 }
 
 impl NavCategory {
+    /// Public API item.
     pub fn new(title: impl Into<SharedString>) -> Self {
         Self {
             title: title.into(),
@@ -60,14 +76,17 @@ impl NavCategory {
             expanded: true,
         }
     }
+    /// Public API item.
     pub fn item(mut self, item: NavItem) -> Self {
         self.items.push(item);
         self
     }
+    /// Public API item.
     pub fn expanded(mut self, expanded: bool) -> Self {
         self.expanded = expanded;
         self
     }
+    /// Public API item.
     pub fn collapsed(self) -> Self {
         self.expanded(false)
     }
@@ -85,13 +104,18 @@ struct FlatItem {
 /// expand groups. The generated AccessKit tree uses `Tree` and `TreeItem` roles.
 #[allow(clippy::type_complexity)]
 pub struct Nav {
+    /// Public API item.
     pub categories: Vec<NavCategory>,
+    /// Public API item.
     pub selected_id: Option<SharedString>,
+    /// Public API item.
     pub compact: bool,
+    /// Public API item.
     pub on_select: Option<Arc<dyn Fn(SharedString, &mut App) + 'static>>,
 }
 
 impl Nav {
+    /// Public API item.
     pub fn new(cx: &mut Context<Self>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
         Self {
@@ -101,6 +125,7 @@ impl Nav {
             on_select: None,
         }
     }
+    /// Public API item.
     pub fn category(mut self, category: NavCategory) -> Self {
         if self.selected_id.is_none() {
             self.selected_id = first_visible(&category.items).map(|item| item.id.clone());
@@ -108,31 +133,39 @@ impl Nav {
         self.categories.push(category);
         self
     }
+    /// Public API item.
     pub fn item(self, item: NavItem) -> Self {
         self.category(NavCategory::new("").item(item))
     }
+    /// Public API item.
     pub fn selected(mut self, id: impl Into<SharedString>) -> Self {
         self.selected_id = Some(id.into());
         self
     }
+    /// Public API item.
     pub fn active(self, id: impl Into<SharedString>) -> Self {
         self.selected(id)
     }
+    /// Public API item.
     pub fn compact(mut self, compact: bool) -> Self {
         self.compact = compact;
         self
     }
+    /// Public API item.
     pub fn on_select(mut self, f: impl Fn(SharedString, &mut App) + 'static) -> Self {
         self.on_select = Some(Arc::new(f));
         self
     }
+    /// Public API item.
     pub fn set_selected(&mut self, id: SharedString, cx: &mut Context<Self>) {
         self.selected_id = Some(id);
         cx.notify();
     }
+    /// Public API item.
     pub fn set_active(&mut self, id: SharedString, cx: &mut Context<Self>) {
         self.set_selected(id, cx);
     }
+    /// Public API item.
     pub fn toggle(&mut self, id: &str, cx: &mut Context<Self>) -> bool {
         let changed = toggle_items(&mut self.categories, id);
         if changed {

@@ -16,12 +16,16 @@ type SortHandler =
     Arc<dyn Fn(SharedString, DataSortDirection, &ClickEvent, &mut Window, &mut App) + 'static>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Public API item.
 pub enum DataSortDirection {
+    /// Public API item.
     Ascending,
+    /// Public API item.
     Descending,
 }
 
 impl DataSortDirection {
+    /// Public API item.
     pub fn toggle(self) -> Self {
         match self {
             Self::Ascending => Self::Descending,
@@ -31,27 +35,38 @@ impl DataSortDirection {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// Public API item.
 pub enum DataCellAlign {
     #[default]
+    /// Public API item.
     Start,
+    /// Public API item.
     Center,
+    /// Public API item.
     End,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// Public API item.
 pub enum DataSortKind {
     #[default]
+    /// Public API item.
     Text,
+    /// Public API item.
     Number,
 }
 
 #[derive(Clone, Debug)]
+/// Public API item.
 pub struct DataCell {
+    /// Public API item.
     pub text: SharedString,
+    /// Public API item.
     pub align: Option<DataCellAlign>,
 }
 
 impl DataCell {
+    /// Public API item.
     pub fn new(text: impl Into<SharedString>) -> Self {
         Self {
             text: text.into(),
@@ -59,6 +74,7 @@ impl DataCell {
         }
     }
 
+    /// Public API item.
     pub fn align(mut self, align: DataCellAlign) -> Self {
         self.align = Some(align);
         self
@@ -84,26 +100,39 @@ impl From<SharedString> for DataCell {
 }
 
 #[derive(Clone, Debug)]
+/// Public API item.
 pub enum DataTableState {
+    /// Public API item.
     Ready,
+    /// Public API item.
     Loading(SharedString),
+    /// Public API item.
     Empty(SharedString),
     /// Rows exist but the active filter hides them all.
     NoResults(SharedString),
+    /// Public API item.
     Error(SharedString),
 }
 
 #[derive(Clone, Debug)]
+/// Public API item.
 pub struct DataColumn {
+    /// Public API item.
     pub id: SharedString,
+    /// Public API item.
     pub title: SharedString,
+    /// Public API item.
     pub width: Option<f32>,
+    /// Public API item.
     pub sortable: bool,
+    /// Public API item.
     pub align: DataCellAlign,
+    /// Public API item.
     pub sort_kind: DataSortKind,
 }
 
 impl DataColumn {
+    /// Public API item.
     pub fn new(id: impl Into<SharedString>, title: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -115,21 +144,25 @@ impl DataColumn {
         }
     }
 
+    /// Public API item.
     pub fn width(mut self, width: f32) -> Self {
         self.width = Some(width.clamp(48.0, 600.0));
         self
     }
 
+    /// Public API item.
     pub fn sortable(mut self, sortable: bool) -> Self {
         self.sortable = sortable;
         self
     }
 
+    /// Public API item.
     pub fn align(mut self, align: DataCellAlign) -> Self {
         self.align = align;
         self
     }
 
+    /// Public API item.
     pub fn sort_kind(mut self, kind: DataSortKind) -> Self {
         self.sort_kind = kind;
         self
@@ -137,12 +170,16 @@ impl DataColumn {
 }
 
 #[derive(Clone, Debug)]
+/// Public API item.
 pub struct DataRow {
+    /// Public API item.
     pub id: SharedString,
+    /// Public API item.
     pub cells: Vec<DataCell>,
 }
 
 impl DataRow {
+    /// Public API item.
     pub fn new(
         id: impl Into<SharedString>,
         cells: impl IntoIterator<Item = impl Into<DataCell>>,
@@ -199,6 +236,7 @@ fn move_target(current: Option<usize>, mv: RowMove, page: usize, len: usize) -> 
 }
 
 impl DataTable {
+    /// Public API item.
     pub fn new() -> Self {
         Self {
             columns: Vec::new(),
@@ -214,56 +252,67 @@ impl DataTable {
         }
     }
 
+    /// Public API item.
     pub fn column(mut self, column: DataColumn) -> Self {
         self.columns.push(column);
         self
     }
 
+    /// Public API item.
     pub fn columns(mut self, columns: impl IntoIterator<Item = DataColumn>) -> Self {
         self.columns = columns.into_iter().collect();
         self
     }
 
+    /// Public API item.
     pub fn row(mut self, row: DataRow) -> Self {
         self.rows.push(row);
         self
     }
 
+    /// Public API item.
     pub fn rows(mut self, rows: impl IntoIterator<Item = DataRow>) -> Self {
         self.rows = rows.into_iter().collect();
         self
     }
 
+    /// Public API item.
     pub fn state(mut self, state: DataTableState) -> Self {
         self.state = state;
         self
     }
 
+    /// Public API item.
     pub fn loading(mut self, message: impl Into<SharedString>) -> Self {
         self.state = DataTableState::Loading(message.into());
         self
     }
 
+    /// Public API item.
     pub fn empty_message(mut self, message: impl Into<SharedString>) -> Self {
         self.state = DataTableState::Empty(message.into());
         self
     }
 
+    /// Public API item.
     pub fn no_results_message(mut self, message: impl Into<SharedString>) -> Self {
         self.state = DataTableState::NoResults(message.into());
         self
     }
 
+    /// Public API item.
     pub fn error_message(mut self, message: impl Into<SharedString>) -> Self {
         self.state = DataTableState::Error(message.into());
         self
     }
 
+    /// Public API item.
     pub fn selected(mut self, id: impl Into<SharedString>) -> Self {
         self.selected_id = Some(id.into());
         self
     }
 
+    /// Public API item.
     pub fn sort(
         mut self,
         column_id: impl Into<SharedString>,
@@ -273,11 +322,13 @@ impl DataTable {
         self
     }
 
+    /// Public API item.
     pub fn max_body_height(mut self, height: f32) -> Self {
         self.max_body_height = Some(height);
         self
     }
 
+    /// Public API item.
     pub fn on_row_click(
         mut self,
         f: impl Fn(SharedString, &ClickEvent, &mut Window, &mut App) + 'static,
@@ -286,6 +337,7 @@ impl DataTable {
         self
     }
 
+    /// Public API item.
     pub fn on_row_select(
         mut self,
         f: impl Fn(SharedString, &mut Window, &mut App) + 'static,
@@ -303,6 +355,7 @@ impl DataTable {
         self
     }
 
+    /// Public API item.
     pub fn on_sort(
         mut self,
         f: impl Fn(SharedString, DataSortDirection, &ClickEvent, &mut Window, &mut App) + 'static,

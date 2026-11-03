@@ -1,33 +1,48 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// Public API item.
 pub struct ResourceRequest {
     generation: u64,
 }
 
 impl ResourceRequest {
+    /// Public API item.
     pub fn generation(self) -> u64 {
         self.generation
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// Public API item.
 pub enum AsyncResourceState<T, E> {
+    /// Public API item.
     Idle,
+    /// Public API item.
     Loading {
+        /// Public API item.
         request: ResourceRequest,
+        /// Public API item.
         previous: Option<T>,
     },
+    /// Public API item.
     Ready {
+        /// Public API item.
         request: ResourceRequest,
+        /// Public API item.
         value: T,
     },
+    /// Public API item.
     Error {
+        /// Public API item.
         request: ResourceRequest,
+        /// Public API item.
         error: E,
+        /// Public API item.
         previous: Option<T>,
     },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// Public API item.
 pub struct AsyncResource<T, E = String> {
     generation: u64,
     state: AsyncResourceState<T, E>,
@@ -40,6 +55,7 @@ impl<T, E> Default for AsyncResource<T, E> {
 }
 
 impl<T, E> AsyncResource<T, E> {
+    /// Public API item.
     pub fn new() -> Self {
         Self {
             generation: 0,
@@ -47,6 +63,7 @@ impl<T, E> AsyncResource<T, E> {
         }
     }
 
+    /// Public API item.
     pub fn ready(value: T) -> Self {
         let request = ResourceRequest { generation: 1 };
         Self {
@@ -55,6 +72,7 @@ impl<T, E> AsyncResource<T, E> {
         }
     }
 
+    /// Public API item.
     pub fn failed(error: E) -> Self {
         let request = ResourceRequest { generation: 1 };
         Self {
@@ -67,14 +85,17 @@ impl<T, E> AsyncResource<T, E> {
         }
     }
 
+    /// Public API item.
     pub fn state(&self) -> &AsyncResourceState<T, E> {
         &self.state
     }
 
+    /// Public API item.
     pub fn generation(&self) -> u64 {
         self.generation
     }
 
+    /// Public API item.
     pub fn current_request(&self) -> Option<ResourceRequest> {
         match &self.state {
             AsyncResourceState::Idle => None,
@@ -84,6 +105,7 @@ impl<T, E> AsyncResource<T, E> {
         }
     }
 
+    /// Public API item.
     pub fn begin_load(&mut self) -> ResourceRequest {
         let request = self.next_request();
         let previous = match std::mem::replace(&mut self.state, AsyncResourceState::Idle) {
@@ -97,10 +119,12 @@ impl<T, E> AsyncResource<T, E> {
         request
     }
 
+    /// Public API item.
     pub fn refresh(&mut self) -> ResourceRequest {
         self.begin_load()
     }
 
+    /// Public API item.
     pub fn resolve(&mut self, request: ResourceRequest, value: T) -> bool {
         if !self.accepts(request) {
             return false;
@@ -110,6 +134,7 @@ impl<T, E> AsyncResource<T, E> {
         true
     }
 
+    /// Public API item.
     pub fn reject(&mut self, request: ResourceRequest, error: E) -> bool {
         if !self.accepts(request) {
             return false;
@@ -130,27 +155,33 @@ impl<T, E> AsyncResource<T, E> {
         true
     }
 
+    /// Public API item.
     pub fn reset(&mut self) {
         self.generation = 0;
         self.state = AsyncResourceState::Idle;
     }
 
+    /// Public API item.
     pub fn is_idle(&self) -> bool {
         matches!(self.state, AsyncResourceState::Idle)
     }
 
+    /// Public API item.
     pub fn is_loading(&self) -> bool {
         matches!(self.state, AsyncResourceState::Loading { .. })
     }
 
+    /// Public API item.
     pub fn is_ready(&self) -> bool {
         matches!(self.state, AsyncResourceState::Ready { .. })
     }
 
+    /// Public API item.
     pub fn is_error(&self) -> bool {
         matches!(self.state, AsyncResourceState::Error { .. })
     }
 
+    /// Public API item.
     pub fn value(&self) -> Option<&T> {
         match &self.state {
             AsyncResourceState::Ready { value, .. } => Some(value),
@@ -160,6 +191,7 @@ impl<T, E> AsyncResource<T, E> {
         }
     }
 
+    /// Public API item.
     pub fn ready_value(&self) -> Option<&T> {
         match &self.state {
             AsyncResourceState::Ready { value, .. } => Some(value),
@@ -167,6 +199,7 @@ impl<T, E> AsyncResource<T, E> {
         }
     }
 
+    /// Public API item.
     pub fn error(&self) -> Option<&E> {
         match &self.state {
             AsyncResourceState::Error { error, .. } => Some(error),
@@ -174,6 +207,7 @@ impl<T, E> AsyncResource<T, E> {
         }
     }
 
+    /// Public API item.
     pub fn accepts(&self, request: ResourceRequest) -> bool {
         matches!(
             &self.state,

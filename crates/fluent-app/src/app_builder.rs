@@ -81,6 +81,7 @@ pub struct FluentApp {
 }
 
 impl FluentApp {
+    /// Public API item.
     pub fn new(title: impl Into<SharedString>) -> Self {
         Self {
             title: title.into(),
@@ -95,12 +96,14 @@ impl FluentApp {
         }
     }
 
+    /// Public API item.
     pub fn window_size(mut self, w: f32, h: f32) -> Self {
         self.window_w = w;
         self.window_h = h;
         self
     }
 
+    /// Public API item.
     pub fn window_min_size(mut self, w: f32, h: f32) -> Self {
         self.window_min_size = Some((w, h));
         self
@@ -129,11 +132,13 @@ impl FluentApp {
         self
     }
 
+    /// Public API item.
     pub fn dark_theme(mut self) -> Self {
         self.theme_mode = ThemeMode::Dark;
         self
     }
 
+    /// Public API item.
     pub fn light_theme(mut self) -> Self {
         self.theme_mode = ThemeMode::Light;
         self
@@ -145,6 +150,7 @@ impl FluentApp {
         self
     }
 
+    /// Public API item.
     pub fn assets(mut self, assets: impl AssetSource) -> Self {
         self.assets = Some(Arc::new(assets));
         self

@@ -8,26 +8,40 @@ use gpui::{
 use crate::{MessageBar, MessageIntent};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// Public API item.
 pub enum ToastPlacement {
+    /// Public API item.
     TopStart,
+    /// Public API item.
     TopCenter,
     #[default]
+    /// Public API item.
     TopEnd,
+    /// Public API item.
     BottomStart,
+    /// Public API item.
     BottomCenter,
+    /// Public API item.
     BottomEnd,
 }
 
 #[derive(Clone, Debug)]
+/// Public API item.
 pub struct Toast {
+    /// Public API item.
     pub id: SharedString,
+    /// Public API item.
     pub intent: MessageIntent,
+    /// Public API item.
     pub title: Option<SharedString>,
+    /// Public API item.
     pub message: SharedString,
+    /// Public API item.
     pub timeout: Option<Duration>,
 }
 
 impl Toast {
+    /// Public API item.
     pub fn new(id: impl Into<SharedString>, message: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -38,27 +52,32 @@ impl Toast {
         }
     }
 
+    /// Public API item.
     pub fn intent(mut self, intent: MessageIntent) -> Self {
         self.intent = intent;
         self
     }
 
+    /// Public API item.
     pub fn title(mut self, title: impl Into<SharedString>) -> Self {
         self.title = Some(title.into());
         self
     }
 
+    /// Public API item.
     pub fn timeout(mut self, timeout: impl Into<Option<Duration>>) -> Self {
         self.timeout = timeout.into();
         self
     }
 
+    /// Public API item.
     pub fn persistent(mut self) -> Self {
         self.timeout = None;
         self
     }
 }
 
+/// Public API item.
 pub struct ToastStack {
     entries: Vec<Toast>,
     max_entries: usize,
@@ -67,6 +86,7 @@ pub struct ToastStack {
 impl Global for ToastStack {}
 
 impl ToastStack {
+    /// Public API item.
     pub fn init(cx: &mut gpui::App) {
         cx.set_global(ToastStack {
             entries: Vec::new(),
@@ -74,6 +94,7 @@ impl ToastStack {
         });
     }
 
+    /// Public API item.
     pub fn push(toast: Toast, cx: &mut gpui::App) {
         let id = toast.id.clone();
         let timeout = toast.timeout;
@@ -96,6 +117,7 @@ impl ToastStack {
         }
     }
 
+    /// Public API item.
     pub fn set_max_entries(max_entries: usize, cx: &mut gpui::App) {
         let stack = cx.global_mut::<ToastStack>();
         stack.max_entries = max_entries.max(1);
@@ -105,22 +127,26 @@ impl ToastStack {
         }
     }
 
+    /// Public API item.
     pub fn max_entries(cx: &gpui::App) -> usize {
         cx.global::<ToastStack>().max_entries
     }
 
+    /// Public API item.
     pub fn dismiss(id: &str, cx: &mut gpui::App) {
         cx.global_mut::<ToastStack>()
             .entries
             .retain(|toast| toast.id.as_ref() != id);
     }
 
+    /// Public API item.
     pub fn clear(cx: &mut gpui::App) {
         cx.global_mut::<ToastStack>().entries.clear();
     }
 }
 
 #[derive(Default)]
+/// Public API item.
 pub struct ToastHost {
     observing: bool,
     placement: ToastPlacement,
@@ -128,6 +154,7 @@ pub struct ToastHost {
 }
 
 impl ToastHost {
+    /// Public API item.
     pub fn new(cx: &mut Context<Self>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
         cx.observe_global::<ToastStack>(|_, cx| cx.notify())
@@ -139,11 +166,13 @@ impl ToastHost {
         }
     }
 
+    /// Public API item.
     pub fn placement(mut self, placement: ToastPlacement) -> Self {
         self.placement = placement;
         self
     }
 
+    /// Public API item.
     pub fn width(mut self, width: f32) -> Self {
         self.width = width;
         self

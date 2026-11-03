@@ -14,6 +14,7 @@ pub struct Popover {
 }
 
 impl Popover {
+    /// Public API item.
     pub fn new(position: Point<gpui::Pixels>, content: impl IntoElement) -> Self {
         Self {
             open: true,
@@ -23,11 +24,13 @@ impl Popover {
         }
     }
 
+    /// Public API item.
     pub fn open(mut self, open: bool) -> Self {
         self.open = open;
         self
     }
 
+    /// Public API item.
     pub fn anchor(mut self, anchor: Anchor) -> Self {
         self.anchor = anchor;
         self

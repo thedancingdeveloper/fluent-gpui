@@ -21,6 +21,7 @@ pub struct WindowChrome<V: Render + 'static> {
 }
 
 impl<V: Render + 'static> WindowChrome<V> {
+    /// Public API item.
     pub fn new(content: Entity<V>) -> Self {
         Self { content }
     }
