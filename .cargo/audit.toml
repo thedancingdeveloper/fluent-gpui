@@ -1,0 +1,8 @@
+[advisories]
+# quick-xml is pinned by vendored wayland-scanner and zed-scap; compatible refresh is blocked upstream.
+# crossbeam-epoch is pinned by the vendored Zed snapshot; compatible refresh is blocked upstream.
+ignore = [
+    "RUSTSEC-2026-0194",
+    "RUSTSEC-2026-0195",
+    "RUSTSEC-2026-0204",
+]
