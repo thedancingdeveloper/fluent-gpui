@@ -122,9 +122,14 @@ struct GroupedState {
 const SETTLE_FRAMES: u8 = 3;
 
 /// Advances the pending keyboard-focus request by one render. Returns the item
-/// to reveal and whether another frame is needed. The target is clamped to the
-/// current count and dropped when the viewport is unmeasured, the list is
-/// empty, or the frame budget is spent.
+/// to reveal and whether another frame is needed.
+///
+/// Rule for a target that no longer exists: it is cleared, never clamped to
+/// the last row. A target is kept only while `target < count`, so a request
+/// for the last item of a non-empty list survives, but one past the end (the
+/// list shrank or a group collapsed) is dropped and focus is left alone. The
+/// request is also dropped when the viewport is unmeasured, the list is empty,
+/// or the frame budget is spent.
 fn settle_pending(
     pending: &mut Option<usize>,
     frames: &mut u8,
@@ -134,13 +139,11 @@ fn settle_pending(
     let Some(target) = *pending else {
         return (None, false);
     };
-    if count == 0 || !measured || *frames == 0 {
+    if count == 0 || target >= count || !measured || *frames == 0 {
         *pending = None;
         *frames = 0;
         return (None, false);
     }
-    let target = target.min(count - 1);
-    *pending = Some(target);
     *frames -= 1;
     (Some(target), true)
 }
@@ -534,9 +537,14 @@ mod tests {
         settle(cx);
         assert_eq!(focused_index(cx), Some(0), "header focused");
 
+        let pending =
+            |cx: &mut gpui::VisualTestContext| state().read_with(cx, |s, _| s.pending_focus);
+        let before = frames();
         cx.type_keys("up");
         settle(cx);
         assert_eq!(focused_index(cx), Some(0), "up at top keeps focus");
+        assert_eq!(pending(cx), None, "no target past the top");
+        assert_eq!(frames(), before, "up at top requests no frames");
         cx.type_keys("down");
         settle(cx);
         assert_eq!(focused_index(cx), Some(1));
@@ -546,6 +554,21 @@ mod tests {
         cx.type_keys("up");
         settle(cx);
         assert_eq!(focused_index(cx), Some(1));
+        cx.type_keys("up");
+        settle(cx);
+        assert_eq!(focused_index(cx), Some(0), "up from 1 lands on the header");
+        assert_eq!(pending(cx), None);
+        let before = frames();
+        cx.type_keys("up");
+        settle(cx);
+        assert_eq!(focused_index(cx), Some(0), "up again stays on 0");
+        assert_eq!(pending(cx), None);
+        assert_eq!(frames(), before, "second up requests no frames");
+        cx.type_keys("down");
+        settle(cx);
+        assert_eq!(focused_index(cx), Some(1));
+        cx.type_keys("up");
+        settle(cx);
         cx.type_keys("home");
         settle(cx);
         assert_eq!(focused_index(cx), Some(0), "home focuses first header");
@@ -564,6 +587,7 @@ mod tests {
             Some(10_000),
             "down at bottom keeps focus"
         );
+        assert_eq!(pending(cx), None, "no target past the bottom");
         cx.type_keys("up");
         settle(cx);
         assert_eq!(focused_index(cx), Some(9_999));
@@ -583,6 +607,7 @@ mod tests {
         // Shrink the list below a pending target and re-render.
         let state = state();
         items.set(2);
+        let before = frames();
         cx.update(|_, app| {
             state.update(app, |s, cx| {
                 s.pending_focus = Some(5);
@@ -591,9 +616,45 @@ mod tests {
             });
         });
         settle(cx);
+        assert_eq!(
+            focused_index(cx),
+            None,
+            "vanished target is cleared, not clamped onto the last row"
+        );
+        assert_eq!(frames(), before, "a vanished target requests no frames");
+        cx.update(|_, app| assert_eq!(state.read(app).pending_focus, None));
+    }
+
+    #[gpui::test]
+    fn reachable_target_is_focused_within_frame_budget(cx: &mut gpui::TestAppContext) {
+        use fluent_test_utils::open_fluent_test_window;
+
+        let items = std::rc::Rc::new(std::cell::Cell::new(5));
+        let host = items.clone();
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| SharedHost {
+            id: "test-reachable-pending",
+            items: host,
+        });
+        settle(cx);
+        let state = state();
+        let before = frames();
+        cx.update(|_, app| {
+            state.update(app, |s, cx| {
+                s.pending_focus = Some(3);
+                s.pending_frames = SETTLE_FRAMES;
+                cx.notify();
+            });
+        });
+        settle(cx);
+        assert_eq!(focused_index(cx), Some(3));
+        let used = frames() - before;
+        assert!(
+            used <= SETTLE_FRAMES as usize,
+            "{used} frames exceed the budget"
+        );
         let after = frames();
         settle(cx);
-        assert_eq!(frames(), after, "no frames requested once settled");
+        assert_eq!(frames(), after, "no frames once settled");
         cx.update(|_, app| assert_eq!(state.read(app).pending_focus, None));
     }
 
@@ -629,41 +690,83 @@ mod tests {
         cx.update(|_, app| assert_eq!(state.read(app).pending_focus, None));
     }
 
+    struct TwoGroupHost;
+    impl gpui::Render for TwoGroupHost {
+        fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+            GroupedVirtualList::new(
+                "test-collapse-pending",
+                vec![
+                    VirtualListGroup::new("a", "Alpha", 2),
+                    VirtualListGroup::new("b", "Beta", 3),
+                ],
+                |_, row, _, _| {
+                    gpui::div()
+                        .h(px(24.))
+                        .child(format!("row {row}"))
+                        .into_any_element()
+                },
+            )
+        }
+    }
+
     #[gpui::test]
     fn collapse_while_pending_clears_target(cx: &mut gpui::TestAppContext) {
         use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+        use gpui::{Modifiers, MouseButton};
 
-        let items = std::rc::Rc::new(std::cell::Cell::new(5));
-        let host = items.clone();
-        let (_, cx) = open_fluent_test_window(cx, move |_, _| SharedHost {
-            id: "test-collapse-pending",
-            items: host,
-        });
+        let (_, cx) = open_fluent_test_window(cx, |_, _| TwoGroupHost);
         settle(cx);
         let state = state();
+        let header = state.read_with(cx, |s, _| s.focus[0].clone());
+        cx.update(|window, app| header.focus(window, app));
+        settle(cx);
+        assert_eq!(focused_index(cx), Some(0), "header focused");
+        let position = cx
+            .debug_bounds("group-header-0")
+            .expect("header painted")
+            .center();
+        // Press first: the press itself renders, which would consume a target
+        // set earlier. The target is set between press and release so it is
+        // still pending when the click handler runs.
+        cx.simulate_mouse_down(position, MouseButton::Left, Modifiers::none());
         cx.update(|_, app| {
-            state.update(app, |s, cx| {
+            state.update(app, |s, _| {
                 s.pending_focus = Some(3);
                 s.pending_frames = SETTLE_FRAMES;
-                cx.notify();
             });
         });
-        cx.click_selector("group-header-0");
-        settle(cx);
+        assert_eq!(
+            state.read_with(cx, |s, _| s.pending_focus),
+            Some(3),
+            "target still pending when the click lands"
+        );
+        cx.simulate_mouse_up(position, MouseButton::Left, Modifiers::none());
+        cx.run_until_parked();
+        assert!(cx.selector_bounds("group-row-1").is_none(), "collapsed");
+        assert_eq!(state.read_with(cx, |s, _| s.pending_focus), None);
         let after = frames();
         settle(cx);
-        assert_eq!(frames(), after, "no frames requested after collapse");
-        cx.update(|_, app| assert_eq!(state.read(app).pending_focus, None));
-        assert!(cx.selector_bounds("group-row-3").is_none());
+        assert_eq!(focused_index(cx), Some(0), "focus stays on the header");
+        assert_eq!(frames(), after, "no frames requested after the click");
     }
 
     #[test]
     fn settle_pending_is_bounded_and_clamped() {
+        let (mut p, mut f) = (Some(9), SETTLE_FRAMES);
+        assert_eq!(settle_pending(&mut p, &mut f, 10, true), (Some(9), true));
+        assert_eq!(p, Some(9), "last item of a non-empty list is kept");
+        assert_eq!(settle_pending(&mut p, &mut f, 10, true), (Some(9), true));
+        assert_eq!(settle_pending(&mut p, &mut f, 10, true), (Some(9), true));
+        assert_eq!(settle_pending(&mut p, &mut f, 10, true), (None, false));
+        assert_eq!(p, None, "frame budget exhausted");
+        let (mut p, mut f) = (Some(10), SETTLE_FRAMES);
+        assert_eq!(settle_pending(&mut p, &mut f, 10, true), (None, false));
+        assert_eq!(
+            (p, f),
+            (None, 0),
+            "one past the end is cleared, not clamped"
+        );
         let (mut p, mut f) = (Some(50), SETTLE_FRAMES);
-        assert_eq!(settle_pending(&mut p, &mut f, 10, true), (Some(9), true));
-        assert_eq!(p, Some(9));
-        assert_eq!(settle_pending(&mut p, &mut f, 10, true), (Some(9), true));
-        assert_eq!(settle_pending(&mut p, &mut f, 10, true), (Some(9), true));
         assert_eq!(settle_pending(&mut p, &mut f, 10, true), (None, false));
         assert_eq!(p, None);
         let (mut p, mut f) = (Some(1), SETTLE_FRAMES);
