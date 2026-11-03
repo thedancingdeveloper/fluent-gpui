@@ -92,7 +92,22 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25
         with:
-          command: check licenses bans
+          command: check advisories licenses bans sources
+
+  # Keep cargo-audit output visible while the pinned vendored snapshot carries
+  # the advisories recorded in deny.toml. This is informational until the
+  # dependency refresh removes those exceptions.
+  audit:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8
+      - uses: taiki-e/install-action@97888a140839b7239d62fbf6af4e20adb5be3666
+        with:
+          tool: cargo-audit
+      - name: Cargo audit
+        run: cargo audit
 
   # fluent-* zed-rev metadata equals vendor/zed/UPSTREAM.md (CONTRIBUTING.md §4).
   zed-rev:
@@ -105,7 +120,7 @@ jobs:
   # The one required check: Windows and Linux tests plus every guard.
   ci:
     if: always()
-    needs: [test, examples-and-docs, layering, deny, zed-rev]
+    needs: [test, examples-and-docs, layering, deny, audit, zed-rev]
     runs-on: ubuntu-latest
     steps:
       - name: All jobs passed

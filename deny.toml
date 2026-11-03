@@ -40,6 +40,21 @@ exceptions = [
 [licenses.private]
 ignore = true
 
+[advisories]
+# These advisories are currently reachable through the pinned vendored Zed
+# snapshot or its platform dependencies. Keep the exceptions explicit so a
+# newly introduced advisory still fails this check.
+ignore = [
+    { id = "RUSTSEC-2026-0204", reason = "crossbeam-epoch is pinned by the vendored Zed snapshot; update is tracked with the next dependency refresh" },
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml is pinned by the vendored Zed snapshot; update requires a compatible upstream refresh" },
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml is pinned by the vendored Zed snapshot; update requires a compatible upstream refresh" },
+    { id = "RUSTSEC-2026-0206", reason = "rustybuzz is required by the vendored text stack; replacement is an upstream dependency decision" },
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser is required by the vendored text stack; replacement is an upstream dependency decision" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names is required by the vendored Linux accessibility stack; replacement is an upstream dependency decision" },
+    { id = "RUSTSEC-2026-0370", reason = "zvariant is required by the vendored Linux accessibility stack; replacement is an upstream dependency decision" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive is required by the vendored Linux accessibility stack; replacement is an upstream dependency decision" },
+]
+
 [bans]
 multiple-versions = "allow"
 wildcards = "allow"
