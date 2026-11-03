@@ -31,6 +31,7 @@ consumers can rely on; “gallery” is the route family in `examples/gallery`.
 - Field — primitives; required/helper/validating/error; Tab enters its control; **Forms**
 - FilePickerField — app; empty/selected/loading/error; Tab focuses the picker action, Enter/Space opens; **Date and input**
 - Flyout — layout; hidden/open, placements; Tab follows content, Escape closes; **Status and feedback**
+- GroupedVirtualList / VirtualListGroup — layout; virtual variable-height rows with sticky, accessible, expandable group headers; **Data and lists**
 - Icon — primitives; sizes; not focusable by itself; **Buttons and links**
 - IconButton — primitives; appearances, disabled, pressed; Enter/Space activates; **Buttons and links**
 - InfoLabel — primitives; default/with tooltip; Tab focuses the info affordance; **Text and labels**
@@ -77,7 +78,6 @@ consumers can rely on; “gallery” is the route family in `examples/gallery`.
 - TreeItem — layout; expanded/collapsed/checked/selected; arrows navigate, Enter/Space activates; **Data and lists**
 - VideoSurface — primitives; loading/ready/error, scaling; Space toggles playback when enabled; **Terminal and video**
 - VirtualList — layout; empty/large/variable-height; arrows/Home/End navigate the focused item; **Data and lists**
-- GroupedVirtualList / VirtualListGroup — layout; virtual variable-height rows with sticky, accessible, expandable group headers; **Data and lists**
 - WindowChrome — app; active/inactive, maximized; platform title-bar commands use standard window keys; **Theme and direction**
 - WindowTitle — app; active/inactive; standard platform window keys apply; **Theme and direction**
 - Workspace — layout; panes/sidebar/tabs; keyboard follows the active child; **Data and lists**
