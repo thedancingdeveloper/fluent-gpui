@@ -74,7 +74,10 @@ pub use data_table::{
 pub use dialog::{Dialog, DialogAction};
 pub use dock::{DockPanel, DockPosition};
 pub use document_viewer::{DocumentViewer, RichDocument, RichDocumentBlock, RichTextRun};
-pub use drag_drop::{drag_source, drop_target, is_payload, DragOperation, DragPayload, DropPolicy};
+pub use drag_drop::{
+    drag_source, drag_source_with_cancel, drop_target, is_payload, DragOperation, DragPayload,
+    DropPolicy,
+};
 pub use drawer::{Drawer, DrawerMode, DrawerPosition, DrawerSize};
 pub use flyout::{Flyout, FlyoutPlacement};
 pub use grouped_virtual_list::{GroupedVirtualList, VirtualListGroup};
