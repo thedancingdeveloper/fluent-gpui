@@ -1815,6 +1815,7 @@ dependencies = [
  "fluent-app",
  "fluent-core",
  "fluent-layout",
+ "fluent-primitives",
  "fluent-ribbon",
 ]
 

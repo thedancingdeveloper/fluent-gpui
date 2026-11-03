@@ -1,11 +1,12 @@
+use families::{DemoViews, FamilyHost, FamilyNav};
 use fluent_app::{FluentApp, TitleBar};
 use fluent_core::gpui::{div, prelude::*, Context, IntoElement, Render, Window};
-use fluent_core::ThemeProvider as _;
 use fluent_layout::{
-    DockPanel, DockPosition, MenuBar, ModalStack, Pane, PaneConstraints, PaneGroup, TabItem,
-    TabStrip, Workspace,
+    DockPanel, DockPosition, MenuBar, ModalStack, Pane, TabItem, TabStrip, Workspace,
 };
+use fluent_primitives::{InputCapture, TerminalCell, TerminalGrid, TerminalView, VideoSurface};
 use fluent_ribbon::RibbonBar;
+mod families;
 
 // ---------------------------------------------------------------------------
 // Root gallery view — wires the full shell together
@@ -22,33 +23,55 @@ impl Render for GalleryRoot {
 }
 
 // ---------------------------------------------------------------------------
-// Placeholder pane content
-// ---------------------------------------------------------------------------
-
-struct PlaceholderView {
-    label: fluent_core::gpui::SharedString,
-}
-
-impl Render for PlaceholderView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let colors = cx.theme().colors.clone();
-        div()
-            .size_full()
-            .flex()
-            .items_center()
-            .justify_center()
-            .bg(colors.surface)
-            .text_color(colors.on_subtle)
-            .child(self.label.clone())
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
 fn main() {
     FluentApp::new("FluentGUI Gallery").dark_theme().run(|cx| {
+        let video = cx.new(VideoSurface::new);
+        video.update(cx, |surface, cx| {
+            let mut pixels = Vec::with_capacity(160 * 90 * 4);
+            for y in 0..90u32 {
+                for x in 0..160u32 {
+                    pixels.extend([((x * 255) / 159) as u8, ((y * 255) / 89) as u8, 180, 255]);
+                }
+            }
+            let _ = surface.submit_frame(160, 90, pixels, cx);
+        });
+        let video_page = cx.new(|_| families::VideoPage { surface: video });
+
+        let grid = cx.new(|_| TerminalGrid::new(64, 12));
+        grid.update(cx, |grid, _| {
+            for (row, line) in [
+                "Fluent terminal demo",
+                "$ cargo run --example gallery",
+                "[  OK  ] compositor connected",
+                "[  OK  ] synthetic output ready",
+                "Type, scroll, and select this terminal surface.",
+            ]
+            .iter()
+            .enumerate()
+            {
+                grid.write_str(row, 0, line, TerminalCell::new(' '));
+            }
+        });
+        let terminal = cx.new(|cx| TerminalView::new(grid, cx).label("Scripted terminal"));
+        let terminal_page = cx.new(|_| families::TerminalPage { terminal });
+
+        let capture_log = cx.new(|_| families::EventLog);
+        let capture = cx.new(|cx| InputCapture::new(cx).content(capture_log.clone().into()));
+        let input_page = cx.new(|_| families::InputPage { capture });
+
+        let expander_page = cx.new(|_| families::ExpanderPage);
+        let family_host = cx.new(|_| {
+            FamilyHost::new(DemoViews {
+                status: Vec::new(),
+                data: Vec::new(),
+                date_input: Vec::new(),
+                media: vec![video_page.clone().into(), terminal_page.clone().into()],
+                theme: vec![input_page.clone().into(), expander_page.clone().into()],
+            })
+        });
         // Title bar
         let title_bar = cx.new(|cx| TitleBar::new(cx, "FluentGUI Gallery"));
 
@@ -92,13 +115,10 @@ fn main() {
         });
 
         // Left sidebar
-        let sidebar_content = cx.new(|_| PlaceholderView {
-            label: "Navigation tree".into(),
-        });
         let sidebar = cx.new(|cx| {
             DockPanel::new(cx, DockPosition::Left, "Navigation")
                 .size(240.0)
-                .content(sidebar_content.into())
+                .content(cx.new(|_| FamilyNav::new(family_host.clone())).into())
         });
 
         // Main pane with a tab strip
@@ -108,28 +128,10 @@ fn main() {
             ts.add_tab(TabItem::new("settings").label("Settings").closable(true));
             ts
         });
-        let split_list = cx.new(|_| PlaceholderView {
-            label: "Resizable first panel".into(),
-        });
-        let split_detail = cx.new(|_| PlaceholderView {
-            label: "Resizable second panel".into(),
-        });
-        let pane_content = cx.new(|_| {
-            PaneGroup::horizontal()
-                .first(split_list.into())
-                .second(split_detail.into())
-                .ratio(0.36)
-                .constraints(
-                    PaneConstraints::new()
-                        .first_min(220.0)
-                        .second_min(320.0)
-                        .first_max(Some(520.0)),
-                )
-        });
         let main_pane = cx.new(|cx| Pane::new(cx).with_tab_strip(tab_strip));
         // set content separately since we need the entity
         main_pane.update(cx, |p, cx| {
-            p.set_content(pane_content.into(), cx);
+            p.set_content(family_host.into(), cx);
         });
 
         // Modal host
