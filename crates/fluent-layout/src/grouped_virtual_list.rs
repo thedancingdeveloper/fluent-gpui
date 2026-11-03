@@ -114,6 +114,42 @@ struct GroupedState {
     count: usize,
     hinted: bool,
     pending_focus: Option<usize>,
+    pending_frames: u8,
+}
+
+/// Frames a keyboard-navigation target may take to render before the request
+/// is abandoned, so an unreachable target cannot animate forever.
+const SETTLE_FRAMES: u8 = 3;
+
+/// Advances the pending keyboard-focus request by one render. Returns the item
+/// to reveal and whether another frame is needed. The target is clamped to the
+/// current count and dropped when the viewport is unmeasured, the list is
+/// empty, or the frame budget is spent.
+fn settle_pending(
+    pending: &mut Option<usize>,
+    frames: &mut u8,
+    count: usize,
+    measured: bool,
+) -> (Option<usize>, bool) {
+    let Some(target) = *pending else {
+        return (None, false);
+    };
+    if count == 0 || !measured || *frames == 0 {
+        *pending = None;
+        *frames = 0;
+        return (None, false);
+    }
+    let target = target.min(count - 1);
+    *pending = Some(target);
+    *frames -= 1;
+    (Some(target), true)
+}
+
+#[cfg(test)]
+thread_local! {
+    static FRAME_REQUESTS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    static TEST_STATE: std::cell::RefCell<Option<gpui::Entity<GroupedState>>> =
+        const { std::cell::RefCell::new(None) };
 }
 
 impl RenderOnce for GroupedVirtualList {
@@ -132,7 +168,10 @@ impl RenderOnce for GroupedVirtualList {
             count: 0,
             hinted: false,
             pending_focus: None,
+            pending_frames: 0,
         });
+        #[cfg(test)]
+        TEST_STATE.with(|t| *t.borrow_mut() = Some(state.clone()));
         let (list_state, expanded, focus, count, settling) = state.update(cx, |s, cx| {
             if s.expanded.len() != group_count {
                 s.expanded = groups.iter().map(|g| g.expanded).collect();
@@ -151,11 +190,11 @@ impl RenderOnce for GroupedVirtualList {
                 s.list.reset_with_uniform_height(count, px(estimate));
                 s.hinted = true;
             }
-            let settling = s.pending_focus.is_some();
-            if s.hinted {
-                if let Some(target) = s.pending_focus {
-                    s.list.scroll_to_reveal_item(target);
-                }
+            let measured = s.hinted;
+            let (reveal, settling) =
+                settle_pending(&mut s.pending_focus, &mut s.pending_frames, count, measured);
+            if let Some(target) = reveal {
+                s.list.scroll_to_reveal_item(target);
             }
             while s.focus.len() < count {
                 s.focus.push(cx.focus_handle());
@@ -170,6 +209,8 @@ impl RenderOnce for GroupedVirtualList {
             )
         });
         if settling {
+            #[cfg(test)]
+            FRAME_REQUESTS.with(|c| c.set(c.get() + 1));
             window.request_animation_frame();
         }
         let mut offsets = Vec::with_capacity(group_count);
@@ -202,6 +243,7 @@ impl RenderOnce for GroupedVirtualList {
                 if let Some(target) = target {
                     navigation_state.update(cx, |state, cx| {
                         state.pending_focus = Some(target);
+                        state.pending_frames = SETTLE_FRAMES;
                         cx.notify();
                     });
                     navigation_list.scroll_to_reveal_item(target);
@@ -233,6 +275,7 @@ impl RenderOnce for GroupedVirtualList {
                     .on_click(move |_, _, cx| {
                         state.update(cx, |s, cx| {
                             s.expanded[gi] = !s.expanded[gi];
+                            s.pending_focus = None;
                             cx.notify();
                         });
                     })
@@ -240,6 +283,7 @@ impl RenderOnce for GroupedVirtualList {
                         if matches!(event.keystroke.key.as_str(), "enter" | "space") {
                             key_state.update(cx, |s, cx| {
                                 s.expanded[gi] = !s.expanded[gi];
+                                s.pending_focus = None;
                                 cx.notify();
                             });
                         } else {
@@ -431,46 +475,202 @@ mod tests {
         assert!(cx.selector_bounds("group-row-1").is_some());
     }
 
+    fn state() -> gpui::Entity<GroupedState> {
+        TEST_STATE.with(|t| t.borrow().clone().expect("list rendered"))
+    }
+
+    fn frames() -> usize {
+        FRAME_REQUESTS.with(|c| c.get())
+    }
+
+    fn focused_index(cx: &mut gpui::VisualTestContext) -> Option<usize> {
+        let state = state();
+        cx.update(|window, app| {
+            state
+                .read(app)
+                .focus
+                .iter()
+                .position(|f| f.is_focused(window))
+        })
+    }
+
+    fn settle(cx: &mut gpui::VisualTestContext) {
+        for _ in 0..8 {
+            cx.run_until_parked();
+        }
+    }
+
+    struct SharedHost {
+        id: &'static str,
+        items: std::rc::Rc<std::cell::Cell<usize>>,
+    }
+    impl gpui::Render for SharedHost {
+        fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+            GroupedVirtualList::new(
+                self.id,
+                vec![VirtualListGroup::new("a", "Alpha", self.items.get())],
+                |_, row, _, _| {
+                    gpui::div()
+                        .h(px(24.))
+                        .child(format!("row {row}"))
+                        .into_any_element()
+                },
+            )
+        }
+    }
+
     #[gpui::test]
-    fn keyboard_navigation_reveals_end_and_clamps_at_bounds(cx: &mut gpui::TestAppContext) {
+    fn keyboard_navigation_moves_focus_and_reveals_end(cx: &mut gpui::TestAppContext) {
         use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+
+        let items = std::rc::Rc::new(std::cell::Cell::new(10_000));
+        let host = items.clone();
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| SharedHost {
+            id: "test-keyboard-navigation",
+            items: host,
+        });
+        let first = state().read_with(cx, |s, _| s.focus[0].clone());
+        cx.update(|window, app| first.focus(window, app));
+        settle(cx);
+        assert_eq!(focused_index(cx), Some(0), "header focused");
+
+        cx.type_keys("up");
+        settle(cx);
+        assert_eq!(focused_index(cx), Some(0), "up at top keeps focus");
+        cx.type_keys("down");
+        settle(cx);
+        assert_eq!(focused_index(cx), Some(1));
+        cx.type_keys("down");
+        settle(cx);
+        assert_eq!(focused_index(cx), Some(2));
+        cx.type_keys("up");
+        settle(cx);
+        assert_eq!(focused_index(cx), Some(1));
+        cx.type_keys("home");
+        settle(cx);
+        assert_eq!(focused_index(cx), Some(0), "home focuses first header");
+
+        cx.type_keys("end");
+        settle(cx);
+        assert_eq!(focused_index(cx), Some(10_000), "end focuses last row");
+        assert!(
+            cx.selector_bounds("group-row-10000").is_some(),
+            "last row is rendered"
+        );
+        cx.type_keys("down");
+        settle(cx);
+        assert_eq!(
+            focused_index(cx),
+            Some(10_000),
+            "down at bottom keeps focus"
+        );
+        cx.type_keys("up");
+        settle(cx);
+        assert_eq!(focused_index(cx), Some(9_999));
+    }
+
+    #[gpui::test]
+    fn unreachable_target_stops_requesting_frames(cx: &mut gpui::TestAppContext) {
+        use fluent_test_utils::open_fluent_test_window;
+
+        let items = std::rc::Rc::new(std::cell::Cell::new(5));
+        let host = items.clone();
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| SharedHost {
+            id: "test-shrink-pending",
+            items: host,
+        });
+        settle(cx);
+        // Shrink the list below a pending target and re-render.
+        let state = state();
+        items.set(2);
+        cx.update(|_, app| {
+            state.update(app, |s, cx| {
+                s.pending_focus = Some(5);
+                s.pending_frames = SETTLE_FRAMES;
+                cx.notify();
+            });
+        });
+        settle(cx);
+        let after = frames();
+        settle(cx);
+        assert_eq!(frames(), after, "no frames requested once settled");
+        cx.update(|_, app| assert_eq!(state.read(app).pending_focus, None));
+    }
+
+    #[gpui::test]
+    fn unmeasured_viewport_does_not_request_frames(cx: &mut gpui::TestAppContext) {
+        use fluent_test_utils::open_fluent_test_window;
         use gpui::{Context, Render};
 
-        struct Host;
-        impl Render for Host {
+        struct ZeroHeight;
+        impl Render for ZeroHeight {
             fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-                GroupedVirtualList::new(
-                    "test-keyboard-navigation",
-                    vec![VirtualListGroup::new("a", "Alpha", 10_000)],
-                    |_, row, _, _| {
-                        gpui::div()
-                            .h(px(24.))
-                            .child(format!("row {row}"))
-                            .into_any_element()
-                    },
-                )
+                gpui::div().h(px(0.)).child(GroupedVirtualList::new(
+                    "test-zero-height",
+                    vec![VirtualListGroup::new("a", "Alpha", 5)],
+                    |_, _, _, _| gpui::div().h(px(24.)).into_any_element(),
+                ))
             }
         }
 
-        let (_, cx) = open_fluent_test_window(cx, |_, _| Host);
-        cx.update(|window, cx| window.focus_next(cx));
-        cx.type_keys("up");
-        assert!(cx.selector_bounds("group-header-0").is_some());
-        cx.type_keys("down");
-        assert!(cx.selector_bounds("group-row-1").is_some());
-        cx.type_keys("home");
-        assert!(cx.selector_bounds("group-header-0").is_some());
-        cx.type_keys("end");
-        for _ in 0..5 {
-            cx.run_until_parked();
-        }
-        cx.type_keys("end");
-        for _ in 0..5 {
-            cx.run_until_parked();
-        }
-        cx.type_keys("down");
-        cx.type_keys("up");
-        cx.run_until_parked();
-        assert!(cx.selector_bounds("group-header-0").is_some());
+        let (_, cx) = open_fluent_test_window(cx, |_, _| ZeroHeight);
+        settle(cx);
+        let state = state();
+        let before = frames();
+        cx.update(|_, app| {
+            state.update(app, |s, cx| {
+                s.pending_focus = Some(3);
+                s.pending_frames = SETTLE_FRAMES;
+                cx.notify();
+            });
+        });
+        settle(cx);
+        assert_eq!(frames(), before, "unmeasured viewport requests no frames");
+        cx.update(|_, app| assert_eq!(state.read(app).pending_focus, None));
+    }
+
+    #[gpui::test]
+    fn collapse_while_pending_clears_target(cx: &mut gpui::TestAppContext) {
+        use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+
+        let items = std::rc::Rc::new(std::cell::Cell::new(5));
+        let host = items.clone();
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| SharedHost {
+            id: "test-collapse-pending",
+            items: host,
+        });
+        settle(cx);
+        let state = state();
+        cx.update(|_, app| {
+            state.update(app, |s, cx| {
+                s.pending_focus = Some(3);
+                s.pending_frames = SETTLE_FRAMES;
+                cx.notify();
+            });
+        });
+        cx.click_selector("group-header-0");
+        settle(cx);
+        let after = frames();
+        settle(cx);
+        assert_eq!(frames(), after, "no frames requested after collapse");
+        cx.update(|_, app| assert_eq!(state.read(app).pending_focus, None));
+        assert!(cx.selector_bounds("group-row-3").is_none());
+    }
+
+    #[test]
+    fn settle_pending_is_bounded_and_clamped() {
+        let (mut p, mut f) = (Some(50), SETTLE_FRAMES);
+        assert_eq!(settle_pending(&mut p, &mut f, 10, true), (Some(9), true));
+        assert_eq!(p, Some(9));
+        assert_eq!(settle_pending(&mut p, &mut f, 10, true), (Some(9), true));
+        assert_eq!(settle_pending(&mut p, &mut f, 10, true), (Some(9), true));
+        assert_eq!(settle_pending(&mut p, &mut f, 10, true), (None, false));
+        assert_eq!(p, None);
+        let (mut p, mut f) = (Some(1), SETTLE_FRAMES);
+        assert_eq!(settle_pending(&mut p, &mut f, 10, false), (None, false));
+        assert_eq!(p, None);
+        let (mut p, mut f) = (Some(1), SETTLE_FRAMES);
+        assert_eq!(settle_pending(&mut p, &mut f, 0, true), (None, false));
+        assert_eq!(p, None);
     }
 }
