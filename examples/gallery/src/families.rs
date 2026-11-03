@@ -5,12 +5,90 @@
 //! theme row on top switches light, dark, high contrast and RTL so each
 //! family can be checked in every variant without leaving the page.
 
+use fluent_core::gpui::{
+    div, prelude::*, AnyElement, AnyView, Context, Entity, IntoElement, Render, Window,
+};
+use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_primitives::{
     Button, ButtonAppearance, ButtonIconPosition, ButtonShape, ButtonSize, Checkbox, CheckboxState,
-    Chip, Divider, Label, LabelSize, Link, LinkAppearance, RadioGroup, Switch, ToggleButton,
+    Chip, Divider, Expander, InputCapture, Label, LabelSize, Link, LinkAppearance, RadioGroup,
+    Switch, TerminalView, ToggleButton, VideoSurface,
 };
-use fluent_core::gpui::{div, prelude::*, AnyElement, AnyView, Context, Entity, IntoElement, Render, Window};
-use fluent_core::gpui::{LayoutDirection, Theme, ThemeProvider as _};
+
+pub struct VideoPage {
+    pub surface: Entity<VideoSurface>,
+}
+impl Render for VideoPage {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .child(Label::new("VideoSurface — synthetic moving test pattern"))
+            .child(self.surface.clone())
+    }
+}
+pub struct TerminalPage {
+    pub terminal: Entity<TerminalView>,
+}
+impl Render for TerminalPage {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .child(Label::new("TerminalView — scripted terminal text"))
+            .child(self.terminal.clone())
+    }
+}
+#[derive(Default)]
+pub struct EventLog;
+impl Render for EventLog {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        div().p_2().child(
+            "Click or press a key to exercise InputCapture (events are synthetic in this page).",
+        )
+    }
+}
+pub struct InputPage {
+    pub capture: Entity<InputCapture>,
+}
+impl Render for InputPage {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .child(Label::new("InputCapture — live key and pointer event log"))
+            .child(self.capture.clone())
+    }
+}
+pub struct ExpanderPage;
+impl Render for ExpanderPage {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .child(Label::new(
+                "Expander — collapsed, expanded, and disabled states",
+            ))
+            .child(
+                Expander::new("collapsed", "Collapsed")
+                    .content(Label::new("Hidden until expanded").into_any_element()),
+            )
+            .child(
+                Expander::new("expanded", "Expanded")
+                    .expanded(true)
+                    .content(Label::new("Visible content").into_any_element()),
+            )
+            .child(
+                Expander::new("disabled", "Disabled")
+                    .disabled(true)
+                    .content(Label::new("Unavailable content").into_any_element()),
+            )
+    }
+}
 
 /// A Fluent 2 component family, one gallery route each.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
