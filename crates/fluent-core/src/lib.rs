@@ -1,3 +1,6 @@
+//! Public API for the Fluent UI crate.
+#![deny(missing_docs)]
+
 mod async_resource;
 mod colors;
 mod components;

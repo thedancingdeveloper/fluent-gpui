@@ -7,41 +7,75 @@
 pub struct ComponentTokens {
     /// Fluent 2 button heights for small, medium, and large controls.
     pub button_small_height: f32,
+    /// Public API item.
     pub button_medium_height: f32,
+    /// Public API item.
     pub button_large_height: f32,
     /// Fluent 2 button icon sizes for small, medium, and large controls.
     pub button_small_icon_size: f32,
+    /// Public API item.
     pub button_medium_icon_size: f32,
+    /// Public API item.
     pub button_large_icon_size: f32,
+    /// Public API item.
     pub menu_bar_height: f32,
+    /// Public API item.
     pub menu_item_height: f32,
+    /// Public API item.
     pub menu_min_width: f32,
+    /// Public API item.
     pub popup_icon_slot: f32,
+    /// Public API item.
     pub popup_separator_height: f32,
+    /// Public API item.
     pub dropdown_height: f32,
+    /// Public API item.
     pub dropdown_option_height: f32,
+    /// Public API item.
     pub dropdown_min_width: f32,
+    /// Public API item.
     pub dropdown_max_height: f32,
+    /// Public API item.
     pub text_input_height: f32,
+    /// Public API item.
     pub text_input_focus_indicator_height: f32,
+    /// Public API item.
     pub dock_header_height: f32,
+    /// Public API item.
     pub dock_action_size: f32,
+    /// Public API item.
     pub settings_nav_width: f32,
+    /// Public API item.
     pub settings_nav_section_height: f32,
+    /// Public API item.
     pub settings_nav_item_height: f32,
+    /// Public API item.
     pub settings_nav_accent_width: f32,
+    /// Public API item.
     pub settings_nav_item_indent: f32,
+    /// Public API item.
     pub command_palette_search_height: f32,
+    /// Public API item.
     pub command_palette_footer_height: f32,
+    /// Public API item.
     pub command_palette_icon_slot: f32,
+    /// Public API item.
     pub content_tab_strip_height: f32,
+    /// Public API item.
     pub content_tab_icon_size: f32,
+    /// Public API item.
     pub content_tab_close_size: f32,
+    /// Public API item.
     pub ribbon_tab_height: f32,
+    /// Public API item.
     pub ribbon_content_button_height: f32,
+    /// Public API item.
     pub ribbon_group_label_height: f32,
+    /// Public API item.
     pub ribbon_large_icon_size: f32,
+    /// Public API item.
     pub ribbon_small_icon_size: f32,
+    /// Public API item.
     pub ribbon_contextual_band_height: f32,
 }
 

@@ -4,7 +4,9 @@ use gpui::{deferred, div, prelude::*, px, AnyElement, IntoElement, RenderOnce, W
 /// Standard flyout placements relative to the invoking element.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FlyoutPlacement {
+    /// Public API item.
     BelowStart,
+    /// Public API item.
     RightStart,
 }
 
@@ -23,6 +25,7 @@ pub struct Flyout {
 }
 
 impl Flyout {
+    /// Public API item.
     pub fn new(child: impl IntoElement) -> Self {
         Self {
             child: child.into_any_element(),
@@ -33,17 +36,20 @@ impl Flyout {
         }
     }
 
+    /// Public API item.
     pub fn placement(mut self, placement: FlyoutPlacement) -> Self {
         self.placement = placement;
         self
     }
 
+    /// Public API item.
     pub fn trigger_size(mut self, width: f32, height: f32) -> Self {
         self.trigger_width = width;
         self.trigger_height = height;
         self
     }
 
+    /// Public API item.
     pub fn priority(mut self, priority: usize) -> Self {
         self.priority = priority;
         self

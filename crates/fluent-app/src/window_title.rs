@@ -13,6 +13,7 @@ pub struct WindowTitle {
 impl Global for WindowTitle {}
 
 impl WindowTitle {
+    /// Public API item.
     pub fn new(title: impl Into<SharedString>) -> Self {
         Self {
             title: title.into(),
@@ -20,23 +21,28 @@ impl WindowTitle {
         }
     }
 
+    /// Public API item.
     pub fn with_status(mut self, status: impl Into<SharedString>) -> Self {
         self.status = Some(status.into());
         self
     }
 
+    /// Public API item.
     pub fn title(&self) -> &SharedString {
         &self.title
     }
 
+    /// Public API item.
     pub fn status(&self) -> Option<&SharedString> {
         self.status.as_ref()
     }
 
+    /// Public API item.
     pub fn init(cx: &mut App, title: impl Into<SharedString>) {
         cx.set_global(Self::new(title));
     }
 
+    /// Public API item.
     pub fn set_title(cx: &mut App, title: impl Into<SharedString>) {
         if cx.has_global::<Self>() {
             cx.global_mut::<Self>().title = title.into();
@@ -45,6 +51,7 @@ impl WindowTitle {
         }
     }
 
+    /// Public API item.
     pub fn set_status(cx: &mut App, status: impl Into<SharedString>) {
         if cx.has_global::<Self>() {
             cx.global_mut::<Self>().status = Some(status.into());
@@ -53,6 +60,7 @@ impl WindowTitle {
         }
     }
 
+    /// Public API item.
     pub fn clear_status(cx: &mut App) {
         if cx.has_global::<Self>() {
             cx.global_mut::<Self>().status = None;

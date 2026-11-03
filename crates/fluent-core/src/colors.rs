@@ -60,7 +60,9 @@ pub fn with_alpha(color: Hsla, alpha: f32) -> Hsla {
 /// choosing tokens themselves.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ControlStates {
+    /// Public API item.
     pub background: NeutralColorStates,
+    /// Public API item.
     pub foreground: NeutralColorStates,
 }
 
@@ -70,23 +72,38 @@ pub struct ControlStates {
 /// See <https://fluent2.microsoft.design/color> for specification.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct NeutralColorStates {
+    /// Public API item.
     pub default: Hsla,
+    /// Public API item.
     pub hover: Hsla,
+    /// Public API item.
     pub pressed: Hsla,
+    /// Public API item.
     pub selected: Hsla,
+    /// Public API item.
     pub disabled: Hsla,
 }
 
 #[derive(Clone, Debug)]
+/// Public API item.
 pub struct ColorScheme {
+    /// Public API item.
     pub neutral_foreground_1: NeutralColorStates,
+    /// Public API item.
     pub neutral_foreground_2: NeutralColorStates,
+    /// Public API item.
     pub neutral_foreground_3: NeutralColorStates,
+    /// Public API item.
     pub neutral_background_1: NeutralColorStates,
+    /// Public API item.
     pub neutral_background_2: NeutralColorStates,
+    /// Public API item.
     pub neutral_background_3: NeutralColorStates,
+    /// Public API item.
     pub neutral_stroke_1: NeutralColorStates,
+    /// Public API item.
     pub neutral_stroke_2: NeutralColorStates,
+    /// Public API item.
     pub neutral_stroke_3: NeutralColorStates,
 
     // --- Fill backgrounds (interactive elements: buttons, inputs, etc.) ---

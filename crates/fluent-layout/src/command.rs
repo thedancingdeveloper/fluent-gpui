@@ -5,18 +5,28 @@ use crate::{ContextMenuItem, PaletteEntry, ToolbarItem};
 /// Shared command metadata for menus, toolbars, ribbons, and palettes.
 #[derive(Clone, Debug)]
 pub struct CommandDef {
+    /// Public API item.
     pub id: SharedString,
+    /// Public API item.
     pub label: SharedString,
+    /// Public API item.
     pub subtitle: Option<SharedString>,
+    /// Public API item.
     pub group: Option<SharedString>,
+    /// Public API item.
     pub icon: Option<SharedString>,
+    /// Public API item.
     pub shortcut: Option<SharedString>,
+    /// Public API item.
     pub keywords: Vec<SharedString>,
+    /// Public API item.
     pub disabled: bool,
+    /// Public API item.
     pub checked: Option<bool>,
 }
 
 impl CommandDef {
+    /// Public API item.
     pub fn new(id: impl Into<SharedString>, label: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -31,41 +41,49 @@ impl CommandDef {
         }
     }
 
+    /// Public API item.
     pub fn subtitle(mut self, subtitle: impl Into<SharedString>) -> Self {
         self.subtitle = Some(subtitle.into());
         self
     }
 
+    /// Public API item.
     pub fn group(mut self, group: impl Into<SharedString>) -> Self {
         self.group = Some(group.into());
         self
     }
 
+    /// Public API item.
     pub fn icon(mut self, icon: impl Into<SharedString>) -> Self {
         self.icon = Some(icon.into());
         self
     }
 
+    /// Public API item.
     pub fn shortcut(mut self, shortcut: impl Into<SharedString>) -> Self {
         self.shortcut = Some(shortcut.into());
         self
     }
 
+    /// Public API item.
     pub fn keyword(mut self, keyword: impl Into<SharedString>) -> Self {
         self.keywords.push(keyword.into());
         self
     }
 
+    /// Public API item.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Public API item.
     pub fn checked(mut self, checked: bool) -> Self {
         self.checked = Some(checked);
         self
     }
 
+    /// Public API item.
     pub fn palette_entry(&self) -> PaletteEntry {
         let mut entry = PaletteEntry::new(self.id.clone(), self.label.clone());
         if let Some(subtitle) = &self.subtitle {
@@ -86,6 +104,7 @@ impl CommandDef {
         entry.disabled(self.disabled)
     }
 
+    /// Public API item.
     pub fn menu_item(
         &self,
         on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -101,6 +120,7 @@ impl CommandDef {
         item.disabled(self.disabled)
     }
 
+    /// Public API item.
     pub fn toolbar_item(
         &self,
         on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,

@@ -8,26 +8,32 @@ use crate::tab_strip::TabStrip;
 /// The content is an `AnyView` — set it via `Pane::set_content`.
 #[derive(Default)]
 pub struct Pane {
+    /// Public API item.
     pub tab_strip: Option<Entity<TabStrip>>,
+    /// Public API item.
     pub content: Option<AnyView>,
 }
 
 impl Pane {
+    /// Public API item.
     pub fn new(cx: &mut Context<Self>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
         Self::default()
     }
 
+    /// Public API item.
     pub fn with_tab_strip(mut self, strip: Entity<TabStrip>) -> Self {
         self.tab_strip = Some(strip);
         self
     }
 
+    /// Public API item.
     pub fn set_content(&mut self, content: AnyView, cx: &mut Context<Self>) {
         self.content = Some(content);
         cx.notify();
     }
 
+    /// Public API item.
     pub fn set_tab_strip(&mut self, strip: Entity<TabStrip>, cx: &mut Context<Self>) {
         self.tab_strip = Some(strip);
         cx.notify();

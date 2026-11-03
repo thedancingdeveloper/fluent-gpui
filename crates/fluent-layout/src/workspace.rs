@@ -13,13 +13,21 @@ use crate::{
 /// left/right/bottom dock panels, central pane area, and modal host overlay.
 #[derive(Default)]
 pub struct Workspace {
+    /// Public API item.
     pub title_bar: Option<AnyView>,
+    /// Public API item.
     pub menu_bar: Option<Entity<MenuBar>>,
+    /// Public API item.
     pub ribbon: Option<AnyView>,
+    /// Public API item.
     pub left_dock: Option<Entity<DockPanel>>,
+    /// Public API item.
     pub right_dock: Option<Entity<DockPanel>>,
+    /// Public API item.
     pub bottom_dock: Option<Entity<DockPanel>>,
+    /// Public API item.
     pub content: Option<AnyView>,
+    /// Public API item.
     pub modal_host: Option<Entity<ModalHost>>,
     /// Optional thin status bar rendered at the very bottom of the window (below the body).
     pub status_bar: Option<AnyView>,
@@ -28,16 +36,19 @@ pub struct Workspace {
 }
 
 impl Workspace {
+    /// Public API item.
     pub fn new(cx: &mut Context<Self>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
         Self::default()
     }
 
+    /// Public API item.
     pub fn title_bar(mut self, bar: AnyView) -> Self {
         self.title_bar = Some(bar);
         self
     }
 
+    /// Public API item.
     pub fn menu_bar(mut self, bar: Entity<MenuBar>) -> Self {
         self.menu_bar = Some(bar);
         self
@@ -52,46 +63,55 @@ impl Workspace {
         self
     }
 
+    /// Public API item.
     pub fn ribbon(mut self, ribbon: AnyView) -> Self {
         self.ribbon = Some(ribbon);
         self
     }
 
+    /// Public API item.
     pub fn left_dock(mut self, dock: Entity<DockPanel>) -> Self {
         self.left_dock = Some(dock);
         self
     }
 
+    /// Public API item.
     pub fn right_dock(mut self, dock: Entity<DockPanel>) -> Self {
         self.right_dock = Some(dock);
         self
     }
 
+    /// Public API item.
     pub fn bottom_dock(mut self, dock: Entity<DockPanel>) -> Self {
         self.bottom_dock = Some(dock);
         self
     }
 
+    /// Public API item.
     pub fn content(mut self, view: AnyView) -> Self {
         self.content = Some(view);
         self
     }
 
+    /// Public API item.
     pub fn modal_host(mut self, host: Entity<ModalHost>) -> Self {
         self.modal_host = Some(host);
         self
     }
 
+    /// Public API item.
     pub fn status_bar(mut self, bar: AnyView) -> Self {
         self.status_bar = Some(bar);
         self
     }
 
+    /// Public API item.
     pub fn set_status_bar(&mut self, bar: AnyView, cx: &mut Context<Self>) {
         self.status_bar = Some(bar);
         cx.notify();
     }
 
+    /// Public API item.
     pub fn set_content(&mut self, view: AnyView, cx: &mut Context<Self>) {
         self.content = Some(view);
         cx.notify();

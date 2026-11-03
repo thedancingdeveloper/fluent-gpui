@@ -1,3 +1,6 @@
+//! Public API for this crate.
+#![deny(missing_docs)]
+
 mod app_builder;
 mod assets;
 mod chrome;

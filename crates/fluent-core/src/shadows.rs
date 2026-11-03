@@ -6,11 +6,17 @@ use gpui::{hsla, px, BoxShadow};
 /// offsets, blur radii, and spread radii use logical pixels (DIPs).
 #[derive(Clone, Debug, PartialEq)]
 pub struct ShadowTokens {
+    /// Public API item.
     pub shadow2: [BoxShadow; 2],
+    /// Public API item.
     pub shadow4: [BoxShadow; 2],
+    /// Public API item.
     pub shadow8: [BoxShadow; 2],
+    /// Public API item.
     pub shadow16: [BoxShadow; 2],
+    /// Public API item.
     pub shadow28: [BoxShadow; 2],
+    /// Public API item.
     pub shadow64: [BoxShadow; 2],
 }
 

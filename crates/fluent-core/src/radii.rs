@@ -10,8 +10,11 @@
 /// | `pill`| 9999px| Badges, chips |
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RadiiTokens {
+    /// Public API item.
     pub sm: f32,
+    /// Public API item.
     pub md: f32,
+    /// Public API item.
     pub lg: f32,
     /// Effectively circular/pill — use for badge and chip shapes.
     pub pill: f32,

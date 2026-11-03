@@ -18,26 +18,42 @@ struct Roving {
 }
 
 #[derive(Clone)]
+/// Public API item.
 pub enum ToolbarItem {
+    /// Public API item.
     Action {
+        /// Public API item.
         id: SharedString,
+        /// Public API item.
         label: SharedString,
+        /// Public API item.
         icon: Option<SharedString>,
+        /// Public API item.
         disabled: bool,
+        /// Public API item.
         on_click: ToolbarClick,
     },
+    /// Public API item.
     Toggle {
+        /// Public API item.
         id: SharedString,
+        /// Public API item.
         label: SharedString,
+        /// Public API item.
         icon: Option<SharedString>,
+        /// Public API item.
         selected: bool,
+        /// Public API item.
         disabled: bool,
+        /// Public API item.
         on_click: ToolbarToggleClick,
     },
+    /// Public API item.
     Separator,
 }
 
 impl ToolbarItem {
+    /// Public API item.
     pub fn action(
         id: impl Into<SharedString>,
         label: impl Into<SharedString>,
@@ -52,6 +68,7 @@ impl ToolbarItem {
         }
     }
 
+    /// Public API item.
     pub fn action_with_icon(
         id: impl Into<SharedString>,
         label: impl Into<SharedString>,
@@ -67,6 +84,7 @@ impl ToolbarItem {
         }
     }
 
+    /// Public API item.
     pub fn toggle(
         id: impl Into<SharedString>,
         label: impl Into<SharedString>,
@@ -83,10 +101,12 @@ impl ToolbarItem {
         }
     }
 
+    /// Public API item.
     pub fn separator() -> Self {
         Self::Separator
     }
 
+    /// Public API item.
     pub fn disabled(self, disabled: bool) -> Self {
         match self {
             Self::Action {
@@ -133,6 +153,7 @@ pub struct Toolbar {
 }
 
 impl Toolbar {
+    /// Public API item.
     pub fn new() -> Self {
         Self {
             id: "toolbar".into(),
@@ -149,26 +170,31 @@ impl Toolbar {
         self
     }
 
+    /// Public API item.
     pub fn item(mut self, item: ToolbarItem) -> Self {
         self.items.push(item);
         self
     }
 
+    /// Public API item.
     pub fn items(mut self, items: impl IntoIterator<Item = ToolbarItem>) -> Self {
         self.items = items.into_iter().collect();
         self
     }
 
+    /// Public API item.
     pub fn max_visible(mut self, max_visible: usize) -> Self {
         self.max_visible = Some(max_visible);
         self
     }
 
+    /// Public API item.
     pub fn overflow_open(mut self, open: bool) -> Self {
         self.overflow_open = open;
         self
     }
 
+    /// Public API item.
     pub fn on_overflow_click(
         mut self,
         f: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
