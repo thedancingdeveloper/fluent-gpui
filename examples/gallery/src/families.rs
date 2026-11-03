@@ -9,6 +9,7 @@ use fluent_core::gpui::{
     div, prelude::*, AnyElement, AnyView, Context, Entity, IntoElement, Render, Window,
 };
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
+use fluent_layout::{drag_source, drop_target, DragOperation, DropPolicy};
 use fluent_primitives::{
     Button, ButtonAppearance, ButtonIconPosition, ButtonShape, ButtonSize, Checkbox, CheckboxState,
     Chip, Divider, Expander, InputCapture, Label, LabelSize, Link, LinkAppearance, RadioGroup,
@@ -87,6 +88,45 @@ impl Render for ExpanderPage {
                     .disabled(true)
                     .content(Label::new("Unavailable content").into_any_element()),
             )
+    }
+}
+
+/// Small contract demo: the source and target are intentionally generic so
+/// this page exercises the same API an application uses for pane actions.
+pub struct DragDropPage;
+
+struct DragGhost;
+
+impl Render for DragGhost {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        Label::new("Dragging item").into_any_element()
+    }
+}
+
+impl Render for DragDropPage {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let source = drag_source(
+            div().p_3().bg(cx.theme().colors.surface_dim),
+            1_u32,
+            |_value, _offset, _window, cx| cx.new(|_| DragGhost),
+        );
+        let target = drop_target(
+            div()
+                .p_3()
+                .border_1()
+                .border_color(cx.theme().colors.stroke_neutral_subtle),
+            DropPolicy::new(|value: &u32| *value == 1),
+            |_value, operation: DragOperation, _window, _cx| {
+                let _ = operation;
+                true
+            },
+            Some(1_u32),
+        );
+        div()
+            .flex()
+            .gap_3()
+            .child(source.child(Label::new("Drag this item")))
+            .child(target.child(Label::new("Drop here (Enter/Space)")))
     }
 }
 
