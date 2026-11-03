@@ -19,6 +19,8 @@ pub mod dock;
 /// Public API item.
 pub mod document_viewer;
 /// Public API item.
+pub mod drag_drop;
+/// Public API item.
 pub mod drawer;
 /// Public API item.
 pub mod flyout;
@@ -70,6 +72,7 @@ pub use data_table::{
 pub use dialog::{Dialog, DialogAction};
 pub use dock::{DockPanel, DockPosition};
 pub use document_viewer::{DocumentViewer, RichDocument, RichDocumentBlock, RichTextRun};
+pub use drag_drop::{drag_source, drop_target, is_payload, DragOperation, DragPayload, DropPolicy};
 pub use drawer::{Drawer, DrawerMode, DrawerPosition, DrawerSize};
 pub use flyout::{Flyout, FlyoutPlacement};
 pub use menu_bar::{MenuBar, MenuItemDef};
