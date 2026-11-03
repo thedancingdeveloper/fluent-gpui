@@ -6,7 +6,7 @@
 //! family can be checked in every variant without leaving the page.
 
 use fluent_core::gpui::{
-    div, prelude::*, AnyElement, AnyView, Context, Entity, IntoElement, Render, Window,
+    div, prelude::*, AnyElement, AnyView, Context, Entity, FocusHandle, IntoElement, Render, Window,
 };
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_layout::{
@@ -112,7 +112,17 @@ impl Render for ExpanderPage {
 
 /// Small contract demo: the source and target are intentionally generic so
 /// this page exercises the same API an application uses for pane actions.
-pub struct DragDropPage;
+pub struct DragDropPage {
+    focus_handle: FocusHandle,
+}
+
+impl DragDropPage {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        Self {
+            focus_handle: cx.focus_handle().tab_stop(true),
+        }
+    }
+}
 
 struct DragGhost;
 
@@ -126,6 +136,7 @@ impl Render for DragDropPage {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let source = drag_source(
             div().p_3().bg(cx.theme().colors.surface_dim),
+            "gallery-drag-source",
             1_u32,
             |_value, _offset, _window, cx| cx.new(|_| DragGhost),
         );
@@ -134,6 +145,9 @@ impl Render for DragDropPage {
                 .p_3()
                 .border_1()
                 .border_color(cx.theme().colors.stroke_neutral_subtle),
+            "gallery-drop-target",
+            self.focus_handle.clone(),
+            cx.theme().colors.focus_ring,
             DropPolicy::new(|value: &u32| *value == 1),
             |_value, operation: DragOperation, _window, _cx| {
                 let _ = operation;
