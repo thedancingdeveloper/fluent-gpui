@@ -107,7 +107,7 @@ jobs:
       - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a
       - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25
         with:
-          command: advisories
+          command: check advisories
       - uses: taiki-e/install-action@97888a140839b7239d62fbf6af4e20adb5be3666
         with:
           tool: cargo-audit
