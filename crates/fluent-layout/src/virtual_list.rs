@@ -35,6 +35,7 @@ pub struct VirtualList {
 }
 
 impl VirtualList {
+    /// Public API item.
     pub fn new(
         id: impl Into<ElementId>,
         count: usize,

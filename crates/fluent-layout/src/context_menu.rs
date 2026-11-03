@@ -12,36 +12,60 @@ pub use crate::menu_tree::is_context_menu_key;
 
 #[allow(clippy::type_complexity)]
 #[derive(Clone)]
+/// Public API item.
 pub enum ContextMenuItem {
+    /// Public API item.
     Action {
+        /// Public API item.
         label: SharedString,
+        /// Public API item.
         shortcut: Option<SharedString>,
+        /// Public API item.
         icon: Option<SharedString>,
+        /// Public API item.
         disabled: bool,
+        /// Public API item.
         on_click: Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>,
     },
+    /// Public API item.
     Checkbox {
+        /// Public API item.
         label: SharedString,
+        /// Public API item.
         checked: bool,
+        /// Public API item.
         disabled: bool,
+        /// Public API item.
         on_click: Arc<dyn Fn(bool, &ClickEvent, &mut Window, &mut App) + 'static>,
     },
+    /// Public API item.
     Radio {
+        /// Public API item.
         label: SharedString,
+        /// Public API item.
         selected: bool,
+        /// Public API item.
         disabled: bool,
+        /// Public API item.
         on_click: Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>,
     },
+    /// Public API item.
     Submenu {
+        /// Public API item.
         label: SharedString,
+        /// Public API item.
         icon: Option<SharedString>,
+        /// Public API item.
         disabled: bool,
+        /// Public API item.
         items: Vec<ContextMenuItem>,
     },
+    /// Public API item.
     Separator,
 }
 
 impl ContextMenuItem {
+    /// Public API item.
     pub fn action(
         label: impl Into<SharedString>,
         on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -55,6 +79,7 @@ impl ContextMenuItem {
         }
     }
 
+    /// Public API item.
     pub fn action_with_icon(
         label: impl Into<SharedString>,
         icon: impl Into<SharedString>,
@@ -69,6 +94,7 @@ impl ContextMenuItem {
         }
     }
 
+    /// Public API item.
     pub fn checkbox(
         label: impl Into<SharedString>,
         checked: bool,
@@ -82,6 +108,7 @@ impl ContextMenuItem {
         }
     }
 
+    /// Public API item.
     pub fn radio(
         label: impl Into<SharedString>,
         selected: bool,
@@ -95,6 +122,7 @@ impl ContextMenuItem {
         }
     }
 
+    /// Public API item.
     pub fn submenu(label: impl Into<SharedString>, items: Vec<ContextMenuItem>) -> Self {
         Self::Submenu {
             label: label.into(),
@@ -104,6 +132,7 @@ impl ContextMenuItem {
         }
     }
 
+    /// Public API item.
     pub fn shortcut(self, shortcut: impl Into<SharedString>) -> Self {
         match self {
             Self::Action {
@@ -123,6 +152,7 @@ impl ContextMenuItem {
         }
     }
 
+    /// Public API item.
     pub fn disabled(self, disabled: bool) -> Self {
         match self {
             Self::Action {
@@ -172,6 +202,7 @@ impl ContextMenuItem {
         }
     }
 
+    /// Public API item.
     pub fn separator() -> Self {
         Self::Separator
     }
@@ -231,9 +262,13 @@ pub fn context_menu_key_target(
         )
 }
 
+/// Public API item.
 pub struct ContextMenu {
+    /// Public API item.
     pub items: Vec<ContextMenuItem>,
+    /// Public API item.
     pub position: Point<gpui::Pixels>,
+    /// Public API item.
     pub open: bool,
     closing: bool,
     motion_epoch: u64,
@@ -244,6 +279,7 @@ pub struct ContextMenu {
 }
 
 impl ContextMenu {
+    /// Public API item.
     pub fn build(position: Point<gpui::Pixels>) -> Self {
         Self {
             items: vec![],
@@ -258,16 +294,19 @@ impl ContextMenu {
         }
     }
 
+    /// Public API item.
     pub fn item(mut self, item: ContextMenuItem) -> Self {
         self.items.push(item);
         self
     }
 
+    /// Public API item.
     pub fn separator(mut self) -> Self {
         self.items.push(ContextMenuItem::Separator);
         self
     }
 
+    /// Public API item.
     pub fn action(
         self,
         label: impl Into<SharedString>,
@@ -276,6 +315,7 @@ impl ContextMenu {
         self.item(ContextMenuItem::action(label, on_click))
     }
 
+    /// Public API item.
     pub fn action_with_icon(
         self,
         label: impl Into<SharedString>,
@@ -285,6 +325,7 @@ impl ContextMenu {
         self.item(ContextMenuItem::action_with_icon(label, icon, on_click))
     }
 
+    /// Public API item.
     pub fn checkbox(
         self,
         label: impl Into<SharedString>,
@@ -294,6 +335,7 @@ impl ContextMenu {
         self.item(ContextMenuItem::checkbox(label, checked, on_click))
     }
 
+    /// Public API item.
     pub fn radio(
         self,
         label: impl Into<SharedString>,
@@ -303,10 +345,12 @@ impl ContextMenu {
         self.item(ContextMenuItem::radio(label, selected, on_click))
     }
 
+    /// Public API item.
     pub fn submenu(self, label: impl Into<SharedString>, items: Vec<ContextMenuItem>) -> Self {
         self.item(ContextMenuItem::submenu(label, items))
     }
 
+    /// Public API item.
     pub fn close(&mut self, cx: &mut Context<Self>) {
         if !self.open || self.closing {
             return;

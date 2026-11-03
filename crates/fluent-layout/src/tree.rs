@@ -42,19 +42,30 @@ struct TreeRenderState {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum TreeCheckState {
     #[default]
+    /// Public API item.
     Unchecked,
+    /// Public API item.
     Checked,
+    /// Public API item.
     Mixed,
 }
 
 #[derive(Clone, Debug)]
+/// Public API item.
 pub struct TreeItem {
+    /// Public API item.
     pub id: SharedString,
+    /// Public API item.
     pub label: SharedString,
+    /// Public API item.
     pub icon: Option<SharedString>,
+    /// Public API item.
     pub badge: Option<SharedString>,
+    /// Public API item.
     pub expanded: bool,
+    /// Public API item.
     pub disabled: bool,
+    /// Public API item.
     pub children: Vec<TreeItem>,
     checkable: bool,
     checked: bool,
@@ -65,6 +76,7 @@ pub struct TreeItem {
 }
 
 impl TreeItem {
+    /// Public API item.
     pub fn new(id: impl Into<SharedString>, label: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -81,26 +93,31 @@ impl TreeItem {
         }
     }
 
+    /// Public API item.
     pub fn icon(mut self, icon: impl Into<SharedString>) -> Self {
         self.icon = Some(icon.into());
         self
     }
 
+    /// Public API item.
     pub fn badge(mut self, badge: impl Into<SharedString>) -> Self {
         self.badge = Some(badge.into());
         self
     }
 
+    /// Public API item.
     pub fn expanded(mut self, expanded: bool) -> Self {
         self.expanded = expanded;
         self
     }
 
+    /// Public API item.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Public API item.
     pub fn child(mut self, child: TreeItem) -> Self {
         self.children.push(child);
         self
@@ -261,6 +278,7 @@ impl Tree {
         }
     }
 
+    /// Public API item.
     pub fn new() -> Self {
         Self {
             items: Vec::new(),
@@ -282,21 +300,25 @@ impl Tree {
         self
     }
 
+    /// Public API item.
     pub fn item(mut self, item: TreeItem) -> Self {
         self.items.push(item);
         self
     }
 
+    /// Public API item.
     pub fn items(mut self, items: impl IntoIterator<Item = TreeItem>) -> Self {
         self.items = items.into_iter().collect();
         self
     }
 
+    /// Public API item.
     pub fn selected(mut self, id: impl Into<SharedString>) -> Self {
         self.selected_id = Some(id.into());
         self
     }
 
+    /// Public API item.
     pub fn filter(mut self, query: impl Into<SharedString>) -> Self {
         let query = query.into();
         if !query.is_empty() {
@@ -305,6 +327,7 @@ impl Tree {
         self
     }
 
+    /// Public API item.
     pub fn on_select(
         mut self,
         f: impl Fn(SharedString, &ClickEvent, &mut Window, &mut App) + 'static,
@@ -313,6 +336,7 @@ impl Tree {
         self
     }
 
+    /// Public API item.
     pub fn on_activate(
         mut self,
         f: impl Fn(SharedString, &ClickEvent, &mut Window, &mut App) + 'static,
@@ -321,6 +345,7 @@ impl Tree {
         self
     }
 
+    /// Public API item.
     pub fn on_toggle(
         mut self,
         f: impl Fn(SharedString, bool, &ClickEvent, &mut Window, &mut App) + 'static,
@@ -329,6 +354,7 @@ impl Tree {
         self
     }
 
+    /// Public API item.
     pub fn on_context_menu(
         mut self,
         f: impl Fn(SharedString, &MouseDownEvent, &mut Window, &mut App) + 'static,

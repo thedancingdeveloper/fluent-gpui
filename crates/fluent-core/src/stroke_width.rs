@@ -9,8 +9,11 @@
 /// | `thickest` | 3px | Strong emphasis and high-contrast strokes |
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StrokeWidthTokens {
+    /// Public API item.
     pub thin: f32,
+    /// Public API item.
     pub thick: f32,
+    /// Public API item.
     pub thickest: f32,
 }
 

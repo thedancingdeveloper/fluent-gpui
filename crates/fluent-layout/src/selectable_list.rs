@@ -15,28 +15,44 @@ type ListContextHandler =
     Arc<dyn Fn(SharedString, &MouseDownEvent, &mut Window, &mut App) + 'static>;
 
 #[derive(Clone, Debug, Default)]
+/// Public API item.
 pub enum SelectableListState {
     #[default]
+    /// Public API item.
     Ready,
+    /// Public API item.
     Loading(SharedString),
+    /// Public API item.
     Empty(SharedString),
+    /// Public API item.
     Error(SharedString),
 }
 
 #[derive(Clone, Debug)]
+/// Public API item.
 pub struct SelectableListItem {
+    /// Public API item.
     pub id: SharedString,
+    /// Public API item.
     pub title: SharedString,
+    /// Public API item.
     pub subtitle: Option<SharedString>,
+    /// Public API item.
     pub detail: Option<SharedString>,
+    /// Public API item.
     pub meta: Option<SharedString>,
+    /// Public API item.
     pub badge: Option<SharedString>,
+    /// Public API item.
     pub icon: Option<SharedString>,
+    /// Public API item.
     pub disabled: bool,
+    /// Public API item.
     pub emphasized: bool,
 }
 
 impl SelectableListItem {
+    /// Public API item.
     pub fn new(id: impl Into<SharedString>, title: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -51,36 +67,43 @@ impl SelectableListItem {
         }
     }
 
+    /// Public API item.
     pub fn subtitle(mut self, subtitle: impl Into<SharedString>) -> Self {
         self.subtitle = Some(subtitle.into());
         self
     }
 
+    /// Public API item.
     pub fn detail(mut self, detail: impl Into<SharedString>) -> Self {
         self.detail = Some(detail.into());
         self
     }
 
+    /// Public API item.
     pub fn meta(mut self, meta: impl Into<SharedString>) -> Self {
         self.meta = Some(meta.into());
         self
     }
 
+    /// Public API item.
     pub fn badge(mut self, badge: impl Into<SharedString>) -> Self {
         self.badge = Some(badge.into());
         self
     }
 
+    /// Public API item.
     pub fn icon(mut self, icon: impl Into<SharedString>) -> Self {
         self.icon = Some(icon.into());
         self
     }
 
+    /// Public API item.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Public API item.
     pub fn emphasized(mut self, emphasized: bool) -> Self {
         self.emphasized = emphasized;
         self
@@ -116,6 +139,7 @@ pub struct SelectableList {
 }
 
 impl SelectableList {
+    /// Public API item.
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
@@ -134,11 +158,13 @@ impl SelectableList {
         }
     }
 
+    /// Public API item.
     pub fn item(mut self, item: SelectableListItem) -> Self {
         self.items.push(item);
         self
     }
 
+    /// Public API item.
     pub fn items(mut self, items: impl IntoIterator<Item = SelectableListItem>) -> Self {
         self.items = items.into_iter().collect();
         self
@@ -169,51 +195,61 @@ impl SelectableList {
         self
     }
 
+    /// Public API item.
     pub fn state(mut self, state: SelectableListState) -> Self {
         self.state = state;
         self
     }
 
+    /// Public API item.
     pub fn loading(mut self, message: impl Into<SharedString>) -> Self {
         self.state = SelectableListState::Loading(message.into());
         self
     }
 
+    /// Public API item.
     pub fn empty_message(mut self, message: impl Into<SharedString>) -> Self {
         self.state = SelectableListState::Empty(message.into());
         self
     }
 
+    /// Public API item.
     pub fn empty_text(mut self, message: impl Into<SharedString>) -> Self {
         self.empty_text = message.into();
         self
     }
 
+    /// Public API item.
     pub fn error_message(mut self, message: impl Into<SharedString>) -> Self {
         self.state = SelectableListState::Error(message.into());
         self
     }
 
+    /// Public API item.
     pub fn selected(mut self, id: impl Into<SharedString>) -> Self {
         self.selected_id = Some(id.into());
         self
     }
 
+    /// Public API item.
     pub fn row_height(mut self, height: f32) -> Self {
         self.row_height = height.max(32.0);
         self
     }
 
+    /// Public API item.
     pub fn max_body_height(mut self, height: f32) -> Self {
         self.max_body_height = Some(height.max(32.0));
         self
     }
 
+    /// Public API item.
     pub fn on_select(mut self, f: impl Fn(SharedString, &mut Window, &mut App) + 'static) -> Self {
         self.on_select = Some(Arc::new(f));
         self
     }
 
+    /// Public API item.
     pub fn on_activate(
         mut self,
         f: impl Fn(SharedString, &ClickEvent, &mut Window, &mut App) + 'static,
@@ -222,6 +258,7 @@ impl SelectableList {
         self
     }
 
+    /// Public API item.
     pub fn on_context_menu(
         mut self,
         f: impl Fn(SharedString, &MouseDownEvent, &mut Window, &mut App) + 'static,

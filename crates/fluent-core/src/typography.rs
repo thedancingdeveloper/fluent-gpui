@@ -4,8 +4,11 @@
 /// `weight` follows CSS font-weight conventions (400 = Regular, 600 = SemiBold, 700 = Bold).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeRamp {
+    /// Public API item.
     pub size: f32,
+    /// Public API item.
     pub line_height: f32,
+    /// Public API item.
     pub weight: u32,
 }
 
@@ -22,10 +25,15 @@ pub struct TypeRamp {
 /// | `display`  | 28px | 36px        | 700    |
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypographyTokens {
+    /// Public API item.
     pub caption: TypeRamp,
+    /// Public API item.
     pub body: TypeRamp,
+    /// Public API item.
     pub subtitle: TypeRamp,
+    /// Public API item.
     pub title: TypeRamp,
+    /// Public API item.
     pub display: TypeRamp,
 }
 

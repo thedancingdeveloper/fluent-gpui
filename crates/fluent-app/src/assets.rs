@@ -67,6 +67,7 @@ pub struct FluentAssets {
 }
 
 impl FluentAssets {
+    /// Public API item.
     pub fn new(fallback: Option<Arc<dyn AssetSource>>) -> Self {
         Self { fallback }
     }

@@ -11,7 +11,9 @@ const DIVIDER_SIZE: f32 = 5.0;
 /// Direction for a pane split.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SplitAxis {
+    /// Public API item.
     Horizontal,
+    /// Public API item.
     Vertical,
 }
 
@@ -22,9 +24,13 @@ pub enum SplitAxis {
 /// same type for navigation/details or editor/preview splits.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PaneConstraints {
+    /// Public API item.
     pub first_min: f32,
+    /// Public API item.
     pub second_min: f32,
+    /// Public API item.
     pub first_max: Option<f32>,
+    /// Public API item.
     pub second_max: Option<f32>,
 }
 
@@ -40,25 +46,30 @@ impl Default for PaneConstraints {
 }
 
 impl PaneConstraints {
+    /// Public API item.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Public API item.
     pub fn first_min(mut self, px: f32) -> Self {
         self.first_min = px.max(0.0);
         self
     }
 
+    /// Public API item.
     pub fn second_min(mut self, px: f32) -> Self {
         self.second_min = px.max(0.0);
         self
     }
 
+    /// Public API item.
     pub fn first_max(mut self, px: impl Into<Option<f32>>) -> Self {
         self.first_max = px.into().map(|px| px.max(0.0));
         self
     }
 
+    /// Public API item.
     pub fn second_max(mut self, px: impl Into<Option<f32>>) -> Self {
         self.second_max = px.into().map(|px| px.max(0.0));
         self
@@ -72,16 +83,23 @@ impl PaneConstraints {
 /// applied as layout min/max constraints when rendering.
 #[allow(clippy::type_complexity)]
 pub struct PaneGroup {
+    /// Public API item.
     pub axis: SplitAxis,
+    /// Public API item.
     pub first: Option<AnyView>,
+    /// Public API item.
     pub second: Option<AnyView>,
+    /// Public API item.
     pub ratio: f32,
+    /// Public API item.
     pub constraints: PaneConstraints,
+    /// Public API item.
     pub on_resize: Option<Box<dyn Fn(f32, &mut App) + 'static>>,
     drag_start: Option<(f32, f32)>,
     observing_theme: bool,
 }
 
+/// Public API item.
 pub type ResizablePanelGroup = PaneGroup;
 
 impl Default for PaneGroup {
@@ -108,6 +126,7 @@ impl Render for PaneSplitDrag {
 }
 
 impl PaneGroup {
+    /// Public API item.
     pub fn horizontal() -> Self {
         Self {
             axis: SplitAxis::Horizontal,
@@ -115,6 +134,7 @@ impl PaneGroup {
         }
     }
 
+    /// Public API item.
     pub fn vertical() -> Self {
         Self {
             axis: SplitAxis::Vertical,
@@ -122,69 +142,83 @@ impl PaneGroup {
         }
     }
 
+    /// Public API item.
     pub fn first(mut self, view: AnyView) -> Self {
         self.first = Some(view);
         self
     }
 
+    /// Public API item.
     pub fn second(mut self, view: AnyView) -> Self {
         self.second = Some(view);
         self
     }
 
+    /// Public API item.
     pub fn ratio(mut self, ratio: f32) -> Self {
         self.ratio = clamp_ratio_without_extent(ratio);
         self
     }
 
+    /// Public API item.
     pub fn constraints(mut self, constraints: PaneConstraints) -> Self {
         self.constraints = constraints;
         self
     }
 
+    /// Public API item.
     pub fn min_first(mut self, px: f32) -> Self {
         self.constraints.first_min = px.max(0.0);
         self
     }
 
+    /// Public API item.
     pub fn min_second(mut self, px: f32) -> Self {
         self.constraints.second_min = px.max(0.0);
         self
     }
 
+    /// Public API item.
     pub fn max_first(mut self, px: impl Into<Option<f32>>) -> Self {
         self.constraints.first_max = px.into().map(|px| px.max(0.0));
         self
     }
 
+    /// Public API item.
     pub fn max_second(mut self, px: impl Into<Option<f32>>) -> Self {
         self.constraints.second_max = px.into().map(|px| px.max(0.0));
         self
     }
 
+    /// Public API item.
     pub fn on_resize(mut self, f: impl Fn(f32, &mut App) + 'static) -> Self {
         self.on_resize = Some(Box::new(f));
         self
     }
 
+    /// Public API item.
     pub fn ratio_value(&self) -> f32 {
         self.ratio
     }
 
+    /// Public API item.
     pub fn set_first(&mut self, view: AnyView, cx: &mut Context<Self>) {
         self.first = Some(view);
         cx.notify();
     }
 
+    /// Public API item.
     pub fn set_second(&mut self, view: AnyView, cx: &mut Context<Self>) {
         self.second = Some(view);
         cx.notify();
     }
 
+    /// Public API item.
     pub fn set_ratio(&mut self, ratio: f32, cx: &mut Context<Self>) {
         self.apply_ratio(ratio, None, cx);
     }
 
+    /// Public API item.
     pub fn set_constraints(&mut self, constraints: PaneConstraints, cx: &mut Context<Self>) {
         self.constraints = constraints;
         self.apply_ratio(self.ratio, None, cx);

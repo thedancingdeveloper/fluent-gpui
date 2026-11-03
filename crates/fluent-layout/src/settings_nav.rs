@@ -13,12 +13,16 @@ use gpui::{
 /// A single item in a `SettingsNav` section.
 #[derive(Clone, Debug)]
 pub struct SettingsNavItem {
+    /// Public API item.
     pub id: SharedString,
+    /// Public API item.
     pub label: SharedString,
+    /// Public API item.
     pub icon: Option<SharedString>,
 }
 
 impl SettingsNavItem {
+    /// Public API item.
     pub fn new(id: impl Into<SharedString>, label: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -27,6 +31,7 @@ impl SettingsNavItem {
         }
     }
 
+    /// Public API item.
     pub fn icon(mut self, icon: impl Into<SharedString>) -> Self {
         self.icon = Some(icon.into());
         self
@@ -36,12 +41,16 @@ impl SettingsNavItem {
 /// A collapsible section in a `SettingsNav`.
 #[derive(Clone, Debug)]
 pub struct SettingsNavSection {
+    /// Public API item.
     pub title: SharedString,
+    /// Public API item.
     pub items: Vec<SettingsNavItem>,
+    /// Public API item.
     pub expanded: bool,
 }
 
 impl SettingsNavSection {
+    /// Public API item.
     pub fn new(title: impl Into<SharedString>) -> Self {
         Self {
             title: title.into(),
@@ -50,11 +59,13 @@ impl SettingsNavSection {
         }
     }
 
+    /// Public API item.
     pub fn item(mut self, item: SettingsNavItem) -> Self {
         self.items.push(item);
         self
     }
 
+    /// Public API item.
     pub fn collapsed(mut self) -> Self {
         self.expanded = false;
         self
@@ -84,12 +95,16 @@ impl SettingsNavSection {
 /// ```
 #[allow(clippy::type_complexity)]
 pub struct SettingsNav {
+    /// Public API item.
     pub sections: Vec<SettingsNavSection>,
+    /// Public API item.
     pub active_id: Option<SharedString>,
+    /// Public API item.
     pub on_select: Option<Arc<dyn Fn(SharedString, &mut App) + 'static>>,
 }
 
 impl SettingsNav {
+    /// Public API item.
     pub fn new(cx: &mut Context<Self>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
         Self {
@@ -99,6 +114,7 @@ impl SettingsNav {
         }
     }
 
+    /// Public API item.
     pub fn section(mut self, section: SettingsNavSection) -> Self {
         if self.active_id.is_none() {
             if let Some(first) = section.items.first() {
@@ -109,16 +125,19 @@ impl SettingsNav {
         self
     }
 
+    /// Public API item.
     pub fn active(mut self, id: impl Into<SharedString>) -> Self {
         self.active_id = Some(id.into());
         self
     }
 
+    /// Public API item.
     pub fn on_select(mut self, f: impl Fn(SharedString, &mut App) + 'static) -> Self {
         self.on_select = Some(Arc::new(f));
         self
     }
 
+    /// Public API item.
     pub fn set_active(&mut self, id: SharedString, cx: &mut Context<Self>) {
         self.active_id = Some(id);
         cx.notify();

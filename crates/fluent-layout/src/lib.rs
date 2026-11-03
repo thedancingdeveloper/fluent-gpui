@@ -1,31 +1,59 @@
+//! Public API for this crate.
+#![deny(missing_docs)]
+
+/// Public API item.
 pub mod breadcrumb;
+/// Public API item.
 pub mod command;
+/// Public API item.
 pub mod command_palette;
+/// Public API item.
 pub mod context_menu;
 pub mod data_status;
+/// Public API item.
 pub mod data_table;
+/// Public API item.
 pub mod dialog;
+/// Public API item.
 pub mod dock;
+/// Public API item.
 pub mod document_viewer;
+/// Public API item.
 pub mod drawer;
+/// Public API item.
 pub mod flyout;
+/// Public API item.
 pub mod menu_bar;
+/// Public API item.
 pub mod menu_button;
 mod menu_tree;
+/// Public API item.
 pub mod message_bar;
+/// Public API item.
 pub mod modal;
 pub mod nav;
+/// Public API item.
 pub mod pane;
+/// Public API item.
 pub mod pane_group;
+/// Public API item.
 pub mod popover;
 mod roving;
+/// Public API item.
 pub mod selectable_list;
+/// Public API item.
 pub mod settings_nav;
+/// Public API item.
 pub mod tab_strip;
+/// Public API item.
 pub mod toast;
+/// Public API item.
 pub mod toolbar;
+/// Public API item.
 pub mod tree;
+/// Public API item.
 pub mod virtual_list;
+/// Public API item.
 pub mod workspace;
 
 pub use breadcrumb::{Breadcrumb, BreadcrumbItem, Pagination};

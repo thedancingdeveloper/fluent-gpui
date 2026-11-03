@@ -4,11 +4,17 @@
 /// Values are in logical pixels (DIPs).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SpacingTokens {
-    pub xs: f32,  // 2.0
-    pub sm: f32,  // 4.0
-    pub md: f32,  // 8.0
-    pub lg: f32,  // 12.0
-    pub xl: f32,  // 16.0
+    /// Public API item.
+    pub xs: f32, // 2.0
+    /// Public API item.
+    pub sm: f32, // 4.0
+    /// Public API item.
+    pub md: f32, // 8.0
+    /// Public API item.
+    pub lg: f32, // 12.0
+    /// Public API item.
+    pub xl: f32, // 16.0
+    /// Public API item.
     pub xxl: f32, // 24.0
 }
 

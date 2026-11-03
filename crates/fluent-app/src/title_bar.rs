@@ -16,14 +16,18 @@ const DOUBLE_CLICK_WINDOW_MS: u64 = 350;
 /// window controls (min/max/close) on the right. Enable frameless mode with
 /// `TitlebarOptions { appears_transparent: true }` + `WindowDecorations::Client`.
 pub struct TitleBar {
+    /// Public API item.
     pub title: SharedString,
+    /// Public API item.
     pub icon: Option<SharedString>,
+    /// Public API item.
     pub show_controls: bool,
     follow_window_title: bool,
     last_press_ms: u64,
 }
 
 impl TitleBar {
+    /// Public API item.
     pub fn new(cx: &mut Context<Self>, title: impl Into<SharedString>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
         cx.observe_global::<LayoutDirection>(|_, cx| cx.notify())
@@ -39,6 +43,7 @@ impl TitleBar {
         }
     }
 
+    /// Public API item.
     pub fn from_window_title(cx: &mut Context<Self>) -> Self {
         let title = cx
             .try_global::<WindowTitle>()
@@ -48,17 +53,20 @@ impl TitleBar {
         Self::new(cx, title).follow_window_title(true)
     }
 
+    /// Public API item.
     pub fn set_title(&mut self, title: impl Into<SharedString>, cx: &mut Context<Self>) {
         self.title = title.into();
         self.follow_window_title = false;
         cx.notify();
     }
 
+    /// Public API item.
     pub fn show_controls(mut self, show: bool) -> Self {
         self.show_controls = show;
         self
     }
 
+    /// Public API item.
     pub fn follow_window_title(mut self, follow: bool) -> Self {
         self.follow_window_title = follow;
         self

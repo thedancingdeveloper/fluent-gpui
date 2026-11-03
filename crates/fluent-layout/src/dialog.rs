@@ -18,6 +18,7 @@ pub struct Dialog {
 
 #[derive(Clone)]
 #[allow(clippy::type_complexity)]
+/// Public API item.
 pub struct DialogAction {
     label: SharedString,
     primary: bool,
@@ -25,6 +26,7 @@ pub struct DialogAction {
 }
 
 impl DialogAction {
+    /// Public API item.
     pub fn new(
         label: impl Into<SharedString>,
         on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -36,6 +38,7 @@ impl DialogAction {
         }
     }
 
+    /// Public API item.
     pub fn primary(mut self, primary: bool) -> Self {
         self.primary = primary;
         self
@@ -43,6 +46,7 @@ impl DialogAction {
 }
 
 impl Dialog {
+    /// Public API item.
     pub fn new(title: impl Into<SharedString>) -> Self {
         Self {
             title: title.into(),
@@ -52,21 +56,25 @@ impl Dialog {
         }
     }
 
+    /// Public API item.
     pub fn body(mut self, body: impl IntoElement) -> Self {
         self.body = Some(body.into_any_element());
         self
     }
 
+    /// Public API item.
     pub fn action(mut self, action: DialogAction) -> Self {
         self.actions.push(action);
         self
     }
 
+    /// Public API item.
     pub fn dismissible(mut self, dismissible: bool) -> Self {
         self.dismissible = dismissible;
         self
     }
 
+    /// Public API item.
     pub fn show(self, size: ModalSize, cx: &mut App) {
         let dismissible = self.dismissible;
         let entity = cx.new(|_| DialogView { dialog: self });

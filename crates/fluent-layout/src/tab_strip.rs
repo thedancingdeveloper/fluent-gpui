@@ -11,12 +11,16 @@ use gpui::{
 pub struct TabItem {
     /// Stable identifier for the tab (used to key close/select events).
     pub id: SharedString,
+    /// Public API item.
     pub label: SharedString,
+    /// Public API item.
     pub icon: Option<SharedString>,
+    /// Public API item.
     pub closable: bool,
 }
 
 impl TabItem {
+    /// Public API item.
     pub fn new(id: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -26,16 +30,19 @@ impl TabItem {
         }
     }
 
+    /// Public API item.
     pub fn label(mut self, label: impl Into<SharedString>) -> Self {
         self.label = label.into();
         self
     }
 
+    /// Public API item.
     pub fn icon(mut self, path: impl Into<SharedString>) -> Self {
         self.icon = Some(path.into());
         self
     }
 
+    /// Public API item.
     pub fn closable(mut self, closable: bool) -> Self {
         self.closable = closable;
         self
@@ -46,7 +53,9 @@ impl TabItem {
 #[allow(clippy::type_complexity)]
 #[derive(Default)]
 pub struct TabStrip {
+    /// Public API item.
     pub tabs: Vec<TabItem>,
+    /// Public API item.
     pub active: usize,
     focus_handles: Vec<FocusHandle>,
     on_select: Option<Arc<dyn Fn(usize, &TabStrip, &mut Window, &mut Context<Self>) + 'static>>,
@@ -54,6 +63,7 @@ pub struct TabStrip {
 }
 
 impl TabStrip {
+    /// Public API item.
     pub fn new(cx: &mut Context<Self>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
         cx.observe_global::<LayoutDirection>(|_, cx| cx.notify())
@@ -61,10 +71,12 @@ impl TabStrip {
         Self::default()
     }
 
+    /// Public API item.
     pub fn add_tab(&mut self, tab: TabItem) {
         self.tabs.push(tab);
     }
 
+    /// Public API item.
     pub fn remove_tab(&mut self, idx: usize) {
         if idx < self.tabs.len() {
             self.tabs.remove(idx);
@@ -76,6 +88,7 @@ impl TabStrip {
         }
     }
 
+    /// Public API item.
     pub fn on_select(
         mut self,
         f: impl Fn(usize, &TabStrip, &mut Window, &mut Context<Self>) + 'static,
@@ -84,6 +97,7 @@ impl TabStrip {
         self
     }
 
+    /// Public API item.
     pub fn on_close(
         mut self,
         f: impl Fn(usize, &TabStrip, &mut Window, &mut Context<Self>) + 'static,

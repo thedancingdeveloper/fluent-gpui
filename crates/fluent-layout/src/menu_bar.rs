@@ -11,8 +11,11 @@ use crate::context_menu::ContextMenuItem;
 use crate::menu_tree::{self, MenuRenderEnv};
 
 #[derive(Clone)]
+/// Public API item.
 pub struct MenuDef {
+    /// Public API item.
     pub label: SharedString,
+    /// Public API item.
     pub items: Vec<ContextMenuItem>,
 }
 
@@ -23,6 +26,7 @@ pub struct MenuDef {
 pub struct MenuItemDef;
 
 impl MenuItemDef {
+    /// Public API item.
     pub fn action(
         label: impl Into<SharedString>,
         on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -30,6 +34,7 @@ impl MenuItemDef {
         ContextMenuItem::action(label, on_click)
     }
 
+    /// Public API item.
     pub fn action_with_shortcut(
         label: impl Into<SharedString>,
         shortcut: impl Into<SharedString>,
@@ -38,6 +43,7 @@ impl MenuItemDef {
         ContextMenuItem::action(label, on_click).shortcut(shortcut)
     }
 
+    /// Public API item.
     pub fn action_with_icon(
         label: impl Into<SharedString>,
         icon: impl Into<SharedString>,
@@ -46,6 +52,7 @@ impl MenuItemDef {
         ContextMenuItem::action_with_icon(label, icon, on_click)
     }
 
+    /// Public API item.
     pub fn checkbox(
         label: impl Into<SharedString>,
         checked: bool,
@@ -54,6 +61,7 @@ impl MenuItemDef {
         ContextMenuItem::checkbox(label, checked, on_click)
     }
 
+    /// Public API item.
     pub fn radio(
         label: impl Into<SharedString>,
         selected: bool,
@@ -62,10 +70,12 @@ impl MenuItemDef {
         ContextMenuItem::radio(label, selected, on_click)
     }
 
+    /// Public API item.
     pub fn submenu(label: impl Into<SharedString>, items: Vec<ContextMenuItem>) -> ContextMenuItem {
         ContextMenuItem::submenu(label, items)
     }
 
+    /// Public API item.
     pub fn separator() -> ContextMenuItem {
         ContextMenuItem::Separator
     }
@@ -77,7 +87,9 @@ impl MenuItemDef {
 /// `ContextMenu`, including actions, checkbox/radio state, disabled rows,
 /// separators, and cascaded submenus.
 pub struct MenuBar {
+    /// Public API item.
     pub menus: Vec<MenuDef>,
+    /// Public API item.
     pub open_index: Option<usize>,
     closing: bool,
     motion_epoch: u64,
@@ -92,6 +104,7 @@ pub struct MenuBar {
 }
 
 impl MenuBar {
+    /// Public API item.
     pub fn new(cx: &mut Context<Self>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
 
@@ -203,6 +216,7 @@ impl MenuBar {
         }
     }
 
+    /// Public API item.
     pub fn menu(mut self, label: impl Into<SharedString>, items: Vec<ContextMenuItem>) -> Self {
         self.menus.push(MenuDef {
             label: label.into(),

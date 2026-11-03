@@ -32,6 +32,7 @@ pub struct MenuButton {
 }
 
 impl MenuButton {
+    /// Public API item.
     pub fn new(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
@@ -51,30 +52,36 @@ impl MenuButton {
         }
     }
 
+    /// Public API item.
     pub fn icon(mut self, icon: impl Into<SharedString>) -> Self {
         self.icon = Some(icon.into());
         self
     }
 
+    /// Public API item.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
+    /// Public API item.
     pub fn item(mut self, item: ContextMenuItem) -> Self {
         self.items.push(item);
         self
     }
 
+    /// Public API item.
     pub fn items(mut self, items: impl IntoIterator<Item = ContextMenuItem>) -> Self {
         self.items = items.into_iter().collect();
         self
     }
 
+    /// Public API item.
     pub fn separator(self) -> Self {
         self.item(ContextMenuItem::Separator)
     }
 
+    /// Public API item.
     pub fn action(
         self,
         label: impl Into<SharedString>,

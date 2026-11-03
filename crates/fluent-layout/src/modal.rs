@@ -45,6 +45,7 @@ pub struct ModalStack {
 impl Global for ModalStack {}
 
 impl ModalStack {
+    /// Public API item.
     pub fn init(cx: &mut gpui::App) {
         cx.set_global(ModalStack { entries: vec![] });
     }
@@ -74,6 +75,7 @@ impl ModalStack {
         cx.global_mut::<ModalStack>().entries.pop();
     }
 
+    /// Public API item.
     pub fn is_empty(cx: &gpui::App) -> bool {
         cx.global::<ModalStack>().entries.is_empty()
     }
@@ -95,6 +97,7 @@ pub struct ModalHost {
 }
 
 impl ModalHost {
+    /// Public API item.
     pub fn new(cx: &mut Context<Self>) -> Self {
         cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
         cx.observe_global::<ModalStack>(|_, cx| cx.notify())
@@ -219,9 +222,13 @@ impl Render for ModalHost {
 /// A generic yes/no confirmation modal.
 #[allow(clippy::type_complexity)]
 pub struct ConfirmModal {
+    /// Public API item.
     pub title: SharedString,
+    /// Public API item.
     pub message: SharedString,
+    /// Public API item.
     pub confirm_label: SharedString,
+    /// Public API item.
     pub cancel_label: SharedString,
     on_confirm: Option<Box<dyn Fn(&mut gpui::App) + 'static>>,
     on_cancel: Option<Box<dyn Fn(&mut gpui::App) + 'static>>,
@@ -229,12 +236,16 @@ pub struct ConfirmModal {
 
 /// A persistent informational modal with a single dismiss action.
 pub struct MessageDialog {
+    /// Public API item.
     pub title: SharedString,
+    /// Public API item.
     pub message: SharedString,
+    /// Public API item.
     pub dismiss_label: SharedString,
 }
 
 impl MessageDialog {
+    /// Public API item.
     pub fn new(title: impl Into<SharedString>, message: impl Into<SharedString>) -> Self {
         Self {
             title: title.into(),
@@ -243,11 +254,13 @@ impl MessageDialog {
         }
     }
 
+    /// Public API item.
     pub fn dismiss_label(mut self, label: impl Into<SharedString>) -> Self {
         self.dismiss_label = label.into();
         self
     }
 
+    /// Public API item.
     pub fn show(self, size: ModalSize, cx: &mut gpui::App) -> Entity<Self> {
         let entity = cx.new(|_| self);
         ModalStack::push(entity.clone().into(), size, cx);
@@ -361,6 +374,7 @@ impl Render for MessageDialog {
 }
 
 impl ConfirmModal {
+    /// Public API item.
     pub fn new(title: impl Into<SharedString>, message: impl Into<SharedString>) -> Self {
         Self {
             title: title.into(),
@@ -372,21 +386,25 @@ impl ConfirmModal {
         }
     }
 
+    /// Public API item.
     pub fn confirm_label(mut self, label: impl Into<SharedString>) -> Self {
         self.confirm_label = label.into();
         self
     }
 
+    /// Public API item.
     pub fn cancel_label(mut self, label: impl Into<SharedString>) -> Self {
         self.cancel_label = label.into();
         self
     }
 
+    /// Public API item.
     pub fn on_confirm(mut self, f: impl Fn(&mut gpui::App) + 'static) -> Self {
         self.on_confirm = Some(Box::new(f));
         self
     }
 
+    /// Public API item.
     pub fn on_cancel(mut self, f: impl Fn(&mut gpui::App) + 'static) -> Self {
         self.on_cancel = Some(Box::new(f));
         self

@@ -4,20 +4,25 @@ use gpui::{
 };
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
+/// Public API item.
 pub struct RichDocument {
+    /// Public API item.
     pub blocks: Vec<RichDocumentBlock>,
 }
 
 impl RichDocument {
+    /// Public API item.
     pub fn new() -> Self {
         Self { blocks: Vec::new() }
     }
 
+    /// Public API item.
     pub fn block(mut self, block: RichDocumentBlock) -> Self {
         self.blocks.push(block);
         self
     }
 
+    /// Public API item.
     pub fn from_plain_text(text: impl AsRef<str>) -> Self {
         let blocks = text
             .as_ref()
@@ -32,10 +37,12 @@ impl RichDocument {
         Self { blocks }
     }
 
+    /// Public API item.
     pub fn from_html_fragment_lossy(html: impl AsRef<str>) -> Self {
         HtmlDocumentBuilder::parse(html.as_ref())
     }
 
+    /// Public API item.
     pub fn to_plain_text(&self) -> String {
         let mut lines = Vec::new();
         for block in &self.blocks {
@@ -69,33 +76,52 @@ impl RichDocument {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// Public API item.
 pub enum RichDocumentBlock {
+    /// Public API item.
     Heading {
+        /// Public API item.
         level: u8,
+        /// Public API item.
         runs: Vec<RichTextRun>,
     },
+    /// Public API item.
     Paragraph(Vec<RichTextRun>),
+    /// Public API item.
     Preformatted(Vec<RichTextRun>),
+    /// Public API item.
     Table {
+        /// Public API item.
         rows: Vec<Vec<SharedString>>,
     },
+    /// Public API item.
     Image {
+        /// Public API item.
         alt: SharedString,
+        /// Public API item.
         src: SharedString,
     },
+    /// Public API item.
     Divider,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// Public API item.
 pub struct RichTextRun {
+    /// Public API item.
     pub text: SharedString,
+    /// Public API item.
     pub strong: bool,
+    /// Public API item.
     pub emphasis: bool,
+    /// Public API item.
     pub code: bool,
+    /// Public API item.
     pub link: Option<SharedString>,
 }
 
 impl RichTextRun {
+    /// Public API item.
     pub fn new(text: impl Into<SharedString>) -> Self {
         Self {
             text: text.into(),
@@ -106,21 +132,25 @@ impl RichTextRun {
         }
     }
 
+    /// Public API item.
     pub fn strong(mut self, strong: bool) -> Self {
         self.strong = strong;
         self
     }
 
+    /// Public API item.
     pub fn emphasis(mut self, emphasis: bool) -> Self {
         self.emphasis = emphasis;
         self
     }
 
+    /// Public API item.
     pub fn code(mut self, code: bool) -> Self {
         self.code = code;
         self
     }
 
+    /// Public API item.
     pub fn link(mut self, href: impl Into<SharedString>) -> Self {
         self.link = Some(href.into());
         self
@@ -138,6 +168,7 @@ pub struct DocumentViewer {
 }
 
 impl DocumentViewer {
+    /// Public API item.
     pub fn new(document: RichDocument) -> Self {
         Self {
             document,
@@ -146,19 +177,23 @@ impl DocumentViewer {
         }
     }
 
+    /// Public API item.
     pub fn plain_text(text: impl AsRef<str>) -> Self {
         Self::new(RichDocument::from_plain_text(text))
     }
 
+    /// Public API item.
     pub fn html_fragment(html: impl AsRef<str>) -> Self {
         Self::new(RichDocument::from_html_fragment_lossy(html))
     }
 
+    /// Public API item.
     pub fn empty_message(mut self, message: impl Into<SharedString>) -> Self {
         self.empty_message = message.into();
         self
     }
 
+    /// Public API item.
     pub fn max_height(mut self, height: f32) -> Self {
         self.max_height = Some(height.max(64.0));
         self
