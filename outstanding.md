@@ -32,13 +32,13 @@ The data contract is tightly packed RGBA8 matching the allocation size. Ids are 
 
 | Platform/backend | Status | Notes |
 |------------------|--------|-------|
-| Linux / wgpu (`gpui_wgpu`) | Applied (WI-1348), not runtime-validated | Standalone `Rgba8Unorm` texture per id; `video_frame` pass |
+| Linux / wgpu (`gpui_wgpu`) | Basic Wayland software-renderer validation; hardware validation outstanding | Generated video example rendered under headless sway/software GL (WI-1438); alpha, lifecycle/leak, X11, and AMD Vulkan remain unverified |
 | Windows / DirectX (`gpui_windows`) | Applied (WI-1434), **unverified on Windows** | Checked with `cargo check`/`clippy` for the Windows GNU target on Linux only; HLSL not compiled, not run |
 | GPUI test platform | Unsupported by design | Test platform returns unsupported for video texture allocation |
 
 ### Validation Example
 
-`vendor/zed/crates/gpui/examples/video_frame.rs` (patch `video-frames`). It has not been run on a GPU in this repository's records.
+`vendor/zed/crates/gpui/examples/video_frame.rs` (patch `video-frames`). It rendered under headless Wayland/software GL in WI-1438; it has not been run on a hardware GPU in this repository's records.
 
 ### Remaining VideoFrame Work
 
@@ -52,7 +52,7 @@ The data contract is tightly packed RGBA8 matching the allocation size. Ids are 
 
 ## Backdrop Blur Backend Support
 
-Status: **not yet re-applied (WI-1349)**. `gpui::backdrop_blur(radius, tint)` as a `Background` variant is not present in the vendored `gpui`. The earlier implementation is not carried into `gpui_wgpu` or `gpui_windows`.
+Status: **re-applied, runtime validation incomplete (WI-1349)**. `gpui::backdrop_blur(radius, tint)` is present in the vendored `gpui` and the wgpu renderer. WI-1438's headless demo run did not exercise a real blur surface, so overlapping-surface visuals and hardware performance remain unverified.
 
 The earlier design, to be re-applied:
 
@@ -65,17 +65,16 @@ The earlier design, to be re-applied:
 
 | Platform/backend | Status | Notes |
 |------------------|--------|-------|
-| Linux / wgpu (`gpui_wgpu`) | Not yet re-applied (WI-1349) | Main target; the renderer is rewritten on `gpui_wgpu` |
-| Windows / DirectX (`gpui_windows`) | Not yet re-applied (WI-1349) | Needs the Windows fallback or equivalent blur |
+| Linux / wgpu (`gpui_wgpu`) | Applied, not visually validated on hardware | Headless Wayland smoke passed, but the demo used only the blur-layer colour token |
+| Windows / DirectX (`gpui_windows`) | Applied fallback, not runtime-validated | Requires a Windows runtime lane |
 | Web | Not implemented | Web backend itself is future work |
 
 ### Remaining Backdrop Blur Work
 
-1. Re-apply the `Background` API and rewrite the renderer on `gpui_wgpu` (WI-1349).
-2. Implement the Windows fallback (WI-1349).
-3. Validate visual output on Linux with overlapping translucent surfaces.
-4. Measure performance cost with multiple blur surfaces in a real app.
-5. Document fallback guidance for FluentGUI consumers before advertising blur as cross-platform.
+1. Validate visual output on Linux with overlapping translucent surfaces.
+2. Measure performance cost with multiple blur surfaces in a real app.
+3. Validate the Windows fallback on Windows hardware.
+4. Document fallback guidance for FluentGUI consumers before advertising blur as cross-platform.
 
 ---
 
