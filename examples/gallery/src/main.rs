@@ -63,7 +63,7 @@ fn main() {
         let input_page = cx.new(|_| families::InputPage { capture });
 
         let expander_page = cx.new(|_| families::ExpanderPage);
-        let drag_drop_page = cx.new(|_| families::DragDropPage);
+        let drag_drop_page = cx.new(families::DragDropPage::new);
         let grouped_list_page = cx.new(|_| families::GroupedListPage);
         let family_host = cx.new(|_| {
             FamilyHost::new(DemoViews {
