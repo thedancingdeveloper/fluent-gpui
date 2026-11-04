@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::ops::Range;
 
 use fluent_core::{Theme, ThemeProvider as _};
@@ -856,7 +857,7 @@ impl Render for TextInput {
             .border_1()
             .border_color(indicator)
             .bg(bg)
-            .text_size(px(typography.body.size))
+            .text_ramp(&typography.body)
             .line_height(px(typography.body.line_height))
             .text_color(colors.on_neutral)
             .child(

@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::{
     ColorScheme, ComponentTokens, RadiiTokens, SpacingTokens, Theme, ThemeProvider as _,
     TypographyTokens,
@@ -239,7 +240,7 @@ impl RibbonBar {
                     )
                     .child(
                         div()
-                            .text_size(px(typography.caption.size))
+                            .text_ramp(&typography.caption)
                             .text_color(fg)
                             .child(label.clone()),
                     )
@@ -294,7 +295,7 @@ impl RibbonBar {
                     })
                     .child(
                         div()
-                            .text_size(px(typography.caption.size))
+                            .text_ramp(&typography.caption)
                             .text_color(fg)
                             .child(label.clone()),
                     )
@@ -399,7 +400,7 @@ impl RibbonBar {
                     )
                     .child(
                         div()
-                            .text_size(px(typography.caption.size))
+                            .text_ramp(&typography.caption)
                             .text_color(fg)
                             .child(label.clone()),
                     )
@@ -465,7 +466,7 @@ impl RibbonBar {
             .flex()
             .items_center()
             .justify_center()
-            .text_size(px(typography.caption.size))
+            .text_ramp(&typography.caption)
             .text_color(label_fg)
             .child(group.name.clone());
 
@@ -664,7 +665,7 @@ impl Render for RibbonBar {
                     } else {
                         FontWeight::NORMAL
                     })
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .text_color(on_neutral)
                     .on_click(handler)
                     .child(name)
@@ -739,7 +740,7 @@ impl Render for RibbonBar {
                         } else {
                             FontWeight::NORMAL
                         })
-                        .text_size(px(typography.body.size))
+                        .text_ramp(&typography.body)
                         .text_color(fg)
                         .on_click(handler)
                         .child(name)
@@ -780,7 +781,7 @@ impl Render for RibbonBar {
                         .aria_label(SharedString::from(format!("Last command: {label}")))
                         .self_center()
                         .px(px(spacing.sm))
-                        .text_size(px(typography.caption.size))
+                        .text_ramp(&typography.caption)
                         .text_color(colors.on_subtle_disabled)
                         .child(label),
                 )
@@ -925,7 +926,7 @@ impl Render for RibbonBar {
                         )
                         .child(
                             div()
-                                .text_size(px(typography.caption.size))
+                                .text_ramp(&typography.caption)
                                 .text_color(on_neutral)
                                 .child("More"),
                         ),

@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::sync::Arc;
 
 use fluent_core::{Theme, ThemeProvider as _};
@@ -207,7 +208,7 @@ impl Render for SettingsNav {
                     .child(
                         div()
                             .flex_1()
-                            .text_size(px(typography.body.size))
+                            .text_ramp(&typography.body)
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(on_neutral)
                             .child(section_title),
@@ -263,7 +264,7 @@ impl Render for SettingsNav {
                         div()
                             .flex_1()
                             .pl(px(components.settings_nav_item_indent))
-                            .text_size(px(typography.body.size))
+                            .text_ramp(&typography.body)
                             .font_weight(if is_active {
                                 FontWeight::SEMIBOLD
                             } else {

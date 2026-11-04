@@ -1,5 +1,6 @@
 //! Fluent 2 side navigation with categories, nested groups, and roving focus.
 
+use fluent_core::TextRampExt;
 use std::sync::Arc;
 
 use fluent_core::{Theme, ThemeProvider as _};
@@ -411,7 +412,7 @@ fn render_item(
         row = row.child(
             div()
                 .flex_1()
-                .text_size(px(typography.body.size))
+                .text_ramp(&typography.body)
                 .text_color(if active {
                     colors.on_neutral
                 } else {

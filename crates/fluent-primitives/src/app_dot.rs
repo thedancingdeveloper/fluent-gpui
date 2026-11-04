@@ -80,6 +80,7 @@ impl RenderOnce for AppDot {
             .text_color(gpui::white())
             .font_weight(FontWeight::BOLD)
             .text_size(px(text_size))
+            .line_height(px(text_size.round()))
             .child(self.letter)
     }
 }

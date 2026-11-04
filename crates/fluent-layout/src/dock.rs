@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use gpui::{
     div, prelude::*, px, svg, AnyView, ClickEvent, Context, CursorStyle, DragMoveEvent, FontWeight,
@@ -146,7 +147,7 @@ impl Render for DockPanel {
             .child(
                 div()
                     .flex_1()
-                    .text_size(px(typography.caption.size))
+                    .text_ramp(&typography.caption)
                     .font_weight(FontWeight::SEMIBOLD)
                     .text_color(on_neutral)
                     .child(title),

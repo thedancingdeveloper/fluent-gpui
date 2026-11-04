@@ -31,7 +31,7 @@ pub use theme::{
     Brightness, LayoutDirection, LayoutDirectionProvider, Theme, ThemeMode, ThemeProvider,
 };
 pub use truncate::TruncateExt;
-pub use typography::{TypeRamp, TypographyTokens};
+pub use typography::{TextRampExt, TypeRamp, TypographyTokens};
 
 #[cfg(test)]
 mod tests {

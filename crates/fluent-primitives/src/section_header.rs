@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, AnyElement, App, FontWeight, IntoElement, RenderOnce, SharedString, Window,
@@ -41,7 +42,7 @@ impl RenderOnce for SectionHeader {
             .child(
                 div()
                     .text_color(colors.on_neutral)
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .font_weight(FontWeight::SEMIBOLD)
                     .child(self.title),
             );

@@ -1,4 +1,4 @@
-use fluent_core::{ThemeProvider as _, TruncateExt as _};
+use fluent_core::{TextRampExt as _, ThemeProvider as _, TruncateExt as _};
 use gpui::{
     div, prelude::*, px, svg, App, ClickEvent, IntoElement, RenderOnce, Role, SharedString, Window,
 };
@@ -100,7 +100,7 @@ impl RenderOnce for MessageBar {
         if let Some(title) = self.title {
             text = text.child(
                 div()
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .font_weight(gpui::FontWeight::SEMIBOLD)
                     .text_color(colors.on_neutral)
                     .truncate_label()
@@ -109,7 +109,7 @@ impl RenderOnce for MessageBar {
         }
         text = text.child(
             div()
-                .text_size(px(typography.body.size))
+                .text_ramp(&typography.body)
                 .line_height(px(typography.body.line_height))
                 .text_color(colors.on_subtle)
                 .child(self.message),
@@ -146,7 +146,7 @@ impl RenderOnce for MessageBar {
                     .role(Role::Button)
                     .aria_label(label.clone())
                     .cursor_pointer()
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .font_weight(gpui::FontWeight::SEMIBOLD)
                     .text_color(accent)
                     .hover(move |s| s.bg(hover))

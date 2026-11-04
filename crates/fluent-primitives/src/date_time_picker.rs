@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::sync::{Arc, Mutex};
 
 use fluent_core::{Theme, ThemeProvider as _};
@@ -966,7 +967,7 @@ impl Render for DateTimePicker {
                     .overflow_hidden()
                     .whitespace_nowrap()
                     .text_ellipsis()
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .text_color(fg)
                     .child(label),
             )
@@ -1020,7 +1021,7 @@ impl Render for DateTimePicker {
             if let Some(message) = self.invalid_message.clone() {
                 panel = panel.child(
                     div()
-                        .text_size(px(typography.caption.size))
+                        .text_ramp(&typography.caption)
                         .text_color(colors.status_error)
                         .child(message),
                 );
@@ -1103,7 +1104,7 @@ fn segment_control(
         .w(px(58.0))
         .child(
             div()
-                .text_size(px(typography.caption.size))
+                .text_ramp(&typography.caption)
                 .line_height(px(typography.caption.line_height))
                 .text_color(colors.on_subtle)
                 .child(segment.label()),
@@ -1125,7 +1126,7 @@ fn segment_control(
                 })
                 .border_1()
                 .border_color(border)
-                .text_size(px(typography.body.size))
+                .text_ramp(&typography.body)
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(colors.on_neutral)
                 .cursor(if disabled {
@@ -1174,7 +1175,7 @@ fn segment_step_button(
         .h(px(24.0))
         .rounded(px(radii.sm))
         .bg(colors.subtle)
-        .text_size(px(typography.body.size))
+        .text_ramp(&typography.body)
         .font_weight(FontWeight::SEMIBOLD)
         .text_color(if disabled {
             colors.on_subtle_disabled

@@ -1,4 +1,4 @@
-use fluent_core::{LayoutDirection, Theme, ThemeProvider as _, TruncateExt as _};
+use fluent_core::{LayoutDirection, TextRampExt as _, Theme, ThemeProvider as _, TruncateExt as _};
 use gpui::{
     div, prelude::*, px, svg, ClickEvent, Context, IntoElement, MouseButton, MouseDownEvent,
     Render, SharedString, Window,
@@ -146,7 +146,7 @@ impl Render for TitleBar {
             .gap(px(spacing.sm))
             .when(!rtl, |area| area.pl(px(spacing.md)))
             .when(rtl, |area| area.pr(px(spacing.md)))
-            .text_size(px(typography.caption.size))
+            .text_ramp(&typography.caption)
             .text_color(fg)
             .on_mouse_down(MouseButton::Left, drag_handler);
         if let Some(path) = icon {
@@ -156,7 +156,7 @@ impl Render for TitleBar {
         if let Some(status) = status {
             title_area = title_area.child(
                 div()
-                    .text_size(px(typography.caption.size))
+                    .text_ramp(&typography.caption)
                     .text_color(colors.on_subtle)
                     .child(status),
             );

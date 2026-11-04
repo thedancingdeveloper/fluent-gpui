@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::sync::{Arc, Mutex};
 
 use crate::focus::FluentFocus as _;
@@ -324,7 +325,7 @@ impl Render for Dropdown {
             })
             .border_1()
             .border_color(colors.stroke_neutral)
-            .text_size(px(typography.body.size))
+            .text_ramp(&typography.body)
             .text_color(fg)
             .child(div().flex_1().child(label))
             .child(
@@ -413,7 +414,7 @@ impl Render for Dropdown {
                     .h(px(components.dropdown_option_height))
                     .px(px(spacing.md))
                     .bg(row_bg)
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .text_color(colors.on_neutral);
 
                 if !self.closing {
@@ -442,7 +443,7 @@ impl Render for Dropdown {
                         .px(px(spacing.md))
                         .flex()
                         .items_center()
-                        .text_size(px(typography.body.size))
+                        .text_ramp(&typography.body)
                         .text_color(colors.on_subtle_disabled)
                         .child("No options"),
                 );

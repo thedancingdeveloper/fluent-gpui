@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
     div, prelude::*, px, svg, App, Context, CursorStyle, FocusHandle, Focusable, IntoElement,
@@ -228,7 +229,7 @@ impl Render for Searchbox {
             .child(
                 div()
                     .flex_1()
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .line_height(px(typography.body.line_height))
                     .text_color(fg)
                     .child(text),

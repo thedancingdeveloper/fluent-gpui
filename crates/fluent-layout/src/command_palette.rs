@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::{fmt, rc::Rc};
 
 use fluent_core::{Theme, ThemeProvider as _};
@@ -518,7 +519,7 @@ impl Render for CommandPalette {
                             .px(px(spacing.md))
                             .pt(px(spacing.sm))
                             .pb(px(4.0))
-                            .text_size(px(typography.caption.size))
+                            .text_ramp(&typography.caption)
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(colors.on_subtle)
                             .child(group_label),
@@ -582,7 +583,7 @@ impl Render for CommandPalette {
 
             let mut text_col = div().flex().flex_col().flex_1().child(
                 div()
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .text_color(label_fg)
                     .when(is_selected, |d| d.font_weight(FontWeight::SEMIBOLD))
                     .child(label),
@@ -591,7 +592,7 @@ impl Render for CommandPalette {
             if let Some(sub) = subtitle {
                 text_col = text_col.child(
                     div()
-                        .text_size(px(typography.caption.size))
+                        .text_ramp(&typography.caption)
                         .text_color(sub_fg)
                         .child(sub),
                 );
@@ -606,7 +607,7 @@ impl Render for CommandPalette {
                         .rounded(px(radii.sm))
                         .border_1()
                         .border_color(colors.stroke_neutral_subtle)
-                        .text_size(px(typography.caption.size))
+                        .text_ramp(&typography.caption)
                         .text_color(sub_fg)
                         .child(hint),
                 );
@@ -630,7 +631,7 @@ impl Render for CommandPalette {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .text_color(colors.on_subtle_disabled)
                     .child("No results"),
             );
@@ -665,7 +666,7 @@ impl Render for CommandPalette {
                     .child(
                         div()
                             .flex_1()
-                            .text_size(px(typography.body.size))
+                            .text_ramp(&typography.body)
                             .text_color(input_text_color)
                             .child(query_display),
                     ),
@@ -685,7 +686,7 @@ impl Render for CommandPalette {
                     .border_color(colors.stroke_neutral_subtle)
                     .child(
                         div()
-                            .text_size(px(typography.caption.size))
+                            .text_ramp(&typography.caption)
                             .text_color(colors.on_subtle_disabled)
                             .child("↑↓ navigate · ↵ select · Esc close"),
                     ),

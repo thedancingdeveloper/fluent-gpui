@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
 use gpui::{div, prelude::*, px, App, FontWeight, IntoElement, RenderOnce, SharedString, Window};
 
@@ -89,7 +90,7 @@ impl RenderOnce for Persona {
                 div()
                     .flex()
                     .flex_col()
-                    .text_size(px(ramp.size))
+                    .text_ramp(&ramp)
                     .line_height(px(ramp.line_height))
                     .child(div().font_weight(FontWeight::SEMIBOLD).child(self.primary))
                     .when_some(self.secondary, |this, secondary| {

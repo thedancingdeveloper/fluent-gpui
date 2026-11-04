@@ -1,8 +1,8 @@
 use crate::focus::FluentFocus as _;
-use fluent_core::{ControlStates, NeutralColorStates, ThemeProvider as _};
+use fluent_core::{ControlStates, NeutralColorStates, TextRampExt as _, ThemeProvider as _};
 use gpui::{
-    div, prelude::*, px, App, ClickEvent, ElementId, Hsla, IntoElement, RenderOnce, Role,
-    SharedString, Window,
+    div, prelude::*, px, transparent_black, App, ClickEvent, ElementId, Hsla, IntoElement,
+    RenderOnce, Role, SharedString, Window,
 };
 
 /// Visual style of a `Button`.
@@ -181,7 +181,6 @@ impl RenderOnce for Button {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = cx.theme();
         let colors = &theme.colors;
-        let spacing = &theme.spacing;
         let radii = &theme.radii;
         let typography = &theme.typography;
 
@@ -229,27 +228,28 @@ impl RenderOnce for Button {
             ButtonShape::Circular => px(radii.pill),
         };
 
-        let (height, px_val, font_size, line_height, icon_size) = match self.size {
+        let components = &theme.components;
+        let (height, px_val, gap, ramp, icon_size) = match self.size {
             ButtonSize::Medium => (
-                theme.components.button_medium_height,
-                spacing.md,
-                px(typography.body.size),
-                px(typography.body.line_height),
-                theme.components.button_medium_icon_size,
+                components.button_medium_height,
+                components.button_medium_padding_x,
+                components.button_medium_gap,
+                typography.body,
+                components.button_medium_icon_size,
             ),
             ButtonSize::Small => (
-                theme.components.button_small_height,
-                spacing.sm,
-                px(typography.caption.size),
-                px(typography.caption.line_height),
-                theme.components.button_small_icon_size,
+                components.button_small_height,
+                components.button_small_padding_x,
+                components.button_small_gap,
+                typography.caption,
+                components.button_small_icon_size,
             ),
             ButtonSize::Large => (
-                theme.components.button_large_height,
-                spacing.lg,
-                px(typography.subtitle.size),
-                px(typography.subtitle.line_height),
-                theme.components.button_large_icon_size,
+                components.button_large_height,
+                components.button_large_padding_x,
+                components.button_medium_gap,
+                typography.subtitle,
+                components.button_large_icon_size,
             ),
         };
 
@@ -260,9 +260,10 @@ impl RenderOnce for Button {
         let icon = self.icon;
         let icon_position = self.icon_position;
         let label = self.label;
-        let has_icon = icon.is_some();
 
         let debug_id = self.id.to_string();
+        let icon_debug_id = debug_id.clone();
+        let label_debug_id = debug_id.clone();
         let mut el = div()
             .id(self.id)
             .debug_selector(move || debug_id)
@@ -271,19 +272,18 @@ impl RenderOnce for Button {
             .flex()
             .flex_row()
             .items_center()
-            .when(!has_icon, |d| d.justify_center()) // center text when no icon
-            .gap(px(spacing.sm))
+            .justify_center()
+            .gap(px(gap))
             .h(px(height))
             .px(px(px_val))
             .rounded(radius)
             .bg(bg)
-            .text_size(font_size)
-            .line_height(line_height)
-            .text_color(fg);
-
-        if let Some(border_color) = border {
-            el = el.border_1().border_color(border_color);
-        }
+            .text_ramp(&ramp)
+            .text_color(fg)
+            // Every appearance carries a 1px border (transparent when it has no
+            // outline), so all appearances share one border-box height.
+            .border_1()
+            .border_color(border.unwrap_or_else(transparent_black));
 
         if !disabled {
             el = el
@@ -305,6 +305,7 @@ impl RenderOnce for Button {
         {
             el = el.child(
                 gpui::svg()
+                    .debug_selector(move || format!("{icon_debug_id}-icon"))
                     .path(icon_path.clone())
                     .size(px(icon_size))
                     .text_color(fg),
@@ -312,7 +313,11 @@ impl RenderOnce for Button {
         }
 
         if let Some(text) = label {
-            el = el.child(text);
+            el = el.child(
+                div()
+                    .debug_selector(move || format!("{label_debug_id}-label"))
+                    .child(text),
+            );
         }
 
         if let Some(icon_path) = icon.filter(|_| icon_position == ButtonIconPosition::After) {
@@ -467,7 +472,9 @@ impl RenderOnce for CompoundButton {
 mod tests {
     use std::{cell::Cell, rc::Rc};
 
-    use fluent_test_utils::{assert_a11y_node, open_fluent_test_window, FluentInteractionExt as _};
+    use fluent_test_utils::{
+        assert_a11y_node, init_fluent_test, open_fluent_test_window, FluentInteractionExt as _,
+    };
     use gpui::{Context, InputEvent as _, KeyUpEvent, Keystroke, Render, TestAppContext};
 
     use super::*;
@@ -548,6 +555,100 @@ mod tests {
     ) -> Vec<String> {
         let (_, cx) = open_fluent_test_window(cx, move |_, _| A11yHost(Box::new(build)));
         cx.accessibility_snapshot()
+    }
+
+    const APPEARANCES: [ButtonAppearance; 5] = [
+        ButtonAppearance::Primary,
+        ButtonAppearance::Secondary,
+        ButtonAppearance::Outline,
+        ButtonAppearance::Subtle,
+        ButtonAppearance::Transparent,
+    ];
+
+    #[gpui::test]
+    fn every_appearance_and_size_has_the_same_height(cx: &mut TestAppContext) {
+        let (_, vcx) = open_fluent_test_window(cx, |_, _| {
+            A11yHost(Box::new(|| {
+                let mut col = div().flex().flex_col().w(px(400.));
+                for (i, appearance) in APPEARANCES.into_iter().enumerate() {
+                    for (j, size) in [ButtonSize::Small, ButtonSize::Medium, ButtonSize::Large]
+                        .into_iter()
+                        .enumerate()
+                    {
+                        col = col.child(
+                            Button::new(format!("b-{i}-{j}"))
+                                .label("Save")
+                                .appearance(appearance)
+                                .size(size),
+                        );
+                    }
+                }
+                col.into_any_element()
+            }))
+        });
+        vcx.update(|window, app| window.draw(app).clear(app));
+        let tokens = vcx.update(|_, app| app.theme().components);
+        let expected = [
+            tokens.button_small_height,
+            tokens.button_medium_height,
+            tokens.button_large_height,
+        ];
+        for i in 0..APPEARANCES.len() {
+            for (j, want) in expected.into_iter().enumerate() {
+                let bounds = vcx
+                    .selector_bounds(Box::leak(format!("b-{i}-{j}").into_boxed_str()))
+                    .expect("button laid out");
+                assert_eq!(
+                    f32::from(bounds.size.height),
+                    want,
+                    "appearance {i} size {j}"
+                );
+            }
+        }
+    }
+
+    #[gpui::test]
+    fn icon_and_label_are_centred_when_stretched(cx: &mut TestAppContext) {
+        let (_, vcx) = open_fluent_test_window(cx, |_, _| {
+            A11yHost(Box::new(|| {
+                div()
+                    .flex()
+                    .flex_col()
+                    .w(px(300.))
+                    .child(Button::new("ic").label("Save").icon("icons/none.svg"))
+                    .into_any_element()
+            }))
+        });
+        vcx.update(|window, app| window.draw(app).clear(app));
+        let button = vcx.selector_bounds("ic").expect("button");
+        let icon = vcx.selector_bounds("ic-icon").expect("icon");
+        let label = vcx.selector_bounds("ic-label").expect("label");
+        assert_eq!(f32::from(button.size.width), 300.0);
+        let left = f32::from(icon.origin.x - button.origin.x);
+        let right = f32::from(button.right() - label.right());
+        assert!(
+            (left - right).abs() <= 1.0,
+            "content not centred: {left} left vs {right} right"
+        );
+    }
+
+    #[gpui::test]
+    fn text_ramp_line_boxes_are_whole_pixels(cx: &mut TestAppContext) {
+        init_fluent_test(cx);
+        let typography = cx.update(|app| app.theme().typography);
+        for ramp in [
+            typography.caption,
+            typography.body,
+            typography.subtitle,
+            typography.title,
+            typography.display,
+        ] {
+            let line = f32::from(ramp.line_height_px());
+            let size = f32::from(ramp.font_size_px());
+            assert_eq!(line.fract(), 0.0, "{ramp:?}");
+            assert_eq!(size.fract(), 0.0, "{ramp:?}");
+            assert!(line >= size, "{ramp:?}");
+        }
     }
 
     #[gpui::test]

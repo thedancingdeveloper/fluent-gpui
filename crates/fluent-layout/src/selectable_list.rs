@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::{rc::Rc, sync::Arc};
 
 use fluent_core::ThemeProvider as _;
@@ -445,7 +446,7 @@ fn status_panel(
         .flex()
         .items_center()
         .justify_center()
-        .text_size(px(typography.body.size))
+        .text_ramp(&typography.body)
         .text_color(color)
         .child(message)
 }
@@ -565,7 +566,7 @@ fn render_row(
                 .overflow_hidden()
                 .whitespace_nowrap()
                 .text_ellipsis()
-                .text_size(px(typography.body.size))
+                .text_ramp(&typography.body)
                 .font_weight(if item.emphasized {
                     FontWeight::SEMIBOLD
                 } else {
@@ -590,7 +591,7 @@ fn render_row(
                 .overflow_hidden()
                 .when(!variable_height, |d| d.whitespace_nowrap().text_ellipsis())
                 .py(px(if variable_height { 4.0 } else { 0.0 }))
-                .text_size(px(typography.caption.size))
+                .text_ramp(&typography.caption)
                 .text_color(if item.disabled {
                     colors.on_neutral_disabled
                 } else {
@@ -606,7 +607,7 @@ fn render_row(
         row = row.child(
             div()
                 .flex_none()
-                .text_size(px(typography.caption.size))
+                .text_ramp(&typography.caption)
                 .text_color(colors.on_subtle)
                 .child(meta),
         );

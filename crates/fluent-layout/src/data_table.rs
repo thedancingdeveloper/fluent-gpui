@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::sync::Arc;
 
 use crate::{
@@ -568,7 +569,7 @@ impl RenderOnce for DataTable {
                 .items_center()
                 .gap(px(spacing.xs))
                 .px(px(spacing.md))
-                .text_size(px(typography.caption.size))
+                .text_ramp(&typography.caption)
                 .font_weight(gpui::FontWeight::SEMIBOLD)
                 .text_color(colors.on_subtle)
                 .border_r_1()
@@ -672,7 +673,7 @@ impl RenderOnce for DataTable {
                     .when(align == DataCellAlign::End, |d| d.justify_end())
                     .px(px(spacing_for_rows.md))
                     .py(px(spacing_for_rows.xs))
-                    .text_size(px(typography_for_rows.body.size))
+                    .text_ramp(&typography_for_rows.body)
                     .text_color(colors_for_rows.on_neutral)
                     .border_r_1()
                     .border_color(colors_for_rows.stroke_neutral_subtle)

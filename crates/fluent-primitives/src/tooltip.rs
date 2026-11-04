@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
 use gpui::{div, prelude::*, px, App, IntoElement, Render, RenderOnce, SharedString, Window};
 
@@ -44,7 +45,7 @@ impl Render for TooltipBubble {
             .border_1()
             .border_color(colors.stroke_neutral_dim)
             .shadow_md()
-            .text_size(px(typography.caption.size))
+            .text_ramp(&typography.caption)
             .text_color(colors.on_neutral)
             .child(self.text.clone())
     }

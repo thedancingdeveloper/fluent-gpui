@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::{
     ColorScheme, ComponentTokens, RadiiTokens, SpacingTokens, Theme, TypographyTokens,
 };
@@ -319,7 +320,7 @@ pub(crate) fn row_base(
         } else {
             env.colors.surface
         })
-        .text_size(px(env.typography.body.size))
+        .text_ramp(&env.typography.body)
         .text_color(fg)
 }
 

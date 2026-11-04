@@ -17,6 +17,17 @@ pub struct ComponentTokens {
     pub button_medium_icon_size: f32,
     /// Public API item.
     pub button_large_icon_size: f32,
+    /// Fluent 2 button horizontal padding for small, medium, and large controls.
+    /// Padding sits inside the control's border-box height.
+    pub button_small_padding_x: f32,
+    /// Public API item.
+    pub button_medium_padding_x: f32,
+    /// Public API item.
+    pub button_large_padding_x: f32,
+    /// Fluent 2 gap between a button's icon and label (small, then medium/large).
+    pub button_small_gap: f32,
+    /// Public API item.
+    pub button_medium_gap: f32,
     /// Public API item.
     pub menu_bar_height: f32,
     /// Public API item.
@@ -90,6 +101,11 @@ impl Default for ComponentTokens {
             button_small_icon_size: 12.0,
             button_medium_icon_size: 16.0,
             button_large_icon_size: 20.0,
+            button_small_padding_x: 8.0,
+            button_medium_padding_x: 12.0,
+            button_large_padding_x: 16.0,
+            button_small_gap: 4.0,
+            button_medium_gap: 8.0,
             menu_bar_height: 28.0,
             menu_item_height: 28.0,
             menu_min_width: 200.0,

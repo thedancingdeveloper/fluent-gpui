@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use fluent_core::{Theme, ThemeMode};
+use fluent_core::{TextRampExt as _, Theme, ThemeMode, ThemeProvider as _};
 use fluent_layout::{modal::ModalStack, ToastStack};
 use gpui::{
-    prelude::*, px, size, App, AssetSource, Bounds, Context, Entity, IntoElement, Render,
+    div, prelude::*, px, size, App, AssetSource, Bounds, Context, Entity, IntoElement, Render,
     SharedString, TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions,
 };
 
@@ -55,7 +55,13 @@ impl<V: Render + 'static> Render for ThemeRoot<V> {
             }
         }
 
-        self.content.clone()
+        // Root text style: body ramp with a whole-pixel line height, so text that
+        // sets no line height of its own does not inherit gpui's 1.618x default.
+        let body = cx.theme().typography.body;
+        div()
+            .size_full()
+            .text_ramp(&body)
+            .child(self.content.clone())
     }
 }
 

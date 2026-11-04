@@ -135,10 +135,25 @@ impl RenderOnce for Tag {
             TagAppearance::Danger => (c.status_error_bg, c.status_error),
             TagAppearance::Neutral => (c.neutral, c.on_neutral),
         };
-        let (pxv, pyv, fs) = match self.size {
-            TagSize::Small => (6., 2., t.typography.caption.size),
-            TagSize::Medium => (8., 4., t.typography.body.size),
-            TagSize::Large => (10., 6., t.typography.body.size + 1.),
+        let (pxv, pyv, fs, lh) = match self.size {
+            TagSize::Small => (
+                6.,
+                2.,
+                t.typography.caption.size,
+                t.typography.caption.line_height,
+            ),
+            TagSize::Medium => (
+                8.,
+                4.,
+                t.typography.body.size,
+                t.typography.body.line_height,
+            ),
+            TagSize::Large => (
+                10.,
+                6.,
+                t.typography.body.size + 1.,
+                t.typography.body.line_height,
+            ),
         };
         let radius = match self.shape {
             TagShape::Circular => t.radii.pill,
@@ -157,7 +172,8 @@ impl RenderOnce for Tag {
             .py(px(pyv))
             .rounded(px(radius))
             .bg(if selected { c.neutral_selected } else { bg })
-            .text_size(px(fs))
+            .text_size(px(fs.round()))
+            .line_height(px(lh.round()))
             .text_color(if disabled { c.on_neutral_disabled } else { fg })
             .child(self.label);
         if !disabled && (select.is_some() || self.dismissible) {

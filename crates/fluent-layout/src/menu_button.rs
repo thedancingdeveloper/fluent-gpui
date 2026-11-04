@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::sync::{Arc, Mutex};
 
 use fluent_core::{Theme, ThemeProvider as _};
@@ -348,7 +349,7 @@ impl MenuButton {
                             div()
                                 .flex_none()
                                 .pl(px(env.spacing.xl))
-                                .text_size(px(env.typography.caption.size))
+                                .text_ramp(&env.typography.caption)
                                 .text_color(env.colors.on_subtle_disabled)
                                 .child(shortcut),
                         );
@@ -643,7 +644,7 @@ impl Render for MenuButton {
             } else {
                 colors.stroke_neutral
             })
-            .text_size(px(typography.body.size))
+            .text_ramp(&typography.body)
             .text_color(fg)
             .child(measure_trigger);
 

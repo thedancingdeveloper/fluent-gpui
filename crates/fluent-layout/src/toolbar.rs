@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::sync::Arc;
 
 use fluent_core::ThemeProvider as _;
@@ -264,7 +265,7 @@ impl Toolbar {
                     .h(px(components.dock_header_height))
                     .px(px(spacing.sm))
                     .rounded(px(radii.sm))
-                    .text_size(px(typography.caption.size))
+                    .text_ramp(&typography.caption)
                     .text_color(fg)
                     .child(match icon {
                         Some(icon) => svg()
@@ -330,7 +331,7 @@ impl Toolbar {
                     .px(px(spacing.sm))
                     .rounded(px(radii.sm))
                     .bg(bg)
-                    .text_size(px(typography.caption.size))
+                    .text_ramp(&typography.caption)
                     .text_color(fg)
                     .child(match icon {
                         Some(icon) => svg()
@@ -444,7 +445,7 @@ impl RenderOnce for Toolbar {
                 .h(px(components.dock_header_height))
                 .px(px(spacing.sm))
                 .rounded(px(radii.sm))
-                .text_size(px(typography.caption.size))
+                .text_ramp(&typography.caption)
                 .text_color(colors.on_neutral)
                 .cursor_pointer()
                 .hover({

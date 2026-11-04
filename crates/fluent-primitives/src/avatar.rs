@@ -78,6 +78,7 @@ impl RenderOnce for Avatar {
             base.bg(gradient_from_hue(hue))
                 .text_color(gpui::white())
                 .text_size(px(text_size))
+                .line_height(px(text_size.round()))
                 .font_weight(FontWeight::BOLD)
                 .child(initials)
         } else if let Some(path) = self.image_path {
