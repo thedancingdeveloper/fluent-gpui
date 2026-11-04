@@ -155,8 +155,8 @@ impl RenderOnce for CounterBadge {
         };
 
         div()
-            .min_w(px(18.0))
-            .h(px(18.0))
+            .min_w(px(20.0))
+            .h(px(20.0))
             .px(px(4.0))
             .rounded(px(radii.pill))
             .when(!ghost, |this| this.bg(colors.accent))
@@ -169,6 +169,7 @@ impl RenderOnce for CounterBadge {
             .items_center()
             .justify_center()
             .text_ramp(&typography.caption)
+            .text_size(px(12.0))
             .text_color(if ghost {
                 colors.accent
             } else {
@@ -229,8 +230,8 @@ impl RenderOnce for Badge {
                     n.to_string()
                 };
                 div()
-                    .min_w(px(18.0))
-                    .h(px(18.0))
+                    .min_w(px(20.0))
+                    .h(px(20.0))
                     .px(px(4.0))
                     .rounded(px(radii.pill))
                     .bg(colors.accent)
@@ -238,6 +239,7 @@ impl RenderOnce for Badge {
                     .items_center()
                     .justify_center()
                     .text_ramp(&typography.caption)
+                    .text_size(px(12.0))
                     .text_color(colors.on_accent)
                     .child(label)
             }
