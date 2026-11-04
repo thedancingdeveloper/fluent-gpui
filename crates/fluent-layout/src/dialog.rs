@@ -201,6 +201,7 @@ impl RenderOnce for Dialog {
             root = root.child(body);
         }
 
-        root.child(actions)
+        let motion = cx.theme().motion();
+        fluent_core::popup_motion_surface("dialog-motion", false, motion, root.child(actions))
     }
 }

@@ -1,7 +1,7 @@
 use crate::focus::FluentFocus as _;
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, Role, SharedString,
+    div, ease_out_quint, prelude::*, px, Animation, AnimationExt as _, App, ClickEvent, ElementId, IntoElement, RenderOnce, Role, SharedString,
     Toggled, Window,
 };
 
@@ -106,7 +106,8 @@ impl RenderOnce for Switch {
         let label = self.label;
 
         // Fluent 2: 40x20 track, 12px knob, 4px inset from the outer edge (3px inside the 1px border)
-        let thumb_ml = if self.on { px(23.0) } else { px(3.0) };
+        let (from_ml, to_ml) = if self.on { (3.0, 23.0) } else { (23.0, 3.0) };
+        let motion = theme.motion();
 
         let debug_id = self.id.to_string();
         let mut el = div()
@@ -143,9 +144,14 @@ impl RenderOnce for Switch {
             div()
                 .absolute()
                 .size(px(12.0))
-                .ml(thumb_ml)
+                .ml(px(to_ml))
                 .rounded(px(9999.0))
-                .bg(thumb_color),
+                .bg(thumb_color)
+                .with_animation(
+                    ElementId::from(("switch-thumb", on as u64)),
+                    Animation::new(motion.popup_enter_duration()).with_easing(ease_out_quint()),
+                    move |thumb, delta| thumb.ml(px(from_ml + (to_ml - from_ml) * delta)),
+                ),
         )
     }
 }
