@@ -12,6 +12,10 @@ per crate.
 
 ## Unreleased
 
+## v3.2.0+zed.ba63a022c9a2 — 2026-11-04
+
+Workspace release. Includes `VideoSurface` (3.1.0), the AccessKit tree snapshot test helper and the `test-a11y-activation` vendor patch (headless test-window AccessKit activation) that rdpapp-fluent needs. Crate versions are unchanged, as in v3.1.0; consumers pin the tag.
+
 - fluent-primitives: deny missing public API documentation and document every exported control and supporting type (WI-2945).
 
 - docs: document DPI scaling conversion and resize behavior across Windows DirectX, Linux X11, and Linux Wayland, with native-run evidence requirements (WI-3061).
