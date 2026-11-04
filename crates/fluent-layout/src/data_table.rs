@@ -618,7 +618,7 @@ impl RenderOnce for DataTable {
         let colors_for_rows = colors.clone();
         let spacing_for_rows = spacing;
         let typography_for_rows = typography;
-        let row_height = components.menu_item_height;
+        let row_height = components.list_item_height;
         let build_row = move |idx: usize, _window: &mut Window, _cx: &mut App| {
             let row = rows[idx].clone();
             let is_selected = selected_id.as_ref() == Some(&row.id);
@@ -691,7 +691,7 @@ impl RenderOnce for DataTable {
         }
         body = body.child(
             VirtualList::new("data-table-virtual-list", count, build_row)
-                .row_height(components.menu_item_height)
+                .row_height(components.list_item_height)
                 .reveal(selected_index),
         );
         root.child(body)
