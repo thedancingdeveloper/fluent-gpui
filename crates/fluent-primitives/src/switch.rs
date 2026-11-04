@@ -86,6 +86,11 @@ impl RenderOnce for Switch {
         } else {
             colors.stroke_neutral
         };
+        let (track_hover, track_pressed) = if self.on {
+            (colors.accent_hover, colors.accent_selected)
+        } else {
+            (colors.neutral_hover, colors.neutral_selected)
+        };
         let thumb_color = if self.on {
             colors.on_accent
         } else {
@@ -125,7 +130,9 @@ impl RenderOnce for Switch {
                 .focusable()
                 .tab_stop(true)
                 .fluent_focus(tab_index, focus_ring)
-                .cursor_pointer();
+                .cursor_pointer()
+                .hover(move |s| s.bg(track_hover))
+                .active(move |s| s.bg(track_pressed));
         }
 
         if let Some(handler) = on_click.filter(|_| !disabled) {
