@@ -719,7 +719,7 @@ impl Element for TextElement {
                 Some(fill(
                     Bounds::new(
                         point(bounds.left() + cursor_pos, bounds.top()),
-                        size(px(1.5), bounds.bottom() - bounds.top()),
+                        size(px(1.0), bounds.bottom() - bounds.top()),
                     ),
                     colors.accent,
                 )),
