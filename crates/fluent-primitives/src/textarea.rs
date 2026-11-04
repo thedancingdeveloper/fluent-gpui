@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
     div, prelude::*, px, App, ClipboardItem, Context, CursorStyle, FocusHandle, Focusable,
@@ -234,7 +235,7 @@ impl Render for Textarea {
             .flex()
             .flex_col()
             .gap(px(spacing.xs))
-            .text_size(px(typography.body.size))
+            .text_ramp(&typography.body)
             .line_height(px(typography.body.line_height))
             .text_color(text_color);
 

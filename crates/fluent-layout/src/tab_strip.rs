@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::sync::Arc;
 
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _, TruncateExt as _};
@@ -222,7 +223,7 @@ impl Render for TabStrip {
                 .flex_none()
                 .bg(tab_bg)
                 .cursor_pointer()
-                .text_size(px(typography.caption.size))
+                .text_ramp(&typography.caption)
                 .text_color(on_neutral)
                 .border_r_1()
                 .border_color(border_c)

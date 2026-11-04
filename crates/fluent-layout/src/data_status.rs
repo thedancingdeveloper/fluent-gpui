@@ -1,5 +1,6 @@
 //! Shared loading, empty, no-results and error states for data-heavy views.
 
+use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
 use gpui::{div, prelude::*, px, App, Role, SharedString};
 
@@ -59,7 +60,7 @@ pub(crate) fn status_block(
         .flex()
         .items_center()
         .justify_center()
-        .text_size(px(theme.typography.body.size))
+        .text_ramp(&theme.typography.body)
         .text_color(color)
         .child(message)
 }

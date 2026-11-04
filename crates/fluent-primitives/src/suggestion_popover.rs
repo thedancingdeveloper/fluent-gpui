@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::sync::Arc;
 
 use fluent_core::ThemeProvider as _;
@@ -328,7 +329,7 @@ impl RenderOnce for SuggestionPopover {
                     .py(px(empty_py))
                     .flex()
                     .items_center()
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .text_color(colors.on_subtle_disabled)
                     .child(self.empty_text),
             );
@@ -394,14 +395,14 @@ impl RenderOnce for SuggestionPopover {
                 let mut title_row = div().flex().items_center().gap(px(spacing.md)).child(
                     div()
                         .flex_1()
-                        .text_size(px(typography.body.size))
+                        .text_ramp(&typography.body)
                         .text_color(text_color)
                         .child(item.label),
                 );
                 if let Some(meta) = meta {
                     title_row = title_row.child(
                         div()
-                            .text_size(px(typography.caption.size))
+                            .text_ramp(&typography.caption)
                             .text_color(colors.on_subtle)
                             .child(meta),
                     );
@@ -412,7 +413,7 @@ impl RenderOnce for SuggestionPopover {
                     row = row.child(
                         div()
                             .pt(px(1.0))
-                            .text_size(px(typography.caption.size))
+                            .text_ramp(&typography.caption)
                             .text_color(colors.on_subtle)
                             .child(detail),
                     );

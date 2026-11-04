@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
 use gpui::{div, prelude::*, px, App, IntoElement, RenderOnce, Window};
 
@@ -167,7 +168,7 @@ impl RenderOnce for CounterBadge {
             .flex()
             .items_center()
             .justify_center()
-            .text_size(px(typography.caption.size))
+            .text_ramp(&typography.caption)
             .text_color(if ghost {
                 colors.accent
             } else {
@@ -236,7 +237,7 @@ impl RenderOnce for Badge {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .text_size(px(typography.caption.size))
+                    .text_ramp(&typography.caption)
                     .text_color(colors.on_accent)
                     .child(label)
             }

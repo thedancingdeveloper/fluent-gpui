@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, svg, AnyElement, App, ClickEvent, IntoElement, RenderOnce, SharedString,
@@ -104,6 +105,7 @@ impl RenderOnce for Dialog {
         let spacing = theme.spacing;
         let typography = theme.typography;
         let radii = theme.radii;
+        let components = theme.components;
 
         let mut actions = div().flex().flex_row().justify_end().gap(px(spacing.sm));
 
@@ -128,13 +130,17 @@ impl RenderOnce for Dialog {
                 div()
                     .id(("dialog-action", idx as u64))
                     .debug_selector(|| format!("dialog-action-{idx}"))
-                    .px(px(spacing.md))
-                    .py(px(spacing.sm))
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .justify_center()
+                    .h(px(components.button_medium_height))
+                    .px(px(components.button_medium_padding_x))
                     .rounded(px(radii.md))
                     .bg(bg)
                     .border_1()
                     .border_color(colors.stroke_neutral)
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .text_color(fg)
                     .cursor_pointer()
                     .hover(move |s| s.bg(hover))
@@ -151,7 +157,7 @@ impl RenderOnce for Dialog {
             .child(
                 div()
                     .flex_1()
-                    .text_size(px(typography.subtitle.size))
+                    .text_ramp(&typography.subtitle)
                     .line_height(px(typography.subtitle.line_height))
                     .font_weight(gpui::FontWeight::SEMIBOLD)
                     .text_color(colors.on_neutral)

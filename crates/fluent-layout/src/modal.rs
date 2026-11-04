@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
     div, prelude::*, px, AnyView, ClickEvent, Context, Entity, FocusHandle, Global, IntoElement,
@@ -302,7 +303,7 @@ impl Render for MessageDialog {
                         div()
                             .flex_1()
                             .min_w_0()
-                            .text_size(px(typography.subtitle.size))
+                            .text_ramp(&typography.subtitle)
                             .font_weight(gpui::FontWeight::SEMIBOLD)
                             .text_color(colors.on_neutral)
                             .child(title),
@@ -337,7 +338,7 @@ impl Render for MessageDialog {
                     .min_w_0()
                     .overflow_hidden()
                     .p(px(spacing.lg))
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .line_height(px(typography.body.line_height))
                     .text_color(colors.on_subtle)
                     .child(message),
@@ -360,7 +361,7 @@ impl Render for MessageDialog {
                             .rounded(px(radii.md))
                             .bg(colors.accent)
                             .text_color(colors.on_accent)
-                            .text_size(px(typography.body.size))
+                            .text_ramp(&typography.body)
                             .cursor_pointer()
                             .hover({
                                 let hover = colors.accent_hover;
@@ -453,14 +454,14 @@ impl Render for ConfirmModal {
             .p(px(spacing.xl))
             .child(
                 div()
-                    .text_size(px(typography.subtitle.size))
+                    .text_ramp(&typography.subtitle)
                     .font_weight(gpui::FontWeight::SEMIBOLD)
                     .text_color(colors.on_neutral)
                     .child(title),
             )
             .child(
                 div()
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .text_color(colors.on_subtle)
                     .child(message),
             )
@@ -480,7 +481,7 @@ impl Render for ConfirmModal {
                             .bg(colors.neutral)
                             .border_1()
                             .border_color(colors.stroke_neutral)
-                            .text_size(px(typography.body.size))
+                            .text_ramp(&typography.body)
                             .text_color(colors.on_neutral)
                             .cursor_pointer()
                             .hover(move |s| s.bg(colors.neutral_hover))
@@ -496,7 +497,7 @@ impl Render for ConfirmModal {
                             .py(px(spacing.sm))
                             .rounded(px(radii.md))
                             .bg(colors.accent)
-                            .text_size(px(typography.body.size))
+                            .text_ramp(&typography.body)
                             .text_color(colors.on_accent)
                             .cursor_pointer()
                             .hover(move |s| s.bg(colors.accent_hover))

@@ -1,3 +1,5 @@
+use gpui::{px, Styled};
+
 /// A single typographic ramp step.
 ///
 /// `size` and `line_height` are in logical pixels (DIPs).
@@ -68,3 +70,27 @@ impl Default for TypographyTokens {
         }
     }
 }
+
+impl TypeRamp {
+    /// Font size as a whole-pixel length.
+    pub fn font_size_px(&self) -> gpui::Pixels {
+        px(self.size.round())
+    }
+
+    /// Line height as a whole-pixel length, so line boxes never land on half pixels.
+    pub fn line_height_px(&self) -> gpui::Pixels {
+        px(self.line_height.round())
+    }
+}
+
+/// Applies a [`TypeRamp`] step's size and whole-pixel line height together, so a
+/// text size can never be set without its line height (gpui's default is 1.618x).
+pub trait TextRampExt: Styled + Sized {
+    /// Sets `text_size` and `line_height` from `ramp`.
+    fn text_ramp(self, ramp: &TypeRamp) -> Self {
+        self.text_size(ramp.font_size_px())
+            .line_height(ramp.line_height_px())
+    }
+}
+
+impl<T: Styled> TextRampExt for T {}

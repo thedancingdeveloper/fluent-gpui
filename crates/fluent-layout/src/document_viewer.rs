@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, img, prelude::*, px, App, FontWeight, IntoElement, RenderOnce, SharedString, Window,
@@ -227,7 +228,7 @@ impl RenderOnce for DocumentViewer {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .text_color(colors.on_subtle)
                     .child(self.empty_message),
             );
@@ -276,7 +277,7 @@ fn render_block(idx: usize, block: RichDocumentBlock, cx: &mut App) -> gpui::Any
             .p(px(spacing.md))
             .rounded(px(theme.radii.sm))
             .bg(colors.neutral)
-            .text_size(px(typography.caption.size))
+            .text_ramp(&typography.caption)
             .line_height(px(typography.body.line_height))
             .children(runs.into_iter().map(|run| render_run(run.code(true), cx)))
             .into_any_element(),
@@ -308,7 +309,7 @@ fn render_block(idx: usize, block: RichDocumentBlock, cx: &mut App) -> gpui::Any
                     .rounded(px(theme.radii.sm))
                     .border_1()
                     .border_color(colors.stroke_neutral_subtle)
-                    .text_size(px(typography.caption.size))
+                    .text_ramp(&typography.caption)
                     .text_color(colors.on_subtle)
                     .child(if alt.is_empty() {
                         "Image".to_string()
@@ -399,7 +400,7 @@ fn render_table(idx: usize, rows: Vec<Vec<SharedString>>, cx: &mut App) -> impl 
                     .p(px(spacing.sm))
                     .border_r_1()
                     .border_color(colors.stroke_neutral_subtle)
-                    .text_size(px(typography.caption.size))
+                    .text_ramp(&typography.caption)
                     .font_weight(if row_idx == 0 {
                         FontWeight::SEMIBOLD
                     } else {

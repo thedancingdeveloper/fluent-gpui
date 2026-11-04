@@ -1,4 +1,5 @@
 use crate::focus::FluentFocus as _;
+use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, Role, SharedString,
@@ -104,7 +105,7 @@ impl RenderOnce for Link {
             .role(Role::Link)
             .aria_label(label.clone())
             .flex()
-            .text_size(px(typography.body.size))
+            .text_ramp(&typography.body)
             .line_height(px(typography.body.line_height))
             .text_color(foreground)
             .child(label);

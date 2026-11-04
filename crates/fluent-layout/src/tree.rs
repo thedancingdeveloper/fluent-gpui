@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::sync::Arc;
 
 use crate::data_status::{status_block, DataStatusKind};
@@ -438,7 +439,7 @@ impl Tree {
             } else {
                 colors.surface
             })
-            .text_size(px(typography.body.size))
+            .text_ramp(&typography.body)
             .text_color(fg);
 
         if !item.disabled {

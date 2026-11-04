@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::{LayoutDirection, ThemeProvider as _};
 use gpui::{
     div, prelude::*, px, AnyElement, App, Entity, IntoElement, RenderOnce, SharedString, Window,
@@ -202,7 +203,7 @@ impl RenderOnce for Field {
                 .when(!rtl, |row| row.flex_row())
                 .items_center()
                 .gap(px(spacing.xs))
-                .text_size(px(typography.body.size))
+                .text_ramp(&typography.body)
                 .line_height(px(typography.body.line_height))
                 .text_color(colors.on_neutral);
 
@@ -242,7 +243,7 @@ impl RenderOnce for Field {
             if let Some(helper) = self.helper_text {
                 body = body.child(
                     div()
-                        .text_size(px(typography.caption.size))
+                        .text_ramp(&typography.caption)
                         .line_height(px(typography.caption.line_height))
                         .text_color(colors.on_subtle)
                         .child(helper),
@@ -266,7 +267,7 @@ impl RenderOnce for Field {
         if let Some(helper) = self.helper_text {
             root = root.child(
                 div()
-                    .text_size(px(typography.caption.size))
+                    .text_ramp(&typography.caption)
                     .line_height(px(typography.caption.line_height))
                     .text_color(colors.on_subtle)
                     .child(helper),
@@ -304,7 +305,7 @@ fn validation_message(
         .flex()
         .items_center()
         .gap(px(spacing.xs))
-        .text_size(px(typography.caption.size))
+        .text_ramp(&typography.caption)
         .line_height(px(typography.caption.line_height))
         .text_color(color)
         .when(state != FieldValidationState::None, |row| {

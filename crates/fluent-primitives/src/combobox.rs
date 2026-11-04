@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::sync::{Arc, Mutex};
 
 use fluent_core::{Theme, ThemeProvider as _};
@@ -420,7 +421,7 @@ impl Render for Combobox {
             .child(
                 div()
                     .flex_1()
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .text_color(fg)
                     .child(text),
             )
@@ -491,7 +492,7 @@ impl Render for Combobox {
                     .h(px(components.dropdown_option_height))
                     .px(px(spacing.md))
                     .bg(row_bg)
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .text_color(colors.on_neutral);
 
                 if !self.closing {
@@ -536,7 +537,7 @@ impl Render for Combobox {
                         .px(px(spacing.md))
                         .flex()
                         .items_center()
-                        .text_size(px(typography.body.size))
+                        .text_ramp(&typography.body)
                         .text_color(colors.on_subtle_disabled)
                         .child("No matches"),
                 );

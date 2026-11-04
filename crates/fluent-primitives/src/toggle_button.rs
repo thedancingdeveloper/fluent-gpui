@@ -1,8 +1,8 @@
 use crate::focus::FluentFocus as _;
-use fluent_core::ThemeProvider as _;
+use fluent_core::{TextRampExt as _, ThemeProvider as _};
 use gpui::{
-    div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, Role, SharedString,
-    Toggled, Window,
+    div, prelude::*, px, transparent_black, App, ClickEvent, ElementId, IntoElement, RenderOnce,
+    Role, SharedString, Toggled, Window,
 };
 
 use crate::button::ButtonSize;
@@ -89,7 +89,6 @@ impl RenderOnce for ToggleButton {
         let theme = cx.theme();
         let colors = &theme.colors;
         let radii = &theme.radii;
-        let spacing = &theme.spacing;
         let typography = &theme.typography;
 
         let (bg, bg_hover, fg) = if self.selected {
@@ -109,10 +108,26 @@ impl RenderOnce for ToggleButton {
         };
 
         let radius = px(radii.md);
-        let (px_val, py_val, font_size) = match self.size {
-            ButtonSize::Normal => (px(spacing.md), px(spacing.sm), px(typography.body.size)),
-            ButtonSize::Compact => (px(spacing.sm), px(spacing.xs), px(typography.caption.size)),
-            ButtonSize::Large => (px(spacing.lg), px(spacing.md), px(typography.subtitle.size)),
+        let components = &theme.components;
+        let (height, px_val, gap, ramp) = match self.size {
+            ButtonSize::Normal => (
+                components.button_medium_height,
+                components.button_medium_padding_x,
+                components.button_medium_gap,
+                typography.body,
+            ),
+            ButtonSize::Compact => (
+                components.button_small_height,
+                components.button_small_padding_x,
+                components.button_small_gap,
+                typography.caption,
+            ),
+            ButtonSize::Large => (
+                components.button_large_height,
+                components.button_large_padding_x,
+                components.button_medium_gap,
+                typography.subtitle,
+            ),
         };
 
         let disabled = self.disabled;
@@ -137,12 +152,15 @@ impl RenderOnce for ToggleButton {
             .flex()
             .flex_row()
             .items_center()
-            .gap(px(spacing.sm))
-            .px(px_val)
-            .py(py_val)
+            .justify_center()
+            .gap(px(gap))
+            .h(px(height))
+            .px(px(px_val))
+            .border_1()
+            .border_color(transparent_black())
             .rounded(radius)
             .bg(bg)
-            .text_size(font_size)
+            .text_ramp(&ramp)
             .text_color(fg);
 
         if !disabled {

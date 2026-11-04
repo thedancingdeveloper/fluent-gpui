@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::time::Duration;
 
 use fluent_core::ThemeProvider as _;
@@ -114,7 +115,7 @@ impl RenderOnce for ConnectionBadge {
             .rounded(px(radii.pill))
             .bg(bg)
             .text_color(fg)
-            .text_size(px(typography.caption.size))
+            .text_ramp(&typography.caption)
             .child(dot_el)
             .child(div().font_weight(gpui::FontWeight::SEMIBOLD).child(label))
     }

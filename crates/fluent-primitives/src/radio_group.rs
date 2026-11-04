@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::sync::Arc;
 
 use crate::focus::FluentFocus as _;
@@ -195,7 +196,7 @@ impl RenderOnce for RadioGroup {
                 .flex_row()
                 .items_center()
                 .gap(px(spacing.sm))
-                .text_size(px(typography.body.size))
+                .text_ramp(&typography.body)
                 .line_height(px(typography.body.line_height))
                 .text_color(fg);
 

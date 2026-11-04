@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, SharedString, Window,
@@ -54,7 +55,7 @@ impl RenderOnce for Chip {
             .bg(colors.neutral)
             .border_1()
             .border_color(colors.stroke_neutral)
-            .text_size(px(typography.caption.size))
+            .text_ramp(&typography.caption)
             .text_color(colors.on_neutral)
             .child(self.label);
 

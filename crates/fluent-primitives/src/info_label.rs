@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, Context, ElementId, IntoElement, Render, Role, SharedString, Window,
@@ -59,7 +60,7 @@ impl Render for InfoLabel {
             .rounded(px(9.0))
             .border_1()
             .border_color(colors.stroke_neutral)
-            .text_size(px(typography.caption.size))
+            .text_ramp(&typography.caption)
             .font_weight(gpui::FontWeight::SEMIBOLD)
             .text_color(colors.on_subtle)
             .hover(move |style| style.bg(hover_background))
@@ -91,7 +92,7 @@ impl Render for InfoLabel {
                         .border_1()
                         .border_color(colors.stroke_neutral_dim)
                         .shadow_md()
-                        .text_size(px(typography.caption.size))
+                        .text_ramp(&typography.caption)
                         .line_height(px(typography.caption.line_height))
                         .text_color(colors.on_neutral)
                         .child(self.content.clone()),

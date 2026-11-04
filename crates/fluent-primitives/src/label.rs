@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::{ThemeProvider as _, TypographyTokens};
 use gpui::{
     div, prelude::*, px, App, FontWeight, Hsla, IntoElement, RenderOnce, SharedString, Window,
@@ -102,7 +103,7 @@ impl RenderOnce for Label {
                 .flex()
                 .flex_row()
                 .items_center()
-                .text_size(px(ramp.size))
+                .text_ramp(&ramp)
                 .line_height(px(ramp.line_height))
                 .font_weight(weight)
                 .text_color(color);
@@ -121,7 +122,7 @@ impl RenderOnce for Label {
         }
 
         let el = div()
-            .text_size(px(ramp.size))
+            .text_ramp(&ramp)
             .line_height(px(ramp.line_height))
             .font_weight(weight)
             .text_color(color)

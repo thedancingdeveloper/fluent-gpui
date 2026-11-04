@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::sync::{Arc, Mutex};
 
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
@@ -624,7 +625,7 @@ impl MenuBar {
                             div()
                                 .flex_none()
                                 .pl(px(env.spacing.xl))
-                                .text_size(px(env.typography.caption.size))
+                                .text_ramp(&env.typography.caption)
                                 .text_color(env.colors.on_subtle_disabled)
                                 .child(shortcut),
                         );
@@ -911,7 +912,7 @@ impl Render for MenuBar {
                 .items_center()
                 .px(px(spacing.md))
                 .h_full()
-                .text_size(px(typography.body.size))
+                .text_ramp(&typography.body)
                 .text_color(trigger_text)
                 .bg(trigger_bg)
                 .rounded(px(radii.sm))

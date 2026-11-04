@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, svg, AnyElement, App, ClickEvent, Div, ElementId, FocusHandle, FontWeight,
@@ -152,7 +153,7 @@ impl RenderOnce for Expander {
             )
             .child(
                 div()
-                    .text_size(px(typography.body.size))
+                    .text_ramp(&typography.body)
                     .line_height(px(typography.body.line_height))
                     .font_weight(FontWeight::SEMIBOLD)
                     .child(self.title),

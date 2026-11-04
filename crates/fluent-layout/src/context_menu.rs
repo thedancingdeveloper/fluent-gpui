@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::sync::Arc;
 
 use fluent_core::{Theme, ThemeProvider as _};
@@ -571,7 +572,7 @@ impl ContextMenu {
                             div()
                                 .flex_none()
                                 .pl(px(env.spacing.xl))
-                                .text_size(px(env.typography.caption.size))
+                                .text_ramp(&env.typography.caption)
                                 .text_color(env.colors.on_subtle_disabled)
                                 .child(shortcut),
                         );

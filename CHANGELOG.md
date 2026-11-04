@@ -18,6 +18,7 @@ per crate.
 
 Workspace release. Includes `VideoSurface` (3.1.0), the AccessKit tree snapshot test helper and the `test-a11y-activation` vendor patch (headless test-window AccessKit activation) that rdpapp-fluent needs. Crate versions are unchanged, as in v3.1.0; consumers pin the tag.
 
+- fluent-core, fluent-primitives, fluent-layout, fluent-ribbon, fluent-app: text no longer inherits gpui's 1.618x line height. `TextRampExt::text_ramp` sets a ramp step's size and whole-pixel line height together, `FluentApp` sets the body ramp (13/20) as the root text style, and Button, ToggleButton and dialog actions share one border-box height per size, always centre their content, and take 12/8px padding and gap from new `ComponentTokens` (WI-3256, WI-3257).
 - fluent-layout: submenus open beside their parent row, flip left and snap inside the window with an 8px margin; the MenuBar dropdown anchors to the trigger's bottom-left with the same fit; MenuButton and ContextMenu click-away backdrops cover the window; popups use an 8px window margin (WI-3252, WI-3253, WI-3254).
 
 - fluent-primitives: deny missing public API documentation and document every exported control and supporting type (WI-2945).

@@ -1,3 +1,4 @@
+use fluent_core::TextRampExt;
 use std::sync::{Arc, Mutex};
 
 use fluent_core::{Theme, ThemeProvider as _};
@@ -576,7 +577,7 @@ impl Render for TokenInput {
             div()
                 .min_w(px(120.0))
                 .flex_1()
-                .text_size(px(typography.body.size))
+                .text_ramp(&typography.body)
                 .text_color(query_color)
                 .child(query_text),
         );
