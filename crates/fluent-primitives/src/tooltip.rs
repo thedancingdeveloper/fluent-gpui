@@ -38,14 +38,15 @@ impl Render for TooltipBubble {
         let typography = &theme.typography;
 
         div()
-            .px(px(spacing.sm))
-            .py(px(spacing.xs))
-            .rounded(px(radii.sm))
+            .px(px(spacing.md))
+            .py(px(spacing.sm))
+            .rounded(px(radii.md))
             .bg(colors.surface_blur_layer)
             .border_1()
             .border_color(colors.stroke_neutral_dim)
             .shadow_md()
             .text_ramp(&typography.caption)
+            .text_size(px(12.0))
             .text_color(colors.on_neutral)
             .child(self.text.clone())
     }
