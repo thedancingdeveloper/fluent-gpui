@@ -1060,7 +1060,7 @@ impl Render for DateTimePicker {
                 anchored()
                     .anchor(Anchor::TopLeft)
                     .position(self.drop_origin)
-                    .snap_to_window()
+                    .snap_to_window_with_margin(px(8.))
                     .child(panel),
             ));
         }

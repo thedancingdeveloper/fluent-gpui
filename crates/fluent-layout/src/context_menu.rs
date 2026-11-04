@@ -506,7 +506,6 @@ impl ContextMenu {
             .min_w(px(env.components.dropdown_min_width))
             .shadow_md();
 
-        let mut row_top = env.spacing.xs;
         for (idx, item) in items.iter().enumerate() {
             let mut path = path_prefix.clone();
             path.push(idx);
@@ -578,7 +577,6 @@ impl ContextMenu {
                         );
                     }
                     menu = menu.child(row);
-                    row_top += env.components.menu_item_height;
                 }
                 ContextMenuItem::Checkbox {
                     label,
@@ -651,7 +649,6 @@ impl ContextMenu {
                         )
                         .child(div().flex_1().child(menu_tree::label_element(label, true))),
                     );
-                    row_top += env.components.menu_item_height;
                 }
                 ContextMenuItem::Radio {
                     label,
@@ -720,7 +717,6 @@ impl ContextMenu {
                         )
                         .child(div().flex_1().child(menu_tree::label_element(label, true))),
                     );
-                    row_top += env.components.menu_item_height;
                 }
                 ContextMenuItem::Submenu {
                     label,
@@ -769,15 +765,12 @@ impl ContextMenu {
                                 .size(px(12.0))
                                 .text_color(fg),
                         );
-                    menu = menu.child(row);
-
                     if !disabled && menu_tree::path_starts_with(&self.open_path, &path) {
                         let submenu =
                             self.render_menu(items, path.clone(), self_weak.clone(), env, cx);
-                        menu = menu
-                            .child(div().absolute().left_full().top(px(row_top)).child(submenu));
+                        row = row.child(menu_tree::submenu_flyout(submenu, env, path.len()));
                     }
-                    row_top += env.components.menu_item_height;
+                    menu = menu.child(row);
                 }
                 ContextMenuItem::Separator => {
                     menu = menu.child(
@@ -787,7 +780,6 @@ impl ContextMenu {
                             .my(px(env.spacing.xs))
                             .bg(env.colors.stroke_neutral_subtle),
                     );
-                    row_top += env.components.popup_separator_height + env.spacing.xs * 2.0;
                 }
             }
         }
@@ -829,13 +821,13 @@ impl Render for ContextMenu {
             menu,
         );
 
-        let mut overlay = div().absolute().inset_0();
+        let mut overlay = div();
         if !self.closing {
             let backdrop_closer = cx.entity().downgrade();
-            overlay = overlay.child(div().id("ctx-backdrop").absolute().inset_0().on_mouse_down(
-                gpui::MouseButton::Left,
-                move |_, _, cx| {
-                    cx.stop_propagation();
+            overlay = overlay.child(menu_tree::window_backdrop(
+                "ctx-backdrop",
+                window,
+                move |_, cx| {
                     backdrop_closer.update(cx, |menu, cx| menu.close(cx)).ok();
                 },
             ));
@@ -994,5 +986,90 @@ mod tests {
         view.update(cx, |view, _| view.opened = None);
         cx.type_keys("menu");
         view.read_with(cx, |view, _| assert_eq!(view.opened, Some(expected)));
+    }
+
+    fn bounds_of(
+        cx: &mut gpui::VisualTestContext,
+        selector: &'static str,
+    ) -> gpui::Bounds<gpui::Pixels> {
+        cx.selector_bounds(selector)
+            .unwrap_or_else(|| panic!("no bounds for {selector}"))
+    }
+
+    fn submenu_menu(at: gpui::Point<gpui::Pixels>) -> ContextMenu {
+        let mut menu = ContextMenu::build(at)
+            .submenu("More", vec![ContextMenuItem::action("Inner", |_, _, _| {})]);
+        menu.open_path = vec![0];
+        menu.selected_path = vec![0];
+        menu
+    }
+
+    #[gpui::test]
+    fn submenu_first_row_lines_up_with_parent_row(cx: &mut TestAppContext) {
+        let (_menu, cx) = open_fluent_test_window(cx, |_, _| submenu_menu(point(px(40.), px(30.))));
+        cx.simulate_resize(gpui::size(px(800.), px(600.)));
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+
+        let parent = bounds_of(cx, "ctx-item-row-[0]");
+        let child = bounds_of(cx, "ctx-item-row-[0, 0]");
+        assert_eq!(
+            child.top(),
+            parent.top(),
+            "first submenu row level with parent row"
+        );
+        assert_eq!(
+            child.left(),
+            parent.right() - px(1.) + px(1.),
+            "submenu opens one pixel over the parent border, its own border inside it"
+        );
+    }
+
+    #[gpui::test]
+    fn submenu_flips_left_at_the_right_window_edge(cx: &mut TestAppContext) {
+        let (_menu, cx) =
+            open_fluent_test_window(cx, |_, _| submenu_menu(point(px(600.), px(30.))));
+        cx.simulate_resize(gpui::size(px(800.), px(600.)));
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+
+        let parent = bounds_of(cx, "ctx-item-row-[0]");
+        let child = bounds_of(cx, "ctx-item-row-[0, 0]");
+        assert!(
+            child.right() <= parent.left() + px(2.),
+            "{child:?} vs {parent:?}"
+        );
+        assert!(child.left() >= px(8.));
+        assert_eq!(child.top(), parent.top());
+    }
+
+    #[gpui::test]
+    fn submenu_snaps_inside_the_bottom_window_edge(cx: &mut TestAppContext) {
+        let (_menu, cx) = open_fluent_test_window(cx, |_, _| submenu_menu(point(px(40.), px(30.))));
+        cx.simulate_resize(gpui::size(px(800.), px(80.)));
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+
+        let child = bounds_of(cx, "ctx-item-row-[0, 0]");
+        assert!(child.bottom() <= px(80. - 8. + 1.), "{child:?}");
+    }
+
+    #[gpui::test]
+    fn clicking_anywhere_outside_closes_the_menu(cx: &mut TestAppContext) {
+        let (menu, cx) = open_fluent_test_window(cx, |_, _| {
+            ContextMenu::build(point(px(20.), px(20.))).action("Open", |_, _, _| {})
+        });
+        cx.simulate_resize(gpui::size(px(800.), px(600.)));
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+
+        cx.click_at(
+            point(px(700.), px(500.)),
+            gpui::MouseButton::Left,
+            gpui::Modifiers::none(),
+        );
+        menu.read_with(cx, |menu, _| assert!(menu.closing));
+        cx.executor().advance_clock(Duration::from_millis(200));
+        menu.read_with(cx, |menu, _| assert!(!menu.open));
     }
 }
