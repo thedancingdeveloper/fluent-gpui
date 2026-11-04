@@ -148,6 +148,7 @@ pub struct CommandPalette {
     entries: Vec<PaletteEntry>,
     filtered: Vec<usize>,
     selected: usize,
+    results_scroll: gpui::ScrollHandle,
     max_results: Option<usize>,
     /// Public API item.
     pub on_select: Option<Box<dyn Fn(&PaletteEntry, &mut App) + 'static>>,
@@ -164,6 +165,7 @@ impl CommandPalette {
             entries: vec![],
             filtered: vec![],
             selected: 0,
+            results_scroll: gpui::ScrollHandle::new(),
             max_results: None,
             on_select: None,
         }
@@ -485,7 +487,15 @@ impl Render for CommandPalette {
         let entries = &self.entries;
 
         // Build result rows
-        let mut results = div().flex().flex_col().max_h(px(360.0)).overflow_hidden();
+        let mut results = div()
+            .id("command-palette-results")
+            .flex()
+            .flex_col()
+            .max_h(px(360.0))
+            .overflow_y_scroll()
+            .track_scroll(&self.results_scroll);
+        let mut child_count = 0usize;
+        let mut selected_child = None;
 
         let mut previous_group: Option<SharedString> = None;
         for (row_idx, &entry_idx) in filtered.iter().enumerate() {
@@ -502,6 +512,7 @@ impl Render for CommandPalette {
 
             if group.is_some() && group != previous_group {
                 if let Some(group_label) = group.clone() {
+                    child_count += 1;
                     results = results.child(
                         div()
                             .px(px(spacing.md))
@@ -600,7 +611,14 @@ impl Render for CommandPalette {
                         .child(hint),
                 );
             }
+            if is_selected {
+                selected_child = Some(child_count);
+            }
+            child_count += 1;
             results = results.child(row_el);
+        }
+        if let Some(ix) = selected_child {
+            self.results_scroll.scroll_to_item(ix);
         }
 
         // Empty state
