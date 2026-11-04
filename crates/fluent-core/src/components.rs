@@ -32,6 +32,8 @@ pub struct ComponentTokens {
     pub menu_bar_height: f32,
     /// Public API item.
     pub menu_item_height: f32,
+    /// Row height for list, tree and table rows (Fluent 2 list item minimum).
+    pub list_item_height: f32,
     /// Public API item.
     pub menu_min_width: f32,
     /// Public API item.
@@ -108,6 +110,7 @@ impl Default for ComponentTokens {
             button_medium_gap: 8.0,
             menu_bar_height: 28.0,
             menu_item_height: 28.0,
+            list_item_height: 32.0,
             menu_min_width: 200.0,
             popup_icon_slot: 16.0,
             popup_separator_height: 1.0,

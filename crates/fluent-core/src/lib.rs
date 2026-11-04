@@ -115,6 +115,7 @@ mod tests {
         let c = ComponentTokens::default();
         assert_eq!(c.menu_bar_height, 28.0);
         assert_eq!(c.menu_item_height, 28.0);
+        assert_eq!(c.list_item_height, 32.0);
         assert_eq!(c.dropdown_height, 32.0);
         assert_eq!(c.dropdown_option_height, 28.0);
         assert_eq!(c.text_input_height, 32.0);

@@ -431,7 +431,7 @@ impl Tree {
             .flex_row()
             .items_center()
             .gap(px(spacing.xs))
-            .h(px(components.menu_item_height))
+            .h(px(components.list_item_height))
             .pl(px(spacing.md + depth as f32 * 16.0))
             .pr(px(spacing.md))
             .bg(if is_selected {
@@ -756,7 +756,7 @@ impl RenderOnce for Tree {
         };
         root.child(
             crate::virtual_list::VirtualList::new("tree-virtual-list", count, build_row)
-                .row_height(cx.theme().components.menu_item_height)
+                .row_height(cx.theme().components.list_item_height)
                 .reveal(
                     flat.iter()
                         .position(|item| self.selected_id.as_ref() == Some(&item.id)),
