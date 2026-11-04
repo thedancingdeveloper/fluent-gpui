@@ -241,7 +241,7 @@ impl RenderOnce for RadioGroup {
             row = row
                 .child(
                     div()
-                        .size(px(16.0))
+                        .size(px(20.0))
                         .rounded(px(9999.0))
                         .border_1()
                         .border_color(outer_border)
@@ -250,7 +250,7 @@ impl RenderOnce for RadioGroup {
                         .justify_center()
                         .child(
                             div()
-                                .size(px(if checked { 8.0 } else { 0.0 }))
+                                .size(px(if checked { 10.0 } else { 0.0 }))
                                 .rounded(px(9999.0))
                                 .bg(colors.accent),
                         ),
