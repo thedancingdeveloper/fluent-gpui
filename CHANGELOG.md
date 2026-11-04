@@ -15,6 +15,7 @@ per crate.
 - New `list_item_height` component token (32px, Fluent 2); tree and data table rows use it instead of `menu_item_height` (WI-3259).
 
 - Text input error state and selection, and title-bar close hover, now use theme colours (WI-3264, WI-3266)
+- Chip dismiss and spin-button radii now use theme radius tokens (WI-3266)
 
 - Single-line ellipsis truncation (`TruncateExt::truncate_label`) on tab labels (max width 240px token), tree rows, data table cells and headers, the title bar title and message bar/toast titles (WI-3268).
 
