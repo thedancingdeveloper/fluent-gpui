@@ -22,6 +22,8 @@ Workspace release. Includes `VideoSurface` (3.1.0), the AccessKit tree snapshot 
 - fluent-layout: submenus open beside their parent row, flip left and snap inside the window with an 8px margin; the MenuBar dropdown anchors to the trigger's bottom-left with the same fit; MenuButton and ContextMenu click-away backdrops cover the window; popups use an 8px window margin (WI-3252, WI-3253, WI-3254).
 
 - fluent-primitives: deny missing public API documentation and document every exported control and supporting type (WI-2945).
+- fluent-primitives: switch thumb 12px with symmetric insets (40x20 track); checkbox 20px with `radii.md`; radio 20/10 (WI-3258).
+- Single-line ellipsis truncation (`TruncateExt::truncate_label`) on tab labels (max width 240px token), tree rows, data table cells and headers, the title bar title and message bar/toast titles (WI-3268).
 
 - docs: document DPI scaling conversion and resize behavior across Windows DirectX, Linux X11, and Linux Wayland, with native-run evidence requirements (WI-3061).
 - Layout: add Fluent 2 Breadcrumb and Pagination controls with overflow menus, current-item semantics, RTL separators, and keyboard-ready controls (WI-3036).

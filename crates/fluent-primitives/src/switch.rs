@@ -100,8 +100,8 @@ impl RenderOnce for Switch {
         let on = self.on;
         let label = self.label;
 
-        // Thumb offset: left (off) or right (on)
-        let thumb_ml = if self.on { px(20.0) } else { px(2.0) };
+        // Fluent 2: 40x20 track, 12px knob, 4px inset from the outer edge (3px inside the 1px border)
+        let thumb_ml = if self.on { px(23.0) } else { px(3.0) };
 
         let debug_id = self.id.to_string();
         let mut el = div()
@@ -135,7 +135,7 @@ impl RenderOnce for Switch {
         el.child(
             div()
                 .absolute()
-                .size(px(14.0))
+                .size(px(12.0))
                 .ml(thumb_ml)
                 .rounded(px(9999.0))
                 .bg(thumb_color),

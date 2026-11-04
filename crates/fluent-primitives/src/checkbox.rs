@@ -144,8 +144,8 @@ impl RenderOnce for Checkbox {
                 CheckboxState::Indeterminate => Toggled::Mixed,
             })
             .when_some(label, |d, name| d.aria_label(name))
-            .size(px(18.0))
-            .rounded(px(radii.sm))
+            .size(px(20.0))
+            .rounded(px(radii.md))
             .bg(box_bg)
             .border_1()
             .border_color(box_border)
