@@ -1,6 +1,6 @@
 [package]
 name = "fluent-primitives"
-version = "2.4.0"
+version = "3.2.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Base widgets for FluentGUI: Button, Input, Label, Icon, Badge, and more"

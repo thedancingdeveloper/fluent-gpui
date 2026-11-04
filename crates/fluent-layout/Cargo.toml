@@ -1,6 +1,6 @@
 [package]
 name = "fluent-layout"
-version = "2.2.0"
+version = "3.2.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Pane splitting, dock panels, tab strips, and modal stack for FluentGUI"
