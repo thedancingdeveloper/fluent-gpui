@@ -1,7 +1,11 @@
 use fluent_core::{
     ColorScheme, ComponentTokens, RadiiTokens, SpacingTokens, Theme, TypographyTokens,
 };
-use gpui::{div, prelude::*, px, svg, AnyElement, ElementId, Keystroke, SharedString};
+use gpui::{
+    deferred, div, point, prelude::*, px, svg, AnyElement, App, Bounds, Display, Edges, Element,
+    ElementId, GlobalElementId, InspectorElementId, Keystroke, LayoutId, Pixels, Position,
+    SharedString, Style, Window,
+};
 
 use crate::context_menu::ContextMenuItem;
 
@@ -301,6 +305,7 @@ pub(crate) fn row_base(
 ) -> gpui::Stateful<gpui::Div> {
     div()
         .id(row_id(id_prefix, path))
+        .debug_selector(|| format!("{id_prefix}-row-{path:?}"))
         .role(role)
         .aria_label(label.clone())
         .flex()
@@ -316,6 +321,171 @@ pub(crate) fn row_base(
         })
         .text_size(px(env.typography.body.size))
         .text_color(fg)
+}
+
+/// Gap kept between a flyout submenu and the window edge.
+pub(crate) const SUBMENU_WINDOW_MARGIN: f32 = 8.0;
+
+/// Lays a submenu beside the submenu-trigger row it is a child of.
+///
+/// The element fills the row (`absolute`, all insets zero), so its prepaint
+/// bounds are the row's bounds and no row offset is tracked by hand. The
+/// submenu opens to the right of the row with its first item level with the
+/// row, overlapping the parent's border by one pixel as Zed's submenus do. When
+/// it would run past the right window edge and fits on the left, it opens to the
+/// left instead. It is then snapped inside the window with
+/// [`SUBMENU_WINDOW_MARGIN`], like `anchored().snap_to_window_with_margin`.
+struct SubmenuPlacement {
+    child: Option<AnyElement>,
+    /// How far above the row the submenu's top edge sits (the parent's top
+    /// border and padding), so the first items align.
+    top_inset: Pixels,
+}
+
+impl Element for SubmenuPlacement {
+    type RequestLayoutState = LayoutId;
+    type PrepaintState = ();
+
+    fn id(&self) -> Option<ElementId> {
+        None
+    }
+
+    fn source_location(&self) -> Option<&'static core::panic::Location<'static>> {
+        None
+    }
+
+    fn request_layout(
+        &mut self,
+        _id: Option<&GlobalElementId>,
+        _inspector_id: Option<&InspectorElementId>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> (LayoutId, Self::RequestLayoutState) {
+        let child_id = self
+            .child
+            .as_mut()
+            .map(|child| child.request_layout(window, cx))
+            .expect("submenu placement child");
+        let zero = gpui::Length::Definite(px(0.).into());
+        let style = Style {
+            position: Position::Absolute,
+            display: Display::Flex,
+            inset: Edges {
+                top: zero,
+                right: zero,
+                bottom: zero,
+                left: zero,
+            },
+            ..Style::default()
+        };
+        (window.request_layout(style, [child_id], cx), child_id)
+    }
+
+    fn prepaint(
+        &mut self,
+        _id: Option<&GlobalElementId>,
+        _inspector_id: Option<&InspectorElementId>,
+        row: Bounds<Pixels>,
+        child_id: &mut LayoutId,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        let child_bounds = window.layout_bounds(*child_id);
+        let size = child_bounds.size;
+        let viewport = window.viewport_size();
+        let inset = window.client_inset().unwrap_or(px(0.));
+        let margin = px(SUBMENU_WINDOW_MARGIN) + inset;
+        let overlap = px(1.);
+
+        let mut x = row.right() - overlap;
+        if x + size.width > viewport.width - margin && row.left() + overlap - size.width >= margin {
+            x = row.left() + overlap - size.width;
+        }
+        let mut y = row.top() - self.top_inset;
+
+        if x + size.width > viewport.width - margin {
+            x = viewport.width - margin - size.width;
+        }
+        if x < margin {
+            x = margin;
+        }
+        if y + size.height > viewport.height - margin {
+            y = viewport.height - margin - size.height;
+        }
+        if y < margin {
+            y = margin;
+        }
+
+        let offset = point(x, y) - child_bounds.origin;
+        let offset = point(offset.x.round(), offset.y.round());
+        if let Some(child) = self.child.as_mut() {
+            window.with_element_offset(offset, |window| child.prepaint(window, cx));
+        }
+    }
+
+    fn paint(
+        &mut self,
+        _id: Option<&GlobalElementId>,
+        _inspector_id: Option<&InspectorElementId>,
+        _bounds: Bounds<Pixels>,
+        _child_id: &mut LayoutId,
+        _prepaint: &mut (),
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        if let Some(child) = self.child.as_mut() {
+            child.paint(window, cx);
+        }
+    }
+}
+
+impl IntoElement for SubmenuPlacement {
+    type Element = Self;
+
+    fn into_element(self) -> Self::Element {
+        self
+    }
+}
+
+/// The deferred flyout for an open submenu. Add it as a child of the
+/// submenu-trigger row. `priority` must exceed the parent menu's so a nested
+/// flyout paints over it.
+pub(crate) fn submenu_flyout(
+    submenu: AnyElement,
+    env: &MenuRenderEnv,
+    priority: usize,
+) -> AnyElement {
+    deferred(SubmenuPlacement {
+        child: Some(div().absolute().child(submenu).into_any_element()),
+        // Parent border (1) plus its vertical padding.
+        top_inset: px(env.spacing.xs + 1.0),
+    })
+    .with_priority(priority)
+    .into_any_element()
+}
+
+/// A window-sized layer that closes its menu on any click outside the menu.
+/// Place it inside a `deferred` overlay, before the menu so the menu paints
+/// above it.
+pub(crate) fn window_backdrop(
+    id: &'static str,
+    window: &Window,
+    on_close: impl Fn(&mut Window, &mut App) + 'static,
+) -> AnyElement {
+    let viewport = window.viewport_size();
+    gpui::anchored()
+        .position(point(px(0.), px(0.)))
+        .child(
+            div()
+                .id(id)
+                .w(viewport.width)
+                .h(viewport.height)
+                .on_mouse_down(gpui::MouseButton::Left, move |_, window, cx| {
+                    cx.stop_propagation();
+                    on_close(window, cx);
+                }),
+        )
+        .into_any_element()
 }
 
 pub(crate) fn icon_slot(

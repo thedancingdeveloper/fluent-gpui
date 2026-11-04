@@ -277,7 +277,6 @@ impl MenuButton {
             .min_w(px(env.components.menu_min_width))
             .shadow_md();
 
-        let mut row_top = env.spacing.xs;
         for (idx, item) in items.iter().enumerate() {
             let mut path = path_prefix.clone();
             path.push(idx);
@@ -355,7 +354,6 @@ impl MenuButton {
                         );
                     }
                     menu = menu.child(row);
-                    row_top += env.components.menu_item_height;
                 }
                 ContextMenuItem::Checkbox {
                     label,
@@ -434,7 +432,6 @@ impl MenuButton {
                         )
                         .child(div().flex_1().child(label.clone())),
                     );
-                    row_top += env.components.menu_item_height;
                 }
                 ContextMenuItem::Radio {
                     label,
@@ -509,7 +506,6 @@ impl MenuButton {
                         )
                         .child(div().flex_1().child(label.clone())),
                     );
-                    row_top += env.components.menu_item_height;
                 }
                 ContextMenuItem::Submenu {
                     label,
@@ -561,15 +557,12 @@ impl MenuButton {
                                 .size(px(12.0))
                                 .text_color(fg),
                         );
-                    menu = menu.child(row);
-
                     if !disabled && menu_tree::path_starts_with(&self.open_path, &path) {
                         let submenu =
                             self.render_items(items, path.clone(), self_weak.clone(), env, cx);
-                        menu = menu
-                            .child(div().absolute().left_full().top(px(row_top)).child(submenu));
+                        row = row.child(menu_tree::submenu_flyout(submenu, env, path.len()));
                     }
-                    row_top += env.components.menu_item_height;
+                    menu = menu.child(row);
                 }
                 ContextMenuItem::Separator => {
                     menu = menu.child(
@@ -579,7 +572,6 @@ impl MenuButton {
                             .my(px(env.spacing.xs))
                             .bg(env.colors.stroke_neutral_subtle),
                     );
-                    row_top += env.components.popup_separator_height + env.spacing.xs * 2.0;
                 }
             }
         }
@@ -717,19 +709,16 @@ impl Render for MenuButton {
                 menu,
             );
 
-            let mut overlay = div().absolute().inset_0();
+            let mut overlay = div();
             if !self.closing {
                 let closer = self_weak.clone();
-                overlay = overlay.child(
-                    div()
-                        .id("menu-button-backdrop")
-                        .absolute()
-                        .inset_0()
-                        .on_mouse_down(MouseButton::Left, move |_, _, cx| {
-                            cx.stop_propagation();
-                            closer.update(cx, |button, cx| button.close_popup(cx)).ok();
-                        }),
-                );
+                overlay = overlay.child(menu_tree::window_backdrop(
+                    "menu-button-backdrop",
+                    window,
+                    move |_, cx| {
+                        closer.update(cx, |button, cx| button.close_popup(cx)).ok();
+                    },
+                ));
             }
 
             root = root.child(deferred(
@@ -737,7 +726,7 @@ impl Render for MenuButton {
                     anchored()
                         .anchor(Anchor::TopLeft)
                         .position(self.popup_origin)
-                        .snap_to_window()
+                        .snap_to_window_with_margin(px(menu_tree::SUBMENU_WINDOW_MARGIN))
                         .child(menu),
                 ),
             ));
@@ -873,5 +862,28 @@ mod tests {
                 "MenuItem \"One\"".to_string(),
             ]
         );
+    }
+
+    #[gpui::test]
+    fn clicking_anywhere_outside_closes_the_popup(cx: &mut TestAppContext) {
+        use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+
+        let (button, cx) = open_fluent_test_window(cx, |_, _| {
+            MenuButton::new("test-menu-button", "Actions").item(item("One"))
+        });
+        cx.simulate_resize(gpui::size(px(800.), px(600.)));
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+        button.update(cx, |button, cx| button.open_popup(cx));
+        cx.accessibility_snapshot();
+
+        cx.click_at(
+            point(px(700.), px(500.)),
+            gpui::MouseButton::Left,
+            gpui::Modifiers::none(),
+        );
+        button.read_with(cx, |button, _| assert!(button.closing));
+        cx.executor().advance_clock(Duration::from_millis(200));
+        button.read_with(cx, |button, _| assert!(!button.open));
     }
 }

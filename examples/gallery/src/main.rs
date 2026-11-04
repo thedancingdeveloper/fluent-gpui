@@ -1,8 +1,8 @@
 use families::{DemoViews, FamilyHost, FamilyNav};
 use fluent_app::{FluentApp, TitleBar};
-use fluent_core::gpui::{div, prelude::*, Context, IntoElement, Render, Window};
+use fluent_core::gpui::{div, prelude::*, App, ClickEvent, Context, IntoElement, Render, Window};
 use fluent_layout::{
-    DockPanel, DockPosition, MenuBar, ModalStack, Pane, TabItem, TabStrip, Workspace,
+    DockPanel, DockPosition, MenuBar, MenuItemDef, ModalStack, Pane, TabItem, TabStrip, Workspace,
 };
 use fluent_primitives::{InputCapture, TerminalCell, TerminalGrid, TerminalView, VideoSurface};
 use fluent_ribbon::RibbonBar;
@@ -25,6 +25,8 @@ impl Render for GalleryRoot {
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
+
+fn noop(_: &ClickEvent, _: &mut Window, _: &mut App) {}
 
 fn main() {
     FluentApp::new("FluentGUI Gallery").dark_theme().run(|cx| {
@@ -78,7 +80,56 @@ fn main() {
         let title_bar = cx.new(|cx| TitleBar::new(cx, "FluentGUI Gallery"));
 
         // Menu bar
-        let menu_bar = cx.new(MenuBar::new);
+        let menu_bar = cx.new(|cx| {
+            MenuBar::new(cx)
+                .menu(
+                    "&File",
+                    vec![
+                        MenuItemDef::action("New", noop),
+                        MenuItemDef::submenu(
+                            "Open Recent",
+                            vec![
+                                MenuItemDef::action("Project One", noop),
+                                MenuItemDef::submenu(
+                                    "Older",
+                                    vec![
+                                        MenuItemDef::action("Project Two", noop),
+                                        MenuItemDef::submenu(
+                                            "Archive",
+                                            vec![MenuItemDef::action("Project Three", noop)],
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                        MenuItemDef::separator(),
+                        MenuItemDef::action("Exit", noop),
+                    ],
+                )
+                .menu(
+                    "&View",
+                    vec![
+                        MenuItemDef::submenu(
+                            "Zoom",
+                            vec![
+                                MenuItemDef::action("Zoom In", noop),
+                                MenuItemDef::action("Zoom Out", noop),
+                            ],
+                        ),
+                        MenuItemDef::action("Full Screen", noop),
+                    ],
+                )
+                .menu(
+                    "&Help",
+                    vec![
+                        MenuItemDef::submenu(
+                            "Learn",
+                            vec![MenuItemDef::action("Documentation", noop)],
+                        ),
+                        MenuItemDef::action("About", noop),
+                    ],
+                )
+        });
 
         // Ribbon
         let ribbon = cx.new(|cx| {

@@ -2,9 +2,9 @@ use std::sync::{Arc, Mutex};
 
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use gpui::{
-    anchored, canvas, deferred, div, point, prelude::*, px, svg, App, Bounds, ClickEvent, Context,
-    FocusHandle, IntoElement, KeyDownEvent, MouseButton, Pixels, Render, Role, SharedString,
-    Subscription, WeakEntity, WeakFocusHandle, Window, WindowId,
+    anchored, canvas, deferred, div, point, prelude::*, px, svg, Anchor, App, Bounds, ClickEvent,
+    Context, FocusHandle, IntoElement, KeyDownEvent, MouseButton, Pixels, Render, Role,
+    SharedString, Subscription, WeakEntity, WeakFocusHandle, Window, WindowId,
 };
 
 use crate::context_menu::ContextMenuItem;
@@ -558,7 +558,6 @@ impl MenuBar {
             .min_w(px(env.components.menu_min_width))
             .shadow_md();
 
-        let mut row_top = env.spacing.xs;
         for (idx, item) in items.iter().enumerate() {
             let mut path = path_prefix.clone();
             path.push(idx);
@@ -631,7 +630,6 @@ impl MenuBar {
                         );
                     }
                     menu = menu.child(row);
-                    row_top += env.components.menu_item_height;
                 }
                 ContextMenuItem::Checkbox {
                     label,
@@ -705,7 +703,6 @@ impl MenuBar {
                         )
                         .child(div().flex_1().child(menu_tree::label_element(label, true))),
                     );
-                    row_top += env.components.menu_item_height;
                 }
                 ContextMenuItem::Radio {
                     label,
@@ -775,7 +772,6 @@ impl MenuBar {
                         )
                         .child(div().flex_1().child(menu_tree::label_element(label, true))),
                     );
-                    row_top += env.components.menu_item_height;
                 }
                 ContextMenuItem::Submenu {
                     label,
@@ -814,23 +810,21 @@ impl MenuBar {
                                 cx.notify();
                             }));
                     }
-                    menu = menu.child(
-                        row.child(menu_tree::icon_slot(icon.clone(), fg, env))
-                            .child(div().flex_1().child(menu_tree::label_element(label, true)))
-                            .child(
-                                svg()
-                                    .path("icons/chevron_right.svg")
-                                    .size(px(12.0))
-                                    .text_color(fg),
-                            ),
-                    );
+                    row = row
+                        .child(menu_tree::icon_slot(icon.clone(), fg, env))
+                        .child(div().flex_1().child(menu_tree::label_element(label, true)))
+                        .child(
+                            svg()
+                                .path("icons/chevron_right.svg")
+                                .size(px(12.0))
+                                .text_color(fg),
+                        );
                     if !disabled && menu_tree::path_starts_with(&self.open_path, &path) {
                         let submenu =
                             self.render_items(items, path.clone(), self_weak.clone(), env, cx);
-                        menu = menu
-                            .child(div().absolute().left_full().top(px(row_top)).child(submenu));
+                        row = row.child(menu_tree::submenu_flyout(submenu, env, 2 + path.len()));
                     }
-                    row_top += env.components.menu_item_height;
+                    menu = menu.child(row);
                 }
                 ContextMenuItem::Separator => {
                     menu = menu.child(
@@ -840,7 +834,6 @@ impl MenuBar {
                             .my(px(env.spacing.xs))
                             .bg(env.colors.stroke_neutral_subtle),
                     );
-                    row_top += env.components.popup_separator_height + env.spacing.xs * 2.0;
                 }
             }
         }
@@ -974,26 +967,28 @@ impl Render for MenuBar {
                 item_list,
             );
 
-            let vp = window.viewport_size();
             let mut popup = div();
             if !self.closing {
                 let closer = self_weak.clone();
-                popup = popup.child(
-                    anchored().position(point(px(0.0), px(0.0))).child(
-                        div()
-                            .id("menu-backdrop")
-                            .w(vp.width)
-                            .h(vp.height)
-                            .on_mouse_down(MouseButton::Left, move |_, _, cx| {
-                                cx.stop_propagation();
-                                closer.update(cx, |bar, cx| bar.close(cx)).ok();
-                            }),
-                    ),
-                );
+                popup = popup.child(menu_tree::window_backdrop(
+                    "menu-backdrop",
+                    window,
+                    move |_, cx| {
+                        closer.update(cx, |bar, cx| bar.close(cx)).ok();
+                    },
+                ));
             }
             Some(
-                deferred(popup.child(anchored().position(anchor).child(item_list)))
-                    .with_priority(2),
+                deferred(
+                    popup.child(
+                        anchored()
+                            .anchor(Anchor::TopLeft)
+                            .position(anchor)
+                            .snap_to_window_with_margin(px(menu_tree::SUBMENU_WINDOW_MARGIN))
+                            .child(item_list),
+                    ),
+                )
+                .with_priority(2),
             )
         } else {
             None
@@ -1274,5 +1269,108 @@ mod tests {
 
         cx.type_keys("f10");
         cx.assert_not_focused(&handle);
+    }
+
+    fn submenu_bar(cx: &mut TestAppContext) -> (Entity<MenuBar>, &mut gpui::VisualTestContext) {
+        open_fluent_test_window(cx, |_, cx| {
+            MenuBar::new(cx)
+                .menu("File", vec![ContextMenuItem::action("New", |_, _, _| {})])
+                .menu(
+                    "Help",
+                    vec![
+                        ContextMenuItem::action("About", |_, _, _| {}),
+                        ContextMenuItem::submenu(
+                            "More",
+                            vec![
+                                ContextMenuItem::action("Inner", |_, _, _| {}),
+                                ContextMenuItem::submenu(
+                                    "Deeper",
+                                    vec![ContextMenuItem::action("Leaf", |_, _, _| {})],
+                                ),
+                            ],
+                        ),
+                    ],
+                )
+        })
+    }
+
+    fn open_in_window(
+        bar: &Entity<MenuBar>,
+        cx: &mut gpui::VisualTestContext,
+        index: usize,
+        width: f32,
+        open_path: Vec<usize>,
+    ) {
+        cx.simulate_resize(gpui::size(px(width), px(400.)));
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+        bar.update(cx, |bar, cx| {
+            bar.open_menu(index, false);
+            bar.open_path = open_path;
+            cx.notify();
+        });
+        // Trigger bounds are measured in prepaint and read on the next render.
+        cx.accessibility_snapshot();
+        cx.accessibility_snapshot();
+    }
+
+    #[gpui::test]
+    fn dropdown_stays_attached_below_trigger_near_the_right_edge(cx: &mut TestAppContext) {
+        let (bar, cx) = submenu_bar(cx);
+        // Narrower than trigger.left + the 180px minimum dropdown width.
+        open_in_window(&bar, cx, 1, 240.0, Vec::new());
+
+        let trigger = bar.read_with(cx, |bar, _| {
+            bar.trigger_bounds[1]
+                .lock()
+                .unwrap()
+                .expect("trigger measured")
+        });
+        let first = cx
+            .selector_bounds("menu-item-row-[0]")
+            .expect("dropdown row");
+        assert!(
+            first.top() >= trigger.bottom(),
+            "{first:?} covers the bar {trigger:?}"
+        );
+        assert!(first.right() <= px(240. - 8. + 1.), "{first:?}");
+        assert!(
+            first.left() <= trigger.right() && first.right() >= trigger.left(),
+            "dropdown detached from trigger: {first:?} vs {trigger:?}"
+        );
+    }
+
+    #[gpui::test]
+    fn bar_submenu_flips_left_and_lines_up_with_its_row(cx: &mut TestAppContext) {
+        let (bar, cx) = submenu_bar(cx);
+        // The second-level submenu opens right of the dropdown (x ~50..250 and
+        // ~250..450); a third level would need to reach 650, so it flips left.
+        open_in_window(&bar, cx, 1, 640.0, vec![1, 1]);
+
+        let parent = cx
+            .selector_bounds("menu-item-row-[1, 1]")
+            .expect("parent row");
+        let child = cx
+            .selector_bounds("menu-item-row-[1, 1, 0]")
+            .expect("child row");
+        assert_eq!(child.top(), parent.top());
+        assert!(child.left() >= px(8.), "{child:?}");
+        assert!(
+            child.right() <= parent.left() + px(2.),
+            "did not flip left: {child:?} vs {parent:?}"
+        );
+        assert!(child.right() <= px(640. - 8. + 1.), "{child:?}");
+    }
+
+    #[gpui::test]
+    fn clicking_outside_closes_the_bar_dropdown(cx: &mut TestAppContext) {
+        let (bar, cx) = submenu_bar(cx);
+        open_in_window(&bar, cx, 0, 800.0, Vec::new());
+        cx.click_at(
+            point(px(700.), px(350.)),
+            gpui::MouseButton::Left,
+            gpui::Modifiers::none(),
+        );
+        bar.read_with(cx, |bar, _| assert!(bar.closing));
     }
 }

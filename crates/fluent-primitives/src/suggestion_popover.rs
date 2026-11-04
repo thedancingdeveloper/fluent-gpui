@@ -430,7 +430,7 @@ impl RenderOnce for SuggestionPopover {
             anchored()
                 .anchor(self.anchor)
                 .position(self.position)
-                .snap_to_window()
+                .snap_to_window_with_margin(px(8.))
                 .child(list),
         ))
     }
