@@ -65,7 +65,7 @@ impl RenderOnce for Chip {
                 div()
                     .id(dismiss_id)
                     .size(px(14.0))
-                    .rounded(px(9999.0))
+                    .rounded(px(radii.pill))
                     .flex()
                     .items_center()
                     .justify_center()
