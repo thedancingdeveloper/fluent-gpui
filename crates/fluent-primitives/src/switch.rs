@@ -1,8 +1,8 @@
 use crate::focus::FluentFocus as _;
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, ease_out_quint, prelude::*, px, Animation, AnimationExt as _, App, ClickEvent, ElementId, IntoElement, RenderOnce, Role, SharedString,
-    Toggled, Window,
+    div, ease_out_quint, prelude::*, px, Animation, AnimationExt as _, App, ClickEvent, ElementId,
+    IntoElement, RenderOnce, Role, SharedString, Toggled, Window,
 };
 
 /// A Fluent 2-styled toggle switch.
