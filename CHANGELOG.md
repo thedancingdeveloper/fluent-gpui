@@ -12,6 +12,8 @@ per crate.
 
 ## Unreleased
 
+- Single-line ellipsis truncation (`TruncateExt::truncate_label`) on tab labels (max width 240px token), tree rows, data table cells and headers, the title bar title and message bar/toast titles (WI-3268).
+
 Workspace release. Includes `VideoSurface` (3.1.0), the AccessKit tree snapshot test helper and the `test-a11y-activation` vendor patch (headless test-window AccessKit activation) that rdpapp-fluent needs. Crate versions are unchanged, as in v3.1.0; consumers pin the tag.
 
 - fluent-primitives: deny missing public API documentation and document every exported control and supporting type (WI-2945).

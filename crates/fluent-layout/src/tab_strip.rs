@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
+use fluent_core::{LayoutDirection, Theme, ThemeProvider as _, TruncateExt as _};
 use gpui::{
     div, prelude::*, px, svg, ClickEvent, Context, FocusHandle, IntoElement, KeyDownEvent, Render,
     Role, SharedString, Window,
@@ -218,6 +218,8 @@ impl Render for TabStrip {
                 .gap(px(spacing.xs))
                 .px(px(spacing.md))
                 .h_full()
+                .max_w(px(components.content_tab_max_width))
+                .flex_none()
                 .bg(tab_bg)
                 .cursor_pointer()
                 .text_size(px(typography.caption.size))
@@ -236,7 +238,7 @@ impl Render for TabStrip {
                 );
             }
 
-            tab_el = tab_el.child(tab_label);
+            tab_el = tab_el.child(div().truncate_label().child(tab_label));
 
             if let Some(handler) = close_handler {
                 let close_btn_id = ("tab-close", (n_tabs as u64 * 100 + i as u64));
@@ -244,6 +246,7 @@ impl Render for TabStrip {
                     div()
                         .id(close_btn_id)
                         .size(px(components.content_tab_close_size))
+                        .flex_none()
                         .flex()
                         .items_center()
                         .justify_center()

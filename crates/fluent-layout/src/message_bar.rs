@@ -1,4 +1,4 @@
-use fluent_core::ThemeProvider as _;
+use fluent_core::{ThemeProvider as _, TruncateExt as _};
 use gpui::{
     div, prelude::*, px, svg, App, ClickEvent, IntoElement, RenderOnce, Role, SharedString, Window,
 };
@@ -96,13 +96,14 @@ impl RenderOnce for MessageBar {
             MessageIntent::Error => colors.status_error_border,
         };
 
-        let mut text = div().flex().flex_col().gap(px(spacing.xs));
+        let mut text = div().flex().flex_col().min_w_0().gap(px(spacing.xs));
         if let Some(title) = self.title {
             text = text.child(
                 div()
                     .text_size(px(typography.body.size))
                     .font_weight(gpui::FontWeight::SEMIBOLD)
                     .text_color(colors.on_neutral)
+                    .truncate_label()
                     .child(title),
             );
         }

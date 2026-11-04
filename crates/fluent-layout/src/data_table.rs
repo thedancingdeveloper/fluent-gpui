@@ -4,7 +4,7 @@ use crate::{
     data_status::{status_block, DataStatusKind},
     virtual_list::VirtualList,
 };
-use fluent_core::ThemeProvider as _;
+use fluent_core::{ThemeProvider as _, TruncateExt as _};
 use gpui::{
     div, prelude::*, px, App, ClickEvent, IntoElement, KeyDownEvent, RenderOnce, Role,
     SharedString, Window,
@@ -518,7 +518,7 @@ impl RenderOnce for DataTable {
                 .filter(|_| active_sort)
                 .map(|(_, direction)| direction.toggle())
                 .unwrap_or(DataSortDirection::Ascending);
-            let mut label = div().child(column.title.clone());
+            let mut label = div().truncate_label().child(column.title.clone());
             if active_sort {
                 let arrow = match self.sort.as_ref().map(|(_, direction)| *direction) {
                     Some(DataSortDirection::Ascending) => " ↑",
@@ -676,7 +676,7 @@ impl RenderOnce for DataTable {
                     .text_color(colors_for_rows.on_neutral)
                     .border_r_1()
                     .border_color(colors_for_rows.stroke_neutral_subtle)
-                    .child(data_cell.text);
+                    .child(div().truncate_label().child(data_cell.text));
                 let width = current_widths.get(col_idx).copied().unwrap_or(120.0);
                 cell = cell.w(px(width)).flex_none();
                 row_el = row_el.child(cell);
