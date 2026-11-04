@@ -49,6 +49,7 @@ ALL_COMPONENTS=(
     field
     card
     section-header
+    states
 )
 
 # ── Argument parsing ──────────────────────────────────────────────────────
