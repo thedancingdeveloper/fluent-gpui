@@ -56,7 +56,7 @@ pub(crate) fn status_block(
         .id(id)
         .role(kind.role())
         .aria_label(SharedString::from(kind.announcement(&message)))
-        .min_h(px(theme.components.menu_item_height * 3.0))
+        .min_h(px(theme.components.list_item_height * 3.0))
         .flex()
         .items_center()
         .justify_center()
