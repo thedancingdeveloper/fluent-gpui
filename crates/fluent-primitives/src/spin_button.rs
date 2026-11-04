@@ -189,7 +189,7 @@ impl RenderOnce for SpinButton {
             .h(px(32.0))
             .min_w(px(96.0))
             .pl(px(10.0))
-            .rounded(px(4.0))
+            .rounded(px(cx.theme().radii.md))
             .bg(colors.neutral)
             .border_1()
             .border_color(colors.stroke_neutral)
