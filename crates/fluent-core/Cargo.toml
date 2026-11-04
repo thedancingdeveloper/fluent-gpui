@@ -1,6 +1,6 @@
 [package]
 name = "fluent-core"
-version = "2.4.0"
+version = "3.2.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Design tokens, theme system, and lightweight motion helpers for FluentGUI"

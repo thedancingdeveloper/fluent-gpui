@@ -22,9 +22,9 @@ exclude = ["vendor/zed"]
 gpui          = { path = "vendor/zed/crates/gpui" }
 gpui_platform = { path = "vendor/zed/crates/gpui_platform" }
 
-fluent-core        = { path = "crates/fluent-core",        version = "2.4.0" }
-fluent-primitives  = { path = "crates/fluent-primitives",  version = "2.4.0" }
-fluent-ribbon      = { path = "crates/fluent-ribbon",      version = "2.0.2" }
-fluent-layout      = { path = "crates/fluent-layout",      version = "2.2.0" }
-fluent-app         = { path = "crates/fluent-app",         version = "2.3.0" }
+fluent-core        = { path = "crates/fluent-core",        version = "3.2.0" }
+fluent-primitives  = { path = "crates/fluent-primitives",  version = "3.2.0" }
+fluent-ribbon      = { path = "crates/fluent-ribbon",      version = "3.2.0" }
+fluent-layout      = { path = "crates/fluent-layout",      version = "3.2.0" }
+fluent-app         = { path = "crates/fluent-app",         version = "3.2.0" }
 fluent-test-utils  = { path = "crates/fluent-test-utils" }
