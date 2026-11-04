@@ -95,8 +95,17 @@ fn main() {
                             })
                     })
                     .group("View", |g| {
-                        g.toggle_button("Dark", "icons/dark_theme.svg", true, |_, _, _, _| {})
-                            .toggle_button("Light", "icons/light_theme.svg", false, |_, _, _, _| {})
+                        g.toggle_button("Dark", "icons/dark_theme.svg", true, |_, _, _, cx| {
+                            fluent_core::Theme::apply_dark(cx);
+                        })
+                        .toggle_button(
+                            "Light",
+                            "icons/light_theme.svg",
+                            false,
+                            |_, _, _, cx| {
+                                fluent_core::Theme::apply_light(cx);
+                            },
+                        )
                     })
                 })
                 .tab("Edit", |t| {

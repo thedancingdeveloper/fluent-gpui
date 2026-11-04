@@ -11,7 +11,7 @@
 // Component names: button icon-button toggle-button checkbox switch label
 //   badge chip divider progress-bar spinner skeleton avatar app-dot
 //   connection-badge text-input textarea searchbox dropdown combobox
-//   radio-group field card section-header
+//   radio-group field card section-header states
 
 use std::fs;
 
@@ -134,6 +134,7 @@ impl Render for Screenshots {
             "field" => ss_field(text_filled, textarea).into_any_element(),
             "card" => ss_cards().into_any_element(),
             "section-header" => ss_section_headers().into_any_element(),
+            "states" => ss_states().into_any_element(),
             other => div()
                 .p(px(24.0))
                 .child(Label::new(format!("Unknown component: {other}")))
@@ -565,6 +566,31 @@ fn ss_section_headers() -> impl IntoElement {
         )
         .child(SectionHeader::new("Recent"))
         .child(Label::new("home-nas.local").size(LabelSize::Body))
+}
+
+// ── Loading / validation states ───────────────────────────────────────────
+fn ss_states() -> impl IntoElement {
+    col()
+        .w(px(360.0))
+        .child(group(
+            "Indeterminate progress",
+            ProgressBar::new(0.0).indeterminate(),
+        ))
+        .child(group("Spinner", Spinner::new().size(24.0)))
+        .child(group(
+            "Field validation",
+            col()
+                .child(
+                    Field::new(div().w_full().child(Label::new("value")))
+                        .label("Error")
+                        .validation(FieldValidationState::Error, "Something is wrong."),
+                )
+                .child(
+                    Field::new(div().w_full().child(Label::new("value")))
+                        .label("Warning")
+                        .validation(FieldValidationState::Warning, "Check this value."),
+                ),
+        ))
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────
