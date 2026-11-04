@@ -100,7 +100,7 @@ impl Render for TitleBar {
         let bar_bg = colors.surface_dim;
         let fg = colors.on_neutral;
         let ctrl_hover = colors.subtle_hover;
-        let close_hover: gpui::Hsla = gpui::rgb(0xC42B1C).into();
+        let close_hover = colors.status_error;
 
         // Drag: left-button press starts window move; consecutive presses
         // within DOUBLE_CLICK_WINDOW_MS toggle maximize / restore instead.

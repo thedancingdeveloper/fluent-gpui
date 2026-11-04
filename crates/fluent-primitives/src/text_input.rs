@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
-    div, fill, point, prelude::*, px, relative, rgba, size, App, Bounds, ClipboardItem, Context,
+    div, fill, point, prelude::*, px, relative, size, App, Bounds, ClipboardItem, Context,
     CursorStyle, Element, ElementId, ElementInputHandler, Entity, EntityInputHandler, FocusHandle,
     Focusable, GlobalElementId, IntoElement, KeyDownEvent, LayoutId, MouseButton, MouseDownEvent,
     MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Render, ShapedLine, SharedString, Style,
@@ -711,7 +711,7 @@ impl Element for TextElement {
             .shape_line(display_text, font_size, &runs, None);
 
         let cursor_pos = line.x_for_index(display_cursor);
-        let selection_color = rgba(0x3B82F633);
+        let selection_color = fluent_core::with_alpha(colors.accent, 0.2);
         let (selection, cursor) = if display_sel.is_empty() {
             (
                 None,
@@ -820,7 +820,7 @@ impl Render for TextInput {
             crate::FieldValidationState::Error => colors.status_error,
             crate::FieldValidationState::Warning => colors.status_warning,
             crate::FieldValidationState::Success => colors.status_success,
-            crate::FieldValidationState::None if self.error => colors.stroke_accent,
+            crate::FieldValidationState::None if self.error => colors.status_error,
             crate::FieldValidationState::None if self.disabled => colors.stroke_neutral_disabled,
             crate::FieldValidationState::None if focus_handle.is_focused(_window) => colors.accent,
             crate::FieldValidationState::None => colors.stroke_neutral,
