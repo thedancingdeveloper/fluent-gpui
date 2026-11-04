@@ -65,6 +65,8 @@ pub struct ComponentTokens {
     pub content_tab_icon_size: f32,
     /// Public API item.
     pub content_tab_close_size: f32,
+    /// Maximum width of a content tab before its label is ellipsised.
+    pub content_tab_max_width: f32,
     /// Public API item.
     pub ribbon_tab_height: f32,
     /// Public API item.
@@ -112,6 +114,7 @@ impl Default for ComponentTokens {
             content_tab_strip_height: 32.0,
             content_tab_icon_size: 14.0,
             content_tab_close_size: 14.0,
+            content_tab_max_width: 240.0,
             ribbon_tab_height: 28.0,
             ribbon_content_button_height: 64.0,
             ribbon_group_label_height: 16.0,

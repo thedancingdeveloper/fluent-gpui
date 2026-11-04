@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::data_status::{status_block, DataStatusKind};
-use fluent_core::ThemeProvider as _;
+use fluent_core::{ThemeProvider as _, TruncateExt as _};
 use gpui::{
     div, prelude::*, px, svg, App, ClickEvent, IntoElement, KeyDownEvent, MouseButton,
     MouseDownEvent, RenderOnce, Role, SharedString, Window,
@@ -608,7 +608,7 @@ impl Tree {
             );
         }
 
-        content = content.child(item.label);
+        content = content.child(div().truncate_label().child(item.label));
         if item.loading {
             content = content.child(div().text_color(colors.on_subtle).child("Loading…"));
         }

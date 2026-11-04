@@ -10,6 +10,7 @@ mod shadows;
 mod spacing;
 mod stroke_width;
 mod theme;
+mod truncate;
 mod typography;
 
 /// Re-export the underlying UI toolkit for examples and downstream Fluent crates.
@@ -29,6 +30,7 @@ pub use stroke_width::StrokeWidthTokens;
 pub use theme::{
     Brightness, LayoutDirection, LayoutDirectionProvider, Theme, ThemeMode, ThemeProvider,
 };
+pub use truncate::TruncateExt;
 pub use typography::{TypeRamp, TypographyTokens};
 
 #[cfg(test)]

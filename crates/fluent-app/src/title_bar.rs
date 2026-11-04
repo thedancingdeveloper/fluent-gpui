@@ -1,4 +1,4 @@
-use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
+use fluent_core::{LayoutDirection, Theme, ThemeProvider as _, TruncateExt as _};
 use gpui::{
     div, prelude::*, px, svg, ClickEvent, Context, IntoElement, MouseButton, MouseDownEvent,
     Render, SharedString, Window,
@@ -139,6 +139,7 @@ impl Render for TitleBar {
         let accent_fg = colors.on_neutral_accent;
         let mut title_area = div()
             .flex_1()
+            .min_w_0()
             .h_full()
             .flex()
             .items_center()
@@ -151,7 +152,7 @@ impl Render for TitleBar {
         if let Some(path) = icon {
             title_area = title_area.child(svg().path(path).size(px(16.0)).text_color(accent_fg));
         }
-        let mut title_area = title_area.child(title);
+        let mut title_area = title_area.child(div().truncate_label().child(title));
         if let Some(status) = status {
             title_area = title_area.child(
                 div()
