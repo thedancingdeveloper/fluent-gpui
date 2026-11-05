@@ -548,13 +548,16 @@ impl Render for Combobox {
             let motion_id = ("combobox-list-motion", self.motion_epoch);
             let list = fluent_core::popup_motion_surface(motion_id, exiting, motion, list);
 
-            root = root.child(deferred(
-                anchored()
-                    .anchor(Anchor::TopLeft)
-                    .position(self.drop_origin)
-                    .snap_to_window_with_margin(px(8.))
-                    .child(list),
-            ));
+            root = root.child(
+                deferred(
+                    anchored()
+                        .anchor(Anchor::TopLeft)
+                        .position(self.drop_origin)
+                        .snap_to_window_with_margin(px(8.))
+                        .child(list),
+                )
+                .with_priority(fluent_core::layer::DROPDOWN),
+            );
         }
 
         root

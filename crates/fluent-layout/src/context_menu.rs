@@ -277,6 +277,7 @@ pub struct ContextMenu {
     focus_handle: Option<FocusHandle>,
     open_path: Vec<usize>,
     selected_path: Vec<usize>,
+    hover_intent: menu_tree::HoverIntent,
 }
 
 impl ContextMenu {
@@ -292,6 +293,7 @@ impl ContextMenu {
             focus_handle: None,
             open_path: Vec::new(),
             selected_path: Vec::new(),
+            hover_intent: menu_tree::HoverIntent::default(),
         }
     }
 
@@ -542,12 +544,12 @@ impl ContextMenu {
                     if !disabled && !self.closing {
                         row = row
                             .on_mouse_move(cx.listener(move |menu: &mut ContextMenu, _, _, cx| {
-                                if menu.closing {
-                                    return;
-                                }
-                                menu.selected_path = select_path.clone();
-                                menu.open_path = hover_path.clone();
-                                cx.notify();
+                                menu_tree::hover_row(
+                                    menu,
+                                    select_path.clone(),
+                                    hover_path.clone(),
+                                    cx,
+                                );
                             }))
                             .cursor_pointer()
                             .hover({
@@ -611,12 +613,12 @@ impl ContextMenu {
                     if !disabled && !self.closing {
                         row = row
                             .on_mouse_move(cx.listener(move |menu: &mut ContextMenu, _, _, cx| {
-                                if menu.closing {
-                                    return;
-                                }
-                                menu.selected_path = select_path.clone();
-                                menu.open_path = hover_path.clone();
-                                cx.notify();
+                                menu_tree::hover_row(
+                                    menu,
+                                    select_path.clone(),
+                                    hover_path.clone(),
+                                    cx,
+                                );
                             }))
                             .cursor_pointer()
                             .hover({
@@ -686,12 +688,12 @@ impl ContextMenu {
                     if !disabled && !self.closing {
                         row = row
                             .on_mouse_move(cx.listener(move |menu: &mut ContextMenu, _, _, cx| {
-                                if menu.closing {
-                                    return;
-                                }
-                                menu.selected_path = select_path.clone();
-                                menu.open_path = hover_path.clone();
-                                cx.notify();
+                                menu_tree::hover_row(
+                                    menu,
+                                    select_path.clone(),
+                                    hover_path.clone(),
+                                    cx,
+                                );
                             }))
                             .cursor_pointer()
                             .hover({
@@ -764,12 +766,12 @@ impl ContextMenu {
                                 move |s| s.bg(pressed)
                             })
                             .on_mouse_move(cx.listener(move |menu: &mut ContextMenu, _, _, cx| {
-                                if menu.closing {
-                                    return;
-                                }
-                                menu.selected_path = select_path.clone();
-                                menu.open_path = select_path.clone();
-                                cx.notify();
+                                menu_tree::hover_row(
+                                    menu,
+                                    select_path.clone(),
+                                    select_path.clone(),
+                                    cx,
+                                );
                             }));
                     }
 
@@ -785,7 +787,11 @@ impl ContextMenu {
                     if !disabled && menu_tree::path_starts_with(&self.open_path, &path) {
                         let submenu =
                             self.render_menu(items, path.clone(), self_weak.clone(), env, cx);
-                        row = row.child(menu_tree::submenu_flyout(submenu, env, path.len()));
+                        row = row.child(menu_tree::submenu_flyout(
+                            submenu,
+                            env,
+                            fluent_core::layer::CONTEXT_MENU + path.len(),
+                        ));
                     }
                     menu = menu.child(row);
                 }
@@ -802,6 +808,20 @@ impl ContextMenu {
         }
 
         menu.into_any_element()
+    }
+}
+
+impl menu_tree::HoverMenu for ContextMenu {
+    fn is_closing(&self) -> bool {
+        self.closing
+    }
+
+    fn hover_intent(&mut self) -> &mut menu_tree::HoverIntent {
+        &mut self.hover_intent
+    }
+
+    fn paths_mut(&mut self) -> (&mut Vec<usize>, &mut Vec<usize>) {
+        (&mut self.selected_path, &mut self.open_path)
     }
 }
 
@@ -858,9 +878,10 @@ impl Render for ContextMenu {
                     menu.handle_key(ev, window, cx);
                 }),
             )
-            .child(deferred(
-                overlay.child(anchored().position(pos).child(menu)),
-            ))
+            .child(
+                deferred(overlay.child(anchored().position(pos).child(menu)))
+                    .with_priority(fluent_core::layer::CONTEXT_MENU),
+            )
     }
 }
 

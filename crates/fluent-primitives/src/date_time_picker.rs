@@ -1061,13 +1061,16 @@ impl Render for DateTimePicker {
             let motion_id = ("date-time-picker-panel-motion", self.motion_epoch);
             let panel = fluent_core::popup_motion_surface(motion_id, exiting, motion, panel);
 
-            root = root.child(deferred(
-                anchored()
-                    .anchor(Anchor::TopLeft)
-                    .position(self.drop_origin)
-                    .snap_to_window_with_margin(px(8.))
-                    .child(panel),
-            ));
+            root = root.child(
+                deferred(
+                    anchored()
+                        .anchor(Anchor::TopLeft)
+                        .position(self.drop_origin)
+                        .snap_to_window_with_margin(px(8.))
+                        .child(panel),
+                )
+                .with_priority(fluent_core::layer::DROPDOWN),
+            );
         }
 
         root

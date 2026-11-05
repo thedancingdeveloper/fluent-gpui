@@ -4,6 +4,7 @@
 mod async_resource;
 mod colors;
 mod components;
+pub mod layer;
 mod motion;
 mod radii;
 mod shadows;

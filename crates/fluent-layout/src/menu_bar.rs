@@ -97,6 +97,7 @@ pub struct MenuBar {
     active_index: usize,
     selected_path: Vec<usize>,
     open_path: Vec<usize>,
+    hover_intent: menu_tree::HoverIntent,
     focus_handle: FocusHandle,
     trigger_bounds: Vec<Arc<Mutex<Option<Bounds<Pixels>>>>>,
     window_id: Option<WindowId>,
@@ -139,6 +140,7 @@ impl MenuBar {
             active_index: 0,
             selected_path: Vec::new(),
             open_path: Vec::new(),
+            hover_intent: menu_tree::HoverIntent::default(),
             focus_handle: cx.focus_handle().tab_stop(true),
             trigger_bounds: Vec::new(),
             window_id: None,
@@ -592,12 +594,12 @@ impl MenuBar {
                     )
                     .on_mouse_move(cx.listener(
                         move |bar: &mut MenuBar, _, _, cx| {
-                            if bar.closing {
-                                return;
-                            }
-                            bar.selected_path = select_path.clone();
-                            bar.open_path = hover_parent.clone();
-                            cx.notify();
+                            menu_tree::hover_row(
+                                bar,
+                                select_path.clone(),
+                                hover_parent.clone(),
+                                cx,
+                            );
                         },
                     ));
                     if !disabled && !self.closing {
@@ -663,12 +665,12 @@ impl MenuBar {
                     )
                     .on_mouse_move(cx.listener(
                         move |bar: &mut MenuBar, _, _, cx| {
-                            if bar.closing {
-                                return;
-                            }
-                            bar.selected_path = select_path.clone();
-                            bar.open_path = hover_parent.clone();
-                            cx.notify();
+                            menu_tree::hover_row(
+                                bar,
+                                select_path.clone(),
+                                hover_parent.clone(),
+                                cx,
+                            );
                         },
                     ));
                     if !disabled && !self.closing {
@@ -739,12 +741,12 @@ impl MenuBar {
                     )
                     .on_mouse_move(cx.listener(
                         move |bar: &mut MenuBar, _, _, cx| {
-                            if bar.closing {
-                                return;
-                            }
-                            bar.selected_path = select_path.clone();
-                            bar.open_path = hover_parent.clone();
-                            cx.notify();
+                            menu_tree::hover_row(
+                                bar,
+                                select_path.clone(),
+                                hover_parent.clone(),
+                                cx,
+                            );
                         },
                     ));
                     if !disabled && !self.closing {
@@ -819,12 +821,12 @@ impl MenuBar {
                                 move |s| s.bg(pressed)
                             })
                             .on_mouse_move(cx.listener(move |bar: &mut MenuBar, _, _, cx| {
-                                if bar.closing {
-                                    return;
-                                }
-                                bar.selected_path = select_path.clone();
-                                bar.open_path = select_path.clone();
-                                cx.notify();
+                                menu_tree::hover_row(
+                                    bar,
+                                    select_path.clone(),
+                                    select_path.clone(),
+                                    cx,
+                                );
                             }));
                     }
                     row = row
@@ -839,7 +841,11 @@ impl MenuBar {
                     if !disabled && menu_tree::path_starts_with(&self.open_path, &path) {
                         let submenu =
                             self.render_items(items, path.clone(), self_weak.clone(), env, cx);
-                        row = row.child(menu_tree::submenu_flyout(submenu, env, 2 + path.len()));
+                        row = row.child(menu_tree::submenu_flyout(
+                            submenu,
+                            env,
+                            fluent_core::layer::SUBMENU + path.len(),
+                        ));
                     }
                     menu = menu.child(row);
                 }
@@ -856,6 +862,20 @@ impl MenuBar {
         }
 
         menu.into_any_element()
+    }
+}
+
+impl menu_tree::HoverMenu for MenuBar {
+    fn is_closing(&self) -> bool {
+        self.closing
+    }
+
+    fn hover_intent(&mut self) -> &mut menu_tree::HoverIntent {
+        &mut self.hover_intent
+    }
+
+    fn paths_mut(&mut self) -> (&mut Vec<usize>, &mut Vec<usize>) {
+        (&mut self.selected_path, &mut self.open_path)
     }
 }
 
@@ -1013,7 +1033,7 @@ impl Render for MenuBar {
                             .child(item_list),
                     ),
                 )
-                .with_priority(2),
+                .with_priority(fluent_core::layer::MENU),
             )
         } else {
             None

@@ -139,7 +139,10 @@ pub fn popup_motion_surface(
                 } else {
                     offset * (1.0 - delta)
                 };
-                surface.opacity(opacity).mt(px(y_offset))
+                // Offset with `top`, not a margin: `anchored` ignores margins when it
+                // measures and snaps its child, so a margin would paint outside the
+                // snapped bounds for the length of the animation.
+                surface.opacity(opacity).relative().top(px(y_offset))
             },
         )
         .into_any_element()
