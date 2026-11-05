@@ -291,6 +291,20 @@ mod tests {
         ts.read_with(cx, |t, _| assert_eq!(t.active, 2));
     }
 
+    #[gpui::test]
+    fn closable_tab_keeps_tab_height(cx: &mut TestAppContext) {
+        let (_, cx) = open_fluent_test_window(cx, |_, cx| {
+            let mut ts = TabStrip::new(cx);
+            ts.add_tab(TabItem::new("a").label("a").closable(true));
+            ts.add_tab(TabItem::new("b").label("b"));
+            ts
+        });
+        let closable = cx.selector_bounds("tab-0").expect("closable tab painted");
+        let plain = cx.selector_bounds("tab-1").expect("plain tab painted");
+        assert_eq!(closable.size.height, plain.size.height);
+        assert!(closable.size.height <= gpui::px(32.0));
+    }
+
     #[test]
     fn remove_tab_before_active_preserves_active_tab_identity() {
         let mut strip = TabStrip::default();
