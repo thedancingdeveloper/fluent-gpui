@@ -14,6 +14,8 @@ per crate.
 
 - Pill, badge, dock, app-dot and date-time action radii and the tree/list badge font size now come from theme tokens; avatar and app-dot initials use `on_accent` (WI-3266).
 
+- Pressed (active) backgrounds on toggle button, checkbox, radio, chip, tabs, tree, list, toolbar, menus, dialogs, dock, ribbon and title bar; switch knob grows on hover/press; command palette disabled rows drop the opacity hack (WI-3265).
+
 - New `list_item_height` component token (32px, Fluent 2); tree and data table rows use it instead of `menu_item_height` (WI-3259).
 
 - Text input error state and selection, and title-bar close hover, now use theme colours (WI-3264, WI-3266)

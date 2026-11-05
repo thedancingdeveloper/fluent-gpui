@@ -91,14 +91,20 @@ impl RenderOnce for ToggleButton {
         let radii = &theme.radii;
         let typography = &theme.typography;
 
-        let (bg, bg_hover, fg) = if self.selected {
+        let (bg, bg_hover, bg_pressed, fg) = if self.selected {
             (
                 colors.neutral_selected,
                 colors.neutral_hover,
+                colors.neutral_selected,
                 colors.on_neutral_selected,
             )
         } else {
-            (colors.subtle, colors.subtle_hover, colors.on_subtle)
+            (
+                colors.subtle,
+                colors.subtle_hover,
+                colors.subtle_selected,
+                colors.on_subtle,
+            )
         };
 
         let fg = if self.disabled {
@@ -169,7 +175,8 @@ impl RenderOnce for ToggleButton {
                 .tab_stop(true)
                 .fluent_focus(tab_index, focus_ring)
                 .cursor_pointer()
-                .hover(move |s| s.bg(bg_hover));
+                .hover(move |s| s.bg(bg_hover))
+                .active(move |s| s.bg(bg_pressed));
         }
 
         if let Some(handler) = on_click.filter(|_| !disabled) {

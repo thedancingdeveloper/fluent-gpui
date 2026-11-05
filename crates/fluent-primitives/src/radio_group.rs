@@ -224,6 +224,10 @@ impl RenderOnce for RadioGroup {
                     .hover({
                         let hover = colors.subtle_hover;
                         move |s| s.bg(hover)
+                    })
+                    .active({
+                        let pressed = colors.subtle_selected;
+                        move |s| s.bg(pressed)
                     });
                 if let Some(handler) = on_select {
                     let key_handler = handler.clone();

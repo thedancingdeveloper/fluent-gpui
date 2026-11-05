@@ -284,6 +284,10 @@ impl Toolbar {
                             let hover = colors.subtle_hover;
                             move |s| s.bg(hover)
                         })
+                        .active({
+                            let pressed = colors.subtle_selected;
+                            move |s| s.bg(pressed)
+                        })
                         .on_key_down(move |ev, win, app| {
                             if matches!(ev.keystroke.key.as_str(), "enter" | "space") {
                                 key_click(&ClickEvent::default(), win, app);
@@ -348,6 +352,10 @@ impl Toolbar {
                         .hover({
                             let hover = colors.neutral_hover;
                             move |s| s.bg(hover)
+                        })
+                        .active({
+                            let pressed = colors.neutral_selected;
+                            move |s| s.bg(pressed)
                         })
                         .on_key_down({
                             let key_click = on_click.clone();
@@ -451,6 +459,10 @@ impl RenderOnce for Toolbar {
                 .hover({
                     let hover = colors.subtle_hover;
                     move |s| s.bg(hover)
+                })
+                .active({
+                    let pressed = colors.subtle_selected;
+                    move |s| s.bg(pressed)
                 })
                 .child("More");
 

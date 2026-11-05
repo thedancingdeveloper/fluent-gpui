@@ -554,6 +554,10 @@ impl ContextMenu {
                                 let hover = env.colors.subtle_hover;
                                 move |s| s.bg(hover)
                             })
+                            .active({
+                                let pressed = env.colors.subtle_selected;
+                                move |s| s.bg(pressed)
+                            })
                             .on_mouse_down(MouseButton::Left, move |_, win, cx| {
                                 if closer.update(cx, |menu, _| menu.closing).unwrap_or(true) {
                                     return;
@@ -618,6 +622,10 @@ impl ContextMenu {
                             .hover({
                                 let hover = env.colors.subtle_hover;
                                 move |s| s.bg(hover)
+                            })
+                            .active({
+                                let pressed = env.colors.subtle_selected;
+                                move |s| s.bg(pressed)
                             })
                             .on_mouse_down(MouseButton::Left, move |_, win, cx| {
                                 if closer.update(cx, |menu, _| menu.closing).unwrap_or(true) {
@@ -690,6 +698,10 @@ impl ContextMenu {
                                 let hover = env.colors.subtle_hover;
                                 move |s| s.bg(hover)
                             })
+                            .active({
+                                let pressed = env.colors.subtle_selected;
+                                move |s| s.bg(pressed)
+                            })
                             .on_mouse_down(MouseButton::Left, move |_, win, cx| {
                                 if closer.update(cx, |menu, _| menu.closing).unwrap_or(true) {
                                     return;
@@ -746,6 +758,10 @@ impl ContextMenu {
                             .hover({
                                 let hover = env.colors.subtle_hover;
                                 move |s| s.bg(hover)
+                            })
+                            .active({
+                                let pressed = env.colors.subtle_selected;
+                                move |s| s.bg(pressed)
                             })
                             .on_mouse_move(cx.listener(move |menu: &mut ContextMenu, _, _, cx| {
                                 if menu.closing {

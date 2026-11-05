@@ -322,6 +322,10 @@ impl Render for MessageDialog {
                                 let hover = colors.subtle_hover;
                                 move |s| s.bg(hover)
                             })
+                            .active({
+                                let pressed = colors.subtle_selected;
+                                move |s| s.bg(pressed)
+                            })
                             .on_click(|_, _, cx| ModalStack::pop(cx))
                             .child(
                                 gpui::svg()
@@ -366,6 +370,10 @@ impl Render for MessageDialog {
                             .hover({
                                 let hover = colors.accent_hover;
                                 move |s| s.bg(hover)
+                            })
+                            .active({
+                                let pressed = colors.accent_selected;
+                                move |s| s.bg(pressed)
                             })
                             .on_click(|_, _, cx| ModalStack::pop(cx))
                             .child(dismiss_label),
@@ -485,6 +493,7 @@ impl Render for ConfirmModal {
                             .text_color(colors.on_neutral)
                             .cursor_pointer()
                             .hover(move |s| s.bg(colors.neutral_hover))
+                            .active(move |s| s.bg(colors.neutral_selected))
                             .on_click(cancel_handler)
                             .child(cancel_label),
                     )
@@ -501,6 +510,7 @@ impl Render for ConfirmModal {
                             .text_color(colors.on_accent)
                             .cursor_pointer()
                             .hover(move |s| s.bg(colors.accent_hover))
+                            .active(move |s| s.bg(colors.accent_selected))
                             .on_click(confirm_handler)
                             .child(confirm_label),
                     ),

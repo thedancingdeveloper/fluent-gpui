@@ -384,6 +384,7 @@ fn render_item(
             colors.panel_bg
         })
         .hover(|s| s.bg(colors.subtle_hover))
+        .active(|s| s.bg(colors.subtle_selected))
         .on_click(click);
     if compact {
         let tooltip_label = label.clone();

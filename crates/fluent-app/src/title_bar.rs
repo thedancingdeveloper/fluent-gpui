@@ -101,6 +101,8 @@ impl Render for TitleBar {
         let fg = colors.on_neutral;
         let ctrl_hover = colors.subtle_hover;
         let close_hover = colors.status_error;
+        let ctrl_pressed = colors.subtle_selected;
+        let close_pressed = colors.status_error.opacity(0.8);
 
         // Drag: left-button press starts window move; consecutive presses
         // within DOUBLE_CLICK_WINDOW_MS toggle maximize / restore instead.
@@ -189,6 +191,7 @@ impl Render for TitleBar {
                         .justify_center()
                         .cursor_pointer()
                         .hover(move |s| s.bg(ctrl_hover))
+                        .active(move |s| s.bg(ctrl_pressed))
                         .on_click(min_handler)
                         .child(
                             svg()
@@ -207,6 +210,7 @@ impl Render for TitleBar {
                         .justify_center()
                         .cursor_pointer()
                         .hover(move |s| s.bg(ctrl_hover))
+                        .active(move |s| s.bg(ctrl_pressed))
                         .on_click(max_handler)
                         .child(
                             svg()
@@ -225,6 +229,7 @@ impl Render for TitleBar {
                         .justify_center()
                         .cursor_pointer()
                         .hover(move |s| s.bg(close_hover))
+                        .active(move |s| s.bg(close_pressed))
                         .on_click(close_handler)
                         .child(
                             svg()
