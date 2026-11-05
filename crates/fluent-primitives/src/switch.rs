@@ -118,7 +118,7 @@ impl RenderOnce for Switch {
             .when_some(label, |d, name| d.aria_label(name))
             .w(px(40.0))
             .h(px(20.0))
-            .rounded(px(9999.0))
+            .rounded(px(theme.radii.pill))
             .bg(track_bg)
             .border_1()
             .border_color(track_border)
@@ -145,7 +145,7 @@ impl RenderOnce for Switch {
                 .absolute()
                 .size(px(12.0))
                 .ml(px(to_ml))
-                .rounded(px(9999.0))
+                .rounded(px(theme.radii.pill))
                 .bg(thumb_color)
                 .with_animation(
                     ElementId::from(("switch-thumb", on as u64)),

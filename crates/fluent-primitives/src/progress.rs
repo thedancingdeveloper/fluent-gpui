@@ -141,7 +141,7 @@ impl RenderOnce for ProgressBar {
                 .absolute()
                 .h_full()
                 .w(relative(INDETERMINATE_WIDTH))
-                .rounded(px(9999.0))
+                .rounded(px(theme.radii.pill))
                 .bg(indicator_color)
                 .with_animation(
                     animation_id,
@@ -157,7 +157,7 @@ impl RenderOnce for ProgressBar {
             div()
                 .h_full()
                 .w(relative(self.value))
-                .rounded(px(9999.0))
+                .rounded(px(theme.radii.pill))
                 .bg(indicator_color)
                 .into_any_element()
         };
@@ -170,7 +170,7 @@ impl RenderOnce for ProgressBar {
             .w_full()
             .h(px(self.height))
             .overflow_hidden()
-            .rounded(px(9999.0))
+            .rounded(px(theme.radii.pill))
             .bg(colors.neutral)
             .child(indicator)
     }

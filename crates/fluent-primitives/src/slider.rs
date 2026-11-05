@@ -188,15 +188,18 @@ impl RenderOnce for Slider {
 
         let mut track = div()
             .relative()
-            .rounded(px(9999.0))
+            .rounded(px(cx.theme().radii.pill))
             .bg(colors.neutral)
             .border_1()
             .border_color(colors.stroke_neutral);
-        let fill = div().absolute().rounded(px(9999.0)).bg(fill_color);
+        let fill = div()
+            .absolute()
+            .rounded(px(cx.theme().radii.pill))
+            .bg(fill_color);
         let thumb = div()
             .absolute()
             .size(px(THUMB))
-            .rounded(px(9999.0))
+            .rounded(px(cx.theme().radii.pill))
             .bg(thumb_color)
             .border_2()
             .border_color(colors.on_accent);

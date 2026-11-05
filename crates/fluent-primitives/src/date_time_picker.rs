@@ -1,4 +1,4 @@
-use fluent_core::TextRampExt;
+use fluent_core::{TextRampExt, TypeRamp};
 use std::sync::{Arc, Mutex};
 
 use fluent_core::{Theme, ThemeProvider as _};
@@ -1036,6 +1036,8 @@ impl Render for DateTimePicker {
                         "date-time-picker-clear",
                         "Clear",
                         self.closing,
+                        radii.md,
+                        &typography.caption,
                         cx.listener(|picker: &mut DateTimePicker, _: &ClickEvent, _, cx| {
                             if picker.closing {
                                 return;
@@ -1047,6 +1049,8 @@ impl Render for DateTimePicker {
                         "date-time-picker-done",
                         "Done",
                         self.closing,
+                        radii.md,
+                        &typography.caption,
                         cx.listener(|picker: &mut DateTimePicker, _: &ClickEvent, _, cx| {
                             picker.close_popup(cx);
                         }),
@@ -1204,6 +1208,8 @@ fn action_button(
     id: &'static str,
     label: &'static str,
     disabled: bool,
+    radius: f32,
+    ramp: &TypeRamp,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> impl IntoElement {
     div()
@@ -1213,8 +1219,8 @@ fn action_button(
         .justify_center()
         .h(px(30.0))
         .px(px(10.0))
-        .rounded(px(4.0))
-        .text_size(px(12.0))
+        .rounded(px(radius))
+        .text_ramp(ramp)
         .cursor(if disabled {
             CursorStyle::Arrow
         } else {
