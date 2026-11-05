@@ -1,4 +1,5 @@
 use fluent_core::TextRampExt;
+use fluent_primitives::{ButtonAppearance, ButtonSize, IconButton};
 use std::sync::Arc;
 
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _, TruncateExt as _};
@@ -122,7 +123,6 @@ impl Render for TabStrip {
         let colors = theme.colors.clone();
         let spacing = theme.spacing;
         let typography = theme.typography;
-        let radii = theme.radii;
         let components = theme.components;
         let rtl = LayoutDirection::current(cx).is_rtl();
 
@@ -245,24 +245,11 @@ impl Render for TabStrip {
             if let Some(handler) = close_handler {
                 let close_btn_id = ("tab-close", (n_tabs as u64 * 100 + i as u64));
                 tab_el = tab_el.child(
-                    div()
-                        .id(close_btn_id)
-                        .size(px(components.content_tab_close_size))
-                        .flex_none()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .rounded(px(radii.sm))
-                        .cursor_pointer()
-                        .hover(move |s| s.bg(colors.neutral_hover))
-                        .active(move |s| s.bg(colors.neutral_selected))
-                        .on_click(handler)
-                        .child(
-                            svg()
-                                .path("icons/dismiss.svg")
-                                .size(px((components.content_tab_close_size - 4.0).max(8.0)))
-                                .text_color(on_neutral),
-                        ),
+                    IconButton::new(close_btn_id, "icons/dismiss.svg")
+                        .label("Close tab")
+                        .appearance(ButtonAppearance::Subtle)
+                        .size(ButtonSize::Compact)
+                        .on_click(handler),
                 );
             }
 

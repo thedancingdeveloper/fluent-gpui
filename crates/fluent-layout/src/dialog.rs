@@ -1,8 +1,8 @@
 use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
+use fluent_primitives::{ButtonAppearance, ButtonSize, IconButton};
 use gpui::{
-    div, prelude::*, px, svg, AnyElement, App, ClickEvent, IntoElement, RenderOnce, SharedString,
-    Window,
+    div, prelude::*, px, AnyElement, App, ClickEvent, IntoElement, RenderOnce, SharedString, Window,
 };
 use std::rc::Rc;
 
@@ -172,31 +172,11 @@ impl RenderOnce for Dialog {
 
         if self.dismissible {
             header = header.child(
-                div()
-                    .id("dialog-dismiss")
-                    .debug_selector(|| "dialog-dismiss".into())
-                    .flex_none()
-                    .size(px(28.0))
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .rounded(px(radii.sm))
-                    .cursor_pointer()
-                    .hover({
-                        let hover = colors.subtle_hover;
-                        move |s| s.bg(hover)
-                    })
-                    .active({
-                        let pressed = colors.subtle_selected;
-                        move |s| s.bg(pressed)
-                    })
-                    .on_click(|_, _, cx| ModalStack::pop(cx))
-                    .child(
-                        svg()
-                            .path("icons/dismiss.svg")
-                            .size(px(12.0))
-                            .text_color(colors.on_subtle),
-                    ),
+                IconButton::new("dialog-dismiss", "icons/dismiss.svg")
+                    .label("Close")
+                    .appearance(ButtonAppearance::Subtle)
+                    .size(ButtonSize::Compact)
+                    .on_click(|_, _, cx| ModalStack::pop(cx)),
             );
         }
 
