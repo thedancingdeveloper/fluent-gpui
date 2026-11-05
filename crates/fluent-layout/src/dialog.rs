@@ -144,6 +144,7 @@ impl RenderOnce for Dialog {
                     .text_color(fg)
                     .cursor_pointer()
                     .hover(move |s| s.bg(hover))
+                    .active(move |s| s.bg(colors.neutral_selected))
                     .on_click(move |ev, win, app| handler(ev, win, app))
                     .child(action.label),
             );
@@ -179,6 +180,10 @@ impl RenderOnce for Dialog {
                     .hover({
                         let hover = colors.subtle_hover;
                         move |s| s.bg(hover)
+                    })
+                    .active({
+                        let pressed = colors.subtle_selected;
+                        move |s| s.bg(pressed)
                     })
                     .on_click(|_, _, cx| ModalStack::pop(cx))
                     .child(

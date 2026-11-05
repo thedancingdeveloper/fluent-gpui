@@ -108,6 +108,11 @@ impl RenderOnce for Checkbox {
         } else {
             colors.surface
         };
+        let box_pressed = if is_active {
+            colors.accent_selected
+        } else {
+            colors.neutral_selected
+        };
         let box_border = if is_active {
             colors.accent
         } else if self.disabled {
@@ -159,7 +164,8 @@ impl RenderOnce for Checkbox {
                 .tab_stop(true)
                 .fluent_focus(tab_index, focus_ring)
                 .cursor_pointer()
-                .hover(move |s| s.border_color(colors.focus_ring));
+                .hover(move |s| s.border_color(colors.focus_ring))
+                .active(move |s| s.bg(box_pressed));
         }
 
         if let Some(handler) = on_click.filter(|_| !disabled) {

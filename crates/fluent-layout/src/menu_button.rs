@@ -327,6 +327,10 @@ impl MenuButton {
                                 let hover = env.colors.subtle_hover;
                                 move |s| s.bg(hover)
                             })
+                            .active({
+                                let pressed = env.colors.subtle_selected;
+                                move |s| s.bg(pressed)
+                            })
                             .on_mouse_down(MouseButton::Left, move |_, win, cx| {
                                 if closer
                                     .update(cx, |button, _| button.closing)
@@ -398,6 +402,10 @@ impl MenuButton {
                             .hover({
                                 let hover = env.colors.subtle_hover;
                                 move |s| s.bg(hover)
+                            })
+                            .active({
+                                let pressed = env.colors.subtle_selected;
+                                move |s| s.bg(pressed)
                             })
                             .on_mouse_down(MouseButton::Left, move |_, win, cx| {
                                 if closer
@@ -476,6 +484,10 @@ impl MenuButton {
                                 let hover = env.colors.subtle_hover;
                                 move |s| s.bg(hover)
                             })
+                            .active({
+                                let pressed = env.colors.subtle_selected;
+                                move |s| s.bg(pressed)
+                            })
                             .on_mouse_down(MouseButton::Left, move |_, win, cx| {
                                 if closer
                                     .update(cx, |button, _| button.closing)
@@ -536,6 +548,10 @@ impl MenuButton {
                             .hover({
                                 let hover = env.colors.subtle_hover;
                                 move |s| s.bg(hover)
+                            })
+                            .active({
+                                let pressed = env.colors.subtle_selected;
+                                move |s| s.bg(pressed)
                             })
                             .on_mouse_move(cx.listener(
                                 move |button: &mut MenuButton, _, _, cx| {
@@ -671,6 +687,10 @@ impl Render for MenuButton {
                 .hover({
                     let hover = colors.neutral_hover;
                     move |s| s.bg(hover)
+                })
+                .active({
+                    let pressed = colors.neutral_selected;
+                    move |s| s.bg(pressed)
                 })
                 .on_click(cx.listener(
                     move |button: &mut MenuButton, ev: &ClickEvent, window, cx| {

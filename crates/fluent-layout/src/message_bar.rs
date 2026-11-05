@@ -150,6 +150,7 @@ impl RenderOnce for MessageBar {
                     .font_weight(gpui::FontWeight::SEMIBOLD)
                     .text_color(accent)
                     .hover(move |s| s.bg(hover))
+                    .active(move |s| s.bg(colors.subtle_selected))
                     .on_click(move |ev, win, app| on_action(ev, win, app))
                     .child(label),
             );
@@ -169,6 +170,10 @@ impl RenderOnce for MessageBar {
                     .hover({
                         let hover = colors.subtle_hover;
                         move |s| s.bg(hover)
+                    })
+                    .active({
+                        let pressed = colors.subtle_selected;
+                        move |s| s.bg(pressed)
                     })
                     .on_click(move |ev, win, app| on_dismiss(ev, win, app))
                     .child(

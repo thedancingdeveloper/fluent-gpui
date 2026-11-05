@@ -228,6 +228,7 @@ impl Render for TabStrip {
                 .border_r_1()
                 .border_color(border_c)
                 .hover(move |s| s.bg(hover_bg))
+                .active(move |s| s.bg(colors.neutral_selected))
                 .on_click(select_handler);
 
             if let Some(icon_path) = tab_icon {
@@ -254,6 +255,7 @@ impl Render for TabStrip {
                         .rounded(px(radii.sm))
                         .cursor_pointer()
                         .hover(move |s| s.bg(colors.neutral_hover))
+                        .active(move |s| s.bg(colors.neutral_selected))
                         .on_click(handler)
                         .child(
                             svg()

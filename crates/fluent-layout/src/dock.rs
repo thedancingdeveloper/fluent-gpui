@@ -114,6 +114,7 @@ impl Render for DockPanel {
         let panel_border = colors.panel_border;
         let on_neutral = colors.on_neutral;
         let hover_bg = colors.subtle_hover;
+        let pressed_bg = colors.subtle_selected;
         let handle_hover = colors.stroke_neutral_dim;
 
         let title = self.title.clone();
@@ -163,6 +164,7 @@ impl Render for DockPanel {
                     .cursor_pointer()
                     .rounded(px(theme.radii.sm))
                     .hover(move |s| s.bg(hover_bg))
+                    .active(move |s| s.bg(pressed_bg))
                     .on_click(collapse_handler)
                     .child(
                         svg()

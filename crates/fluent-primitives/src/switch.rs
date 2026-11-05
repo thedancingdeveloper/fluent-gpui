@@ -108,6 +108,9 @@ impl RenderOnce for Switch {
         // Fluent 2: 40x20 track, 12px knob, 4px inset from the outer edge (3px inside the 1px border)
         let (from_ml, to_ml) = if self.on { (3.0, 23.0) } else { (23.0, 3.0) };
         let motion = theme.motion();
+        // Fluent 2: knob grows 12 -> 14px on hover and widens on press; the on-state width stops
+        // at 15px so the knob stays inside the 38px inner track.
+        let press_w = if on { 15.0 } else { 17.0 };
 
         let debug_id = self.id.to_string();
         let mut el = div()
@@ -118,6 +121,7 @@ impl RenderOnce for Switch {
             .when_some(label, |d, name| d.aria_label(name))
             .w(px(40.0))
             .h(px(20.0))
+            .group("fluent-switch")
             .rounded(px(theme.radii.pill))
             .bg(track_bg)
             .border_1()
@@ -142,8 +146,11 @@ impl RenderOnce for Switch {
 
         el.child(
             div()
+                .id("switch-knob")
                 .absolute()
                 .size(px(12.0))
+                .group_hover("fluent-switch", |s| s.size(px(14.0)))
+                .group_active("fluent-switch", move |s| s.w(px(press_w)).h(px(14.0)))
                 .ml(px(to_ml))
                 .rounded(px(theme.radii.pill))
                 .bg(thumb_color)

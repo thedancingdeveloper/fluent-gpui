@@ -71,6 +71,7 @@ impl RenderOnce for Chip {
                     .justify_center()
                     .cursor_pointer()
                     .hover(move |s| s.bg(colors.neutral_hover))
+                    .active(move |s| s.bg(colors.neutral_selected))
                     .on_click(move |ev, win, app| {
                         if let Some(handler) = &on_dismiss {
                             handler(ev, win, app);
