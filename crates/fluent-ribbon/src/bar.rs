@@ -663,7 +663,7 @@ impl Render for RibbonBar {
                     .on_key_down(tab_keys(i))
                     .relative()
                     .px(px(spacing.lg))
-                    .py(px(4.0))
+                    .py(px(spacing.sm))
                     .bg(tab_bg)
                     .cursor_pointer()
                     .hover(move |s| s.bg(tab_hover_bg))
@@ -739,7 +739,7 @@ impl Render for RibbonBar {
                         .on_key_down(tab_keys(global_idx))
                         .relative()
                         .px(px(spacing.lg))
-                        .py(px(4.0))
+                        .py(px(spacing.sm))
                         .pt(px(components.ribbon_contextual_band_height + 4.0)) // make room for the header band
                         .bg(ctx_tab_bg)
                         .cursor_pointer()
