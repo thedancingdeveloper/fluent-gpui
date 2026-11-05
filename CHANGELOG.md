@@ -16,6 +16,7 @@ per crate.
 - Pill, badge, dock, app-dot and date-time action radii and the tree/list badge font size now come from theme tokens; avatar and app-dot initials use `on_accent` (WI-3266).
 - Tree/list badge padding, list text gap and ribbon tab vertical padding now use `spacing` tokens (values unchanged) (WI-3266).
 - Badge dot/counter, title-bar, command-palette result list and document-viewer image sizes now come from new `ComponentTokens` fields (WI-3266).
+- Dialog and closable-tab close buttons are now compact subtle `IconButton`s, gaining hover and pressed states; dividers already use `stroke_neutral_subtle` (WI-3266).
 
 - Pressed (active) backgrounds on toggle button, checkbox, radio, chip, tabs, tree, list, toolbar, menus, dialogs, dock, ribbon and title bar; switch knob grows on hover/press; command palette disabled rows drop the opacity hack (WI-3265).
 

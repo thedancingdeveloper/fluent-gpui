@@ -11,6 +11,7 @@ categories = ["gui"]
 [dependencies]
 gpui             = { workspace = true }
 fluent-core      = { workspace = true }
+fluent-primitives = { workspace = true }
 fluent-ribbon    = { workspace = true }
 
 [dev-dependencies]
