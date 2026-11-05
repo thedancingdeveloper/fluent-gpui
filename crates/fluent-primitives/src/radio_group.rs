@@ -242,7 +242,7 @@ impl RenderOnce for RadioGroup {
                 .child(
                     div()
                         .size(px(20.0))
-                        .rounded(px(9999.0))
+                        .rounded(px(theme.radii.pill))
                         .border_1()
                         .border_color(outer_border)
                         .flex()
@@ -251,7 +251,7 @@ impl RenderOnce for RadioGroup {
                         .child(
                             div()
                                 .size(px(if checked { 10.0 } else { 0.0 }))
-                                .rounded(px(9999.0))
+                                .rounded(px(theme.radii.pill))
                                 .bg(colors.accent),
                         ),
                 )
