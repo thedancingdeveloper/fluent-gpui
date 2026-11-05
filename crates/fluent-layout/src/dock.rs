@@ -161,7 +161,7 @@ impl Render for DockPanel {
                     .items_center()
                     .justify_center()
                     .cursor_pointer()
-                    .rounded(px(2.0))
+                    .rounded(px(theme.radii.sm))
                     .hover(move |s| s.bg(hover_bg))
                     .on_click(collapse_handler)
                     .child(

@@ -618,9 +618,9 @@ impl Tree {
                 div()
                     .flex_none()
                     .px(px(4.0))
-                    .rounded(px(3.0))
+                    .rounded(px(theme.radii.sm))
                     .bg(colors.neutral)
-                    .text_size(px(10.0))
+                    .text_ramp(&typography.caption)
                     .text_color(colors.on_subtle)
                     .child(badge),
             );

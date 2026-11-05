@@ -165,7 +165,7 @@ impl RenderOnce for SkeletonRow {
             .child(
                 div()
                     .size(px(self.avatar_size))
-                    .rounded(px(9999.0))
+                    .rounded(px(cx.theme().radii.pill))
                     .bg(base)
                     .with_animation(
                         circle_id,

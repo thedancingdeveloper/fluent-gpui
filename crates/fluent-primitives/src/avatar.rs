@@ -76,7 +76,7 @@ impl RenderOnce for Avatar {
                 typography.body.size
             };
             base.bg(gradient_from_hue(hue))
-                .text_color(gpui::white())
+                .text_color(colors.on_accent)
                 .text_size(px(text_size))
                 .line_height(px(text_size.round()))
                 .font_weight(FontWeight::BOLD)

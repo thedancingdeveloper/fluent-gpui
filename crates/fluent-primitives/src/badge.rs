@@ -52,7 +52,7 @@ impl RenderOnce for PresenceBadge {
                 .right(px(0.0))
                 .bottom(px(0.0))
                 .size(px(indicator_size))
-                .rounded(px(9999.0))
+                .rounded(px(cx.theme().radii.pill))
                 .bg(color)
                 .border_2()
                 .border_color(colors.surface),
