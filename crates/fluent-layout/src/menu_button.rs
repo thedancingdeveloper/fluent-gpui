@@ -30,6 +30,7 @@ pub struct MenuButton {
     observing_theme: bool,
     open_path: Vec<usize>,
     selected_path: Vec<usize>,
+    hover_intent: menu_tree::HoverIntent,
 }
 
 impl MenuButton {
@@ -50,6 +51,7 @@ impl MenuButton {
             observing_theme: false,
             open_path: Vec::new(),
             selected_path: Vec::new(),
+            hover_intent: menu_tree::HoverIntent::default(),
         }
     }
 
@@ -311,12 +313,12 @@ impl MenuButton {
                     )
                     .on_mouse_move(cx.listener(
                         move |button: &mut MenuButton, _, _, cx| {
-                            if button.closing {
-                                return;
-                            }
-                            button.selected_path = select_path.clone();
-                            button.open_path = hover_path.clone();
-                            cx.notify();
+                            menu_tree::hover_row(
+                                button,
+                                select_path.clone(),
+                                hover_path.clone(),
+                                cx,
+                            );
                         },
                     ));
 
@@ -387,12 +389,12 @@ impl MenuButton {
                     )
                     .on_mouse_move(cx.listener(
                         move |button: &mut MenuButton, _, _, cx| {
-                            if button.closing {
-                                return;
-                            }
-                            button.selected_path = select_path.clone();
-                            button.open_path = hover_path.clone();
-                            cx.notify();
+                            menu_tree::hover_row(
+                                button,
+                                select_path.clone(),
+                                hover_path.clone(),
+                                cx,
+                            );
                         },
                     ));
 
@@ -468,12 +470,12 @@ impl MenuButton {
                     )
                     .on_mouse_move(cx.listener(
                         move |button: &mut MenuButton, _, _, cx| {
-                            if button.closing {
-                                return;
-                            }
-                            button.selected_path = select_path.clone();
-                            button.open_path = hover_path.clone();
-                            cx.notify();
+                            menu_tree::hover_row(
+                                button,
+                                select_path.clone(),
+                                hover_path.clone(),
+                                cx,
+                            );
                         },
                     ));
 
@@ -555,12 +557,12 @@ impl MenuButton {
                             })
                             .on_mouse_move(cx.listener(
                                 move |button: &mut MenuButton, _, _, cx| {
-                                    if button.closing {
-                                        return;
-                                    }
-                                    button.selected_path = select_path.clone();
-                                    button.open_path = select_path.clone();
-                                    cx.notify();
+                                    menu_tree::hover_row(
+                                        button,
+                                        select_path.clone(),
+                                        select_path.clone(),
+                                        cx,
+                                    );
                                 },
                             ));
                     }
@@ -577,7 +579,11 @@ impl MenuButton {
                     if !disabled && menu_tree::path_starts_with(&self.open_path, &path) {
                         let submenu =
                             self.render_items(items, path.clone(), self_weak.clone(), env, cx);
-                        row = row.child(menu_tree::submenu_flyout(submenu, env, path.len()));
+                        row = row.child(menu_tree::submenu_flyout(
+                            submenu,
+                            env,
+                            fluent_core::layer::SUBMENU + path.len(),
+                        ));
                     }
                     menu = menu.child(row);
                 }
@@ -594,6 +600,20 @@ impl MenuButton {
         }
 
         menu.into_any_element()
+    }
+}
+
+impl menu_tree::HoverMenu for MenuButton {
+    fn is_closing(&self) -> bool {
+        self.closing
+    }
+
+    fn hover_intent(&mut self) -> &mut menu_tree::HoverIntent {
+        &mut self.hover_intent
+    }
+
+    fn paths_mut(&mut self) -> (&mut Vec<usize>, &mut Vec<usize>) {
+        (&mut self.selected_path, &mut self.open_path)
     }
 }
 
@@ -742,15 +762,18 @@ impl Render for MenuButton {
                 ));
             }
 
-            root = root.child(deferred(
-                overlay.child(
-                    anchored()
-                        .anchor(Anchor::TopLeft)
-                        .position(self.popup_origin)
-                        .snap_to_window_with_margin(px(menu_tree::SUBMENU_WINDOW_MARGIN))
-                        .child(menu),
-                ),
-            ));
+            root = root.child(
+                deferred(
+                    overlay.child(
+                        anchored()
+                            .anchor(Anchor::TopLeft)
+                            .position(self.popup_origin)
+                            .snap_to_window_with_margin(px(menu_tree::SUBMENU_WINDOW_MARGIN))
+                            .child(menu),
+                    ),
+                )
+                .with_priority(fluent_core::layer::MENU),
+            );
         }
 
         root
@@ -796,6 +819,54 @@ mod tests {
             assert!(!button.open);
             assert!(!button.closing);
             assert!(button.selected_path.is_empty());
+        });
+    }
+
+    #[gpui::test]
+    fn hovering_a_sibling_row_waits_before_closing_the_open_submenu(cx: &mut TestAppContext) {
+        init_fluent_test(cx);
+
+        let button = cx.new(|_| MenuButton::new("test-menu-button", "Actions").item(item("One")));
+        button.update(cx, |button, cx| {
+            button.open_popup(cx);
+            button.selected_path = vec![1];
+            button.open_path = vec![1];
+            menu_tree::hover_row(button, vec![0], Vec::new(), cx);
+            assert_eq!(button.open_path, vec![1]);
+            assert_eq!(button.selected_path, vec![1]);
+        });
+
+        cx.executor()
+            .advance_clock(menu_tree::SUBMENU_CLOSE_DELAY / 2);
+        button.update(cx, |button, _| assert_eq!(button.open_path, vec![1]));
+
+        cx.executor()
+            .advance_clock(menu_tree::SUBMENU_CLOSE_DELAY / 2);
+        button.update(cx, |button, _| {
+            assert!(button.open_path.is_empty());
+            assert_eq!(button.selected_path, vec![0]);
+        });
+    }
+
+    #[gpui::test]
+    fn reaching_the_submenu_cancels_the_pending_close(cx: &mut TestAppContext) {
+        init_fluent_test(cx);
+
+        let button = cx.new(|_| MenuButton::new("test-menu-button", "Actions").item(item("One")));
+        button.update(cx, |button, cx| {
+            button.open_popup(cx);
+            button.selected_path = vec![1];
+            button.open_path = vec![1];
+            menu_tree::hover_row(button, vec![0], Vec::new(), cx);
+            menu_tree::hover_row(button, vec![1, 0], vec![1], cx);
+            assert_eq!(button.selected_path, vec![1, 0]);
+        });
+
+        cx.executor()
+            .advance_clock(menu_tree::SUBMENU_CLOSE_DELAY * 2);
+        button.update(cx, |button, _| {
+            assert_eq!(button.open_path, vec![1]);
+            assert_eq!(button.selected_path, vec![1, 0]);
         });
     }
 

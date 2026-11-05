@@ -2,6 +2,8 @@ use fluent_core::TextRampExt;
 use fluent_core::{
     ColorScheme, ComponentTokens, RadiiTokens, SpacingTokens, Theme, TypographyTokens,
 };
+use std::time::Duration;
+
 use gpui::{
     deferred, div, point, prelude::*, px, svg, AnyElement, App, Bounds, Display, Edges, Element,
     ElementId, GlobalElementId, InspectorElementId, Keystroke, LayoutId, Pixels, Position,
@@ -285,6 +287,99 @@ pub(crate) fn leave_submenu(selected_path: &mut Vec<usize>, open_path: &mut Vec<
         *selected_path = parent.clone();
         *open_path = parent_path(&parent);
     }
+}
+
+/// How long the pointer may rest on a sibling row before the open submenu
+/// closes in its favour. A diagonal move from a submenu-trigger row into its
+/// submenu crosses sibling rows on the way; without the delay each crossing
+/// closes the submenu it is heading for.
+pub(crate) const SUBMENU_CLOSE_DELAY: Duration = Duration::from_millis(200);
+
+/// A hover that would close the open submenu, waiting out
+/// [`SUBMENU_CLOSE_DELAY`].
+#[derive(Default)]
+pub(crate) struct HoverIntent {
+    pending: Option<PendingHover>,
+    epoch: u64,
+}
+
+struct PendingHover {
+    select: Vec<usize>,
+    open: Vec<usize>,
+    /// The selection when the hover was deferred; if it has changed (keyboard
+    /// navigation) the deferred hover is stale and is dropped.
+    from_selected: Vec<usize>,
+}
+
+/// A menu whose rows react to pointer hover.
+pub(crate) trait HoverMenu: Sized + 'static {
+    fn is_closing(&self) -> bool;
+    fn hover_intent(&mut self) -> &mut HoverIntent;
+    fn paths_mut(&mut self) -> (&mut Vec<usize>, &mut Vec<usize>);
+}
+
+/// The pointer moved onto the row at `select`, whose own menu level is `open`.
+///
+/// Moving onto a row that would close an open submenu waits
+/// [`SUBMENU_CLOSE_DELAY`] first and is dropped if the pointer reaches any
+/// other row meanwhile, such as one inside the submenu. Everything else
+/// applies at once.
+pub(crate) fn hover_row<T: HoverMenu>(
+    menu: &mut T,
+    select: Vec<usize>,
+    open: Vec<usize>,
+    cx: &mut gpui::Context<T>,
+) {
+    if menu.is_closing() {
+        return;
+    }
+    let (selected_path, open_path) = menu.paths_mut();
+    let closes_submenu = open_path.len() > open.len() && path_starts_with(open_path, &open);
+    if !closes_submenu {
+        *selected_path = select;
+        *open_path = open;
+        let intent = menu.hover_intent();
+        intent.pending = None;
+        intent.epoch = intent.epoch.wrapping_add(1);
+        cx.notify();
+        return;
+    }
+
+    let from_selected = selected_path.clone();
+    let intent = menu.hover_intent();
+    if intent.pending.as_ref().is_some_and(|p| p.select == select) {
+        return;
+    }
+    intent.epoch = intent.epoch.wrapping_add(1);
+    let epoch = intent.epoch;
+    intent.pending = Some(PendingHover {
+        select,
+        open,
+        from_selected,
+    });
+
+    cx.spawn(move |this: gpui::WeakEntity<T>, cx: &mut gpui::AsyncApp| {
+        let mut cx = cx.clone();
+        async move {
+            cx.background_executor().timer(SUBMENU_CLOSE_DELAY).await;
+            this.update(&mut cx, move |menu, cx| {
+                if menu.is_closing() || menu.hover_intent().epoch != epoch {
+                    return;
+                }
+                let Some(pending) = menu.hover_intent().pending.take() else {
+                    return;
+                };
+                let (selected_path, open_path) = menu.paths_mut();
+                if *selected_path == pending.from_selected {
+                    *selected_path = pending.select;
+                    *open_path = pending.open;
+                    cx.notify();
+                }
+            })
+            .ok();
+        }
+    })
+    .detach();
 }
 
 fn row_id(id_prefix: &'static str, path: &[usize]) -> ElementId {
