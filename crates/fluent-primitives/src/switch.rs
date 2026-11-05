@@ -149,8 +149,10 @@ impl RenderOnce for Switch {
                 .id("switch-knob")
                 .absolute()
                 .size(px(12.0))
-                .group_hover("fluent-switch", |s| s.size(px(14.0)))
-                .group_active("fluent-switch", move |s| s.w(px(press_w)).h(px(14.0)))
+                .when(!disabled, |d| {
+                    d.group_hover("fluent-switch", |s| s.size(px(14.0)))
+                        .group_active("fluent-switch", move |s| s.w(px(press_w)).h(px(14.0)))
+                })
                 .ml(px(to_ml))
                 .rounded(px(theme.radii.pill))
                 .bg(thumb_color)
