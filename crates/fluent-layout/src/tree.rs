@@ -620,7 +620,7 @@ impl Tree {
             content = content.child(
                 div()
                     .flex_none()
-                    .px(px(4.0))
+                    .px(px(spacing.sm))
                     .rounded(px(theme.radii.sm))
                     .bg(colors.neutral)
                     .text_ramp(&typography.caption)

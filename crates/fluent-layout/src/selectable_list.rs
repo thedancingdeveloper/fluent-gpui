@@ -560,7 +560,7 @@ fn render_row(
         .flex()
         .flex_col()
         .justify_center()
-        .gap(px(2.0))
+        .gap(px(spacing.xs))
         .flex_1()
         .min_w_0()
         .overflow_hidden()
@@ -593,7 +593,7 @@ fn render_row(
             div()
                 .overflow_hidden()
                 .when(!variable_height, |d| d.whitespace_nowrap().text_ellipsis())
-                .py(px(if variable_height { 4.0 } else { 0.0 }))
+                .py(px(if variable_height { spacing.sm } else { 0.0 }))
                 .text_ramp(&typography.caption)
                 .text_color(if item.disabled {
                     colors.on_neutral_disabled
