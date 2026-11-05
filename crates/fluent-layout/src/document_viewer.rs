@@ -297,7 +297,7 @@ fn render_block(idx: usize, block: RichDocumentBlock, cx: &mut App) -> gpui::Any
                     .child(
                         img(src_str)
                             .max_w_full()
-                            .max_h(px(480.0))
+                            .max_h(px(cx.theme().components.document_viewer_image_max_height))
                             .object_fit(gpui::ObjectFit::ScaleDown),
                     )
                     .into_any_element()

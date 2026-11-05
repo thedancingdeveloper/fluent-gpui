@@ -86,6 +86,7 @@ impl Render for TitleBar {
         let colors = theme.colors.clone();
         let spacing = theme.spacing;
         let typography = theme.typography;
+        let components = theme.components;
         let rtl = LayoutDirection::current(cx).is_rtl();
 
         let (title, status) = if self.follow_window_title {
@@ -152,7 +153,12 @@ impl Render for TitleBar {
             .text_color(fg)
             .on_mouse_down(MouseButton::Left, drag_handler);
         if let Some(path) = icon {
-            title_area = title_area.child(svg().path(path).size(px(16.0)).text_color(accent_fg));
+            title_area = title_area.child(
+                svg()
+                    .path(path)
+                    .size(px(components.title_bar_icon_size))
+                    .text_color(accent_fg),
+            );
         }
         let mut title_area = title_area.child(div().truncate_label().child(title));
         if let Some(status) = status {
@@ -167,7 +173,7 @@ impl Render for TitleBar {
         let bar = div()
             .flex()
             .flex_row()
-            .h(px(36.0))
+            .h(px(components.title_bar_height))
             .bg(bar_bg)
             .child(title_area);
 
@@ -184,7 +190,7 @@ impl Render for TitleBar {
                 .child(
                     div()
                         .id("titlebar-min")
-                        .w(px(46.0))
+                        .w(px(components.title_bar_button_width))
                         .h_full()
                         .flex()
                         .items_center()
@@ -196,14 +202,14 @@ impl Render for TitleBar {
                         .child(
                             svg()
                                 .path("icons/minimize.svg")
-                                .size(px(10.0))
+                                .size(px(components.title_bar_glyph_size))
                                 .text_color(fg),
                         ),
                 )
                 .child(
                     div()
                         .id("titlebar-max")
-                        .w(px(46.0))
+                        .w(px(components.title_bar_button_width))
                         .h_full()
                         .flex()
                         .items_center()
@@ -215,14 +221,14 @@ impl Render for TitleBar {
                         .child(
                             svg()
                                 .path("icons/maximize.svg")
-                                .size(px(10.0))
+                                .size(px(components.title_bar_glyph_size))
                                 .text_color(fg),
                         ),
                 )
                 .child(
                     div()
                         .id("titlebar-close")
-                        .w(px(46.0))
+                        .w(px(components.title_bar_button_width))
                         .h_full()
                         .flex()
                         .items_center()
@@ -234,7 +240,7 @@ impl Render for TitleBar {
                         .child(
                             svg()
                                 .path("icons/dismiss.svg")
-                                .size(px(10.0))
+                                .size(px(components.title_bar_glyph_size))
                                 .text_color(fg),
                         ),
                 ),

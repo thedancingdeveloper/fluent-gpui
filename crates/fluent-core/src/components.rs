@@ -92,6 +92,22 @@ pub struct ComponentTokens {
     pub ribbon_small_icon_size: f32,
     /// Public API item.
     pub ribbon_contextual_band_height: f32,
+    /// Diameter of a dot badge.
+    pub badge_dot_size: f32,
+    /// Height and minimum width of a counter badge.
+    pub badge_count_size: f32,
+    /// Window title bar height (Windows 11).
+    pub title_bar_height: f32,
+    /// Width of a title bar caption button (Windows 11).
+    pub title_bar_button_width: f32,
+    /// Size of a caption button glyph.
+    pub title_bar_glyph_size: f32,
+    /// Size of the title bar app icon.
+    pub title_bar_icon_size: f32,
+    /// Maximum height of the command palette result list.
+    pub command_palette_max_height: f32,
+    /// Maximum height of an inline image in the document viewer.
+    pub document_viewer_image_max_height: f32,
 }
 
 impl Default for ComponentTokens {
@@ -140,6 +156,14 @@ impl Default for ComponentTokens {
             ribbon_large_icon_size: 28.0,
             ribbon_small_icon_size: 16.0,
             ribbon_contextual_band_height: 3.0,
+            badge_dot_size: 8.0,
+            badge_count_size: 20.0,
+            title_bar_height: 36.0,
+            title_bar_button_width: 46.0,
+            title_bar_glyph_size: 10.0,
+            title_bar_icon_size: 16.0,
+            command_palette_max_height: 360.0,
+            document_viewer_image_max_height: 480.0,
         }
     }
 }

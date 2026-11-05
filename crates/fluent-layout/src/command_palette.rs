@@ -492,7 +492,7 @@ impl Render for CommandPalette {
             .id("command-palette-results")
             .flex()
             .flex_col()
-            .max_h(px(360.0))
+            .max_h(px(components.command_palette_max_height))
             .overflow_y_scroll()
             .track_scroll(&self.results_scroll);
         let mut child_count = 0usize;
