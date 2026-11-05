@@ -563,7 +563,6 @@ impl Render for CommandPalette {
                 .px(px(spacing.md))
                 .py(px(spacing.sm))
                 .bg(row_bg)
-                .when(disabled, |d| d.opacity(0.72))
                 .when(!disabled, |d| {
                     d.cursor_pointer()
                         .hover(move |s| s.bg(row_hover))

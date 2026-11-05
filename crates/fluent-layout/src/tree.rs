@@ -443,16 +443,19 @@ impl Tree {
             .text_color(fg);
 
         if !item.disabled {
-            row = row.cursor_pointer().hover({
-                let hover = colors.neutral_hover;
-                move |s| {
-                    s.bg(if is_selected {
-                        colors.neutral_selected
-                    } else {
-                        hover
-                    })
-                }
-            });
+            row = row
+                .cursor_pointer()
+                .hover({
+                    let hover = colors.neutral_hover;
+                    move |s| {
+                        s.bg(if is_selected {
+                            colors.neutral_selected
+                        } else {
+                            hover
+                        })
+                    }
+                })
+                .active(move |s| s.bg(colors.neutral_selected));
 
             if state.on_select.is_some() || state.on_activate.is_some() {
                 let id = item.id.clone();

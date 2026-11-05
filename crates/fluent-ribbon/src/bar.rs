@@ -187,9 +187,11 @@ impl RibbonBar {
         let typography = tokens.typography;
         let components = tokens.components;
         let btn_hover_bg = colors.subtle_hover;
+        let btn_pressed_bg = colors.subtle_selected;
         let fg = colors.on_neutral;
         let selected_bg = colors.neutral_selected;
         let hover_bg = colors.neutral_hover;
+        let pressed_bg = colors.neutral_selected;
         let sep_color = colors.ribbon_group_separator;
 
         match item {
@@ -229,6 +231,7 @@ impl RibbonBar {
                     .cursor_pointer()
                     .rounded(px(radii.sm))
                     .hover(move |s| s.bg(btn_hover_bg))
+                    .active(move |s| s.bg(btn_pressed_bg))
                     .on_click(move |ev, win, app| {
                         invoke(&bar, &label_c, app, |app| cb(ev, win, app))
                     })
@@ -282,6 +285,7 @@ impl RibbonBar {
                     .cursor_pointer()
                     .rounded(px(radii.sm))
                     .hover(move |s| s.bg(btn_hover_bg))
+                    .active(move |s| s.bg(btn_pressed_bg))
                     .on_click(move |ev, win, app| {
                         invoke(&bar, &label_c, app, |app| cb(ev, win, app))
                     })
@@ -333,6 +337,7 @@ impl RibbonBar {
                     .cursor_pointer()
                     .rounded(px(radii.sm))
                     .hover(move |s| s.bg(btn_hover_bg))
+                    .active(move |s| s.bg(btn_pressed_bg))
                     .on_click(move |ev, win, app| {
                         invoke(&bar, &label_c, app, |app| cb(ev, win, app))
                     })
@@ -389,6 +394,7 @@ impl RibbonBar {
                     .cursor_pointer()
                     .rounded(px(radii.sm))
                     .hover(move |s| s.bg(hover_bg))
+                    .active(move |s| s.bg(pressed_bg))
                     .on_click(move |ev, win, app| {
                         invoke(&bar, &label_c, app, |app| cb(new_state, ev, win, app))
                     })
@@ -571,6 +577,7 @@ impl Render for RibbonBar {
         let tab_strip_bg = colors.tab_strip_bg;
         let tab_active_bg = colors.tab_active_bg;
         let tab_hover_bg = colors.tab_hover_bg;
+        let tab_pressed_bg = colors.neutral_selected;
         let tab_indicator = colors.ribbon_tab_indicator;
         let ctx_accent = colors.accent;
         let on_neutral = colors.on_neutral;
@@ -660,6 +667,7 @@ impl Render for RibbonBar {
                     .bg(tab_bg)
                     .cursor_pointer()
                     .hover(move |s| s.bg(tab_hover_bg))
+                    .active(move |s| s.bg(tab_pressed_bg))
                     .font_weight(if is_active {
                         FontWeight::SEMIBOLD
                     } else {
@@ -816,6 +824,7 @@ impl Render for RibbonBar {
                     .justify_center()
                     .cursor_pointer()
                     .hover(move |s| s.bg(tab_hover_bg))
+                    .active(move |s| s.bg(tab_pressed_bg))
                     .on_click(collapse_handler)
                     .child(
                         svg()
@@ -917,6 +926,7 @@ impl Render for RibbonBar {
                             let hover = colors.subtle_hover;
                             move |s| s.bg(hover)
                         })
+                        .active(move |s| s.bg(colors.subtle_selected))
                         .on_click(overflow_handler)
                         .child(
                             svg()

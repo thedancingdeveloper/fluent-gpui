@@ -607,6 +607,10 @@ impl MenuBar {
                                 let hover = env.colors.subtle_hover;
                                 move |s| s.bg(hover)
                             })
+                            .active({
+                                let pressed = env.colors.subtle_selected;
+                                move |s| s.bg(pressed)
+                            })
                             .on_mouse_down(MouseButton::Left, move |_, win, cx| {
                                 if closer.update(cx, |bar, _| bar.closing).unwrap_or(true) {
                                     return;
@@ -673,6 +677,10 @@ impl MenuBar {
                             .hover({
                                 let hover = env.colors.subtle_hover;
                                 move |s| s.bg(hover)
+                            })
+                            .active({
+                                let pressed = env.colors.subtle_selected;
+                                move |s| s.bg(pressed)
                             })
                             .on_mouse_down(MouseButton::Left, move |_, win, cx| {
                                 if closer.update(cx, |bar, _| bar.closing).unwrap_or(true) {
@@ -746,6 +754,10 @@ impl MenuBar {
                                 let hover = env.colors.subtle_hover;
                                 move |s| s.bg(hover)
                             })
+                            .active({
+                                let pressed = env.colors.subtle_selected;
+                                move |s| s.bg(pressed)
+                            })
                             .on_mouse_down(MouseButton::Left, move |_, win, cx| {
                                 if closer.update(cx, |bar, _| bar.closing).unwrap_or(true) {
                                     return;
@@ -801,6 +813,10 @@ impl MenuBar {
                             .hover({
                                 let hover = env.colors.subtle_hover;
                                 move |s| s.bg(hover)
+                            })
+                            .active({
+                                let pressed = env.colors.subtle_selected;
+                                move |s| s.bg(pressed)
                             })
                             .on_mouse_move(cx.listener(move |bar: &mut MenuBar, _, _, cx| {
                                 if bar.closing {
@@ -864,6 +880,7 @@ impl Render for MenuBar {
 
         let bar_bg = colors.surface_dim;
         let trigger_hover_bg = colors.subtle_hover;
+        let trigger_pressed_bg = colors.subtle_selected;
         let trigger_active_bg = colors.neutral;
         let trigger_text = colors.on_neutral;
 
@@ -920,6 +937,13 @@ impl Render for MenuBar {
                 .hover(move |s| {
                     if open_idx != Some(idx) {
                         s.bg(trigger_hover_bg)
+                    } else {
+                        s
+                    }
+                })
+                .active(move |s| {
+                    if open_idx != Some(idx) {
+                        s.bg(trigger_pressed_bg)
                     } else {
                         s
                     }
