@@ -120,6 +120,11 @@ impl RenderOnce for Dialog {
             } else {
                 colors.neutral_hover
             };
+            let pressed = if action.primary {
+                colors.accent_selected
+            } else {
+                colors.neutral_selected
+            };
             let fg = if action.primary {
                 colors.on_accent
             } else {
@@ -144,7 +149,7 @@ impl RenderOnce for Dialog {
                     .text_color(fg)
                     .cursor_pointer()
                     .hover(move |s| s.bg(hover))
-                    .active(move |s| s.bg(colors.neutral_selected))
+                    .active(move |s| s.bg(pressed))
                     .on_click(move |ev, win, app| handler(ev, win, app))
                     .child(action.label),
             );

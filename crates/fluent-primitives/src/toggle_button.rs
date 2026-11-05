@@ -95,7 +95,8 @@ impl RenderOnce for ToggleButton {
             (
                 colors.neutral_selected,
                 colors.neutral_hover,
-                colors.neutral_selected,
+                // Distinct from the selected bg so a press on a selected toggle is visible.
+                colors.neutral,
                 colors.on_neutral_selected,
             )
         } else {
