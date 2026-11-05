@@ -57,13 +57,16 @@ impl RenderOnce for Popover {
             .child(self.content);
         let surface = fluent_core::popup_motion_surface("popover-motion", false, motion, surface);
 
-        div().child(deferred(
-            anchored()
-                .anchor(self.anchor)
-                .position(self.position)
-                .snap_to_window_with_margin(px(8.))
-                .child(surface),
-        ))
+        div().child(
+            deferred(
+                anchored()
+                    .anchor(self.anchor)
+                    .position(self.position)
+                    .snap_to_window_with_margin(px(8.))
+                    .child(surface),
+            )
+            .with_priority(fluent_core::layer::POPOVER),
+        )
     }
 }
 

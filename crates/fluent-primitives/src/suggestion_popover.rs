@@ -427,13 +427,16 @@ impl RenderOnce for SuggestionPopover {
         let motion_id = ("suggestion-popover-motion", self.motion_key);
         let list = fluent_core::popup_motion_surface(motion_id, self.exiting, motion, list);
 
-        div().child(deferred(
-            anchored()
-                .anchor(self.anchor)
-                .position(self.position)
-                .snap_to_window_with_margin(px(8.))
-                .child(list),
-        ))
+        div().child(
+            deferred(
+                anchored()
+                    .anchor(self.anchor)
+                    .position(self.position)
+                    .snap_to_window_with_margin(px(8.))
+                    .child(list),
+            )
+            .with_priority(fluent_core::layer::POPOVER),
+        )
     }
 }
 
