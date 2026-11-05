@@ -133,13 +133,14 @@ impl RenderOnce for CounterBadge {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let colors = &cx.theme().colors;
         let radii = &cx.theme().radii;
+        let components = &cx.theme().components;
         let typography = &cx.theme().typography;
         let label = counter_badge_label(self.count, self.overflow_count, self.show_zero);
         let ghost = matches!(self.appearance, CounterBadgeAppearance::Ghost);
 
         if self.dot {
             return div()
-                .size(px(8.0))
+                .size(px(components.badge_dot_size))
                 .rounded(px(radii.pill))
                 .when(!ghost, |this| this.bg(colors.accent))
                 .when(ghost, |this| {
@@ -155,8 +156,8 @@ impl RenderOnce for CounterBadge {
         };
 
         div()
-            .min_w(px(20.0))
-            .h(px(20.0))
+            .min_w(px(components.badge_count_size))
+            .h(px(components.badge_count_size))
             .px(px(4.0))
             .rounded(px(radii.pill))
             .when(!ghost, |this| this.bg(colors.accent))
@@ -215,11 +216,12 @@ impl RenderOnce for Badge {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let colors = &cx.theme().colors;
         let radii = &cx.theme().radii;
+        let components = &cx.theme().components;
         let typography = &cx.theme().typography;
 
         match self.variant {
             BadgeVariant::Dot => div()
-                .size(px(8.0))
+                .size(px(components.badge_dot_size))
                 .rounded(px(radii.pill))
                 .bg(colors.accent),
 
@@ -230,8 +232,8 @@ impl RenderOnce for Badge {
                     n.to_string()
                 };
                 div()
-                    .min_w(px(20.0))
-                    .h(px(20.0))
+                    .min_w(px(components.badge_count_size))
+                    .h(px(components.badge_count_size))
                     .px(px(4.0))
                     .rounded(px(radii.pill))
                     .bg(colors.accent)
