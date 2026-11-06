@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Add a Fluent 2 `Scrollbar` (vertical and horizontal, overlay auto-hide, thumb drag, track paging, hover/pressed states from theme tokens) over a `ScrollHandle` or `ListState` via `ScrollbarSource`; `VirtualList::scrollbar(true)` shows it, and the gallery has a scrollbar page (WI-3459).
 - `ContextMenu` caps its panels to the window height and scrolls them with the wheel; arrow, access-key and Left/Right navigation scroll the selected row into view. Submenus are now separate layers anchored to their trigger row, so a scrolling parent does not clip them (WI-3262).
 - `FluentApp::window_position(x, y)` opens the window at a saved screen position, clamped onto the display it overlaps (centred if none), and `fluent_app::window_bounds(&Window)` reads the current bounds so apps can save them (WI-3439).
 - Add a `gpui_wgpu` headless regression test that a non-blur quad frame renders after intermediate-texture invalidation, guarding the backdrop placeholder (WI-3122).

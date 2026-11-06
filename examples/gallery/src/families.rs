@@ -6,16 +6,18 @@
 //! family can be checked in every variant without leaving the page.
 
 use fluent_core::gpui::{
-    div, prelude::*, AnyElement, AnyView, Context, Entity, FocusHandle, IntoElement, Render, Window,
+    div, prelude::*, px, AnyElement, AnyView, Context, Entity, FocusHandle, IntoElement, Render,
+    ScrollHandle, Window,
 };
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_layout::{
-    drag_source, drop_target, DragOperation, DropPolicy, GroupedVirtualList, VirtualListGroup,
+    drag_source, drop_target, DragOperation, DropPolicy, GroupedVirtualList, VirtualList,
+    VirtualListGroup,
 };
 use fluent_primitives::{
     Button, ButtonAppearance, ButtonIconPosition, ButtonShape, ButtonSize, Checkbox, CheckboxState,
     Chip, Divider, Expander, InputCapture, Label, LabelSize, Link, LinkAppearance, RadioGroup,
-    Switch, TerminalView, ToggleButton, VideoSurface,
+    Scrollbar, Switch, TerminalView, ToggleButton, VideoSurface,
 };
 
 pub struct GroupedListPage;
@@ -32,6 +34,89 @@ impl Render for GroupedListPage {
         })
         .row_height(32.0)
         .into_any_element()
+    }
+}
+
+/// Scrollbar demos: a virtual list, a two-axis scroller and an always-visible bar.
+pub struct ScrollbarPage {
+    both: ScrollHandle,
+    always: ScrollHandle,
+}
+
+impl ScrollbarPage {
+    pub fn new() -> Self {
+        Self {
+            both: ScrollHandle::new(),
+            always: ScrollHandle::new(),
+        }
+    }
+}
+
+impl Render for ScrollbarPage {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let colors = cx.theme().colors.clone();
+        let frame = move || {
+            div()
+                .relative()
+                .w(px(260.0))
+                .h(px(260.0))
+                .overflow_hidden()
+                .border_1()
+                .border_color(colors.stroke_neutral)
+        };
+        let rows = |n: usize| {
+            div().flex().flex_col().children((0..n).map(|i| {
+                div()
+                    .h(px(32.0))
+                    .px_3()
+                    .child(Label::new(format!("Row {i}")))
+            }))
+        };
+        div()
+            .flex()
+            .gap_3()
+            .child(
+                frame().child(
+                    VirtualList::new("gallery-scrollbar-list", 1000, |i, _, _| {
+                        Label::new(format!("Virtual row {i}")).into_any_element()
+                    })
+                    .row_height(32.0)
+                    .scrollbar(true),
+                ),
+            )
+            .child(
+                frame()
+                    .child(
+                        div()
+                            .id("gallery-scrollbar-both")
+                            .size_full()
+                            .overflow_scroll()
+                            .track_scroll(&self.both)
+                            .child(div().w(px(600.0)).child(rows(40))),
+                    )
+                    .child(Scrollbar::new(
+                        "gallery-scrollbar-both-v",
+                        self.both.clone(),
+                    ))
+                    .child(
+                        Scrollbar::new("gallery-scrollbar-both-h", self.both.clone()).horizontal(),
+                    ),
+            )
+            .child(
+                frame()
+                    .child(
+                        div()
+                            .id("gallery-scrollbar-always")
+                            .size_full()
+                            .overflow_y_scroll()
+                            .track_scroll(&self.always)
+                            .child(rows(40)),
+                    )
+                    .child(
+                        Scrollbar::new("gallery-scrollbar-always-v", self.always.clone())
+                            .always_visible(),
+                    ),
+            )
     }
 }
 
