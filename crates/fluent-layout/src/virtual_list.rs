@@ -1,6 +1,7 @@
+use fluent_primitives::Scrollbar;
 use gpui::{
-    list, px, AnyElement, App, ElementId, IntoElement, ListAlignment, ListSizingBehavior,
-    ListState, RenderOnce, Styled as _, Window,
+    div, list, px, AnyElement, App, ElementId, IntoElement, ListAlignment, ListSizingBehavior,
+    ListState, ParentElement as _, RenderOnce, Styled as _, Window,
 };
 
 type RowBuilder = Box<dyn FnMut(usize, &mut Window, &mut App) -> AnyElement + 'static>;
@@ -32,6 +33,7 @@ pub struct VirtualList {
     estimated_row_height: f32,
     overscan: f32,
     reveal: Option<usize>,
+    scrollbar: bool,
 }
 
 impl VirtualList {
@@ -48,6 +50,7 @@ impl VirtualList {
             estimated_row_height: 32.0,
             overscan: DEFAULT_OVERSCAN,
             reveal: None,
+            scrollbar: false,
         }
     }
 
@@ -64,6 +67,13 @@ impl VirtualList {
         self
     }
 
+    /// Shows a Fluent 2 overlay [`Scrollbar`] on the right edge of the list.
+    /// The parent must give the list a definite height.
+    pub fn scrollbar(mut self, scrollbar: bool) -> Self {
+        self.scrollbar = scrollbar;
+        self
+    }
+
     /// Scrolls so row `index` is fully visible when this value changes
     /// between frames (for example after keyboard navigation).
     pub fn reveal(mut self, index: Option<usize>) -> Self {
@@ -75,7 +85,7 @@ impl VirtualList {
 impl RenderOnce for VirtualList {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let (count, estimate, overscan) = (self.count, self.estimated_row_height, self.overscan);
-        let state = window.use_keyed_state(self.id, cx, |_, _| VirtualListState {
+        let state = window.use_keyed_state(self.id.clone(), cx, |_, _| VirtualListState {
             list: ListState::new(count, ListAlignment::Top, px(overscan)),
             count,
             revealed: None,
@@ -103,8 +113,17 @@ impl RenderOnce for VirtualList {
         if settling {
             window.request_animation_frame();
         }
-        list(list_state, self.build_row)
+        let rows = list(list_state.clone(), self.build_row)
             .with_sizing_behavior(ListSizingBehavior::Auto)
+            .size_full();
+        if !self.scrollbar {
+            return rows.into_any_element();
+        }
+        div()
+            .relative()
             .size_full()
+            .child(rows)
+            .child(Scrollbar::new((self.id, "scrollbar"), list_state))
+            .into_any_element()
     }
 }

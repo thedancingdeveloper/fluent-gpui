@@ -1523,6 +1523,7 @@ dependencies = [
  "fluent-core",
  "fluent-layout",
  "fluent-primitives",
+ "fluent-test-utils",
  "gpui",
  "gpui_platform",
 ]
