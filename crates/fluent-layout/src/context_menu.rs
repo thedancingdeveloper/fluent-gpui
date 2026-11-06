@@ -1,10 +1,13 @@
 use fluent_core::TextRampExt;
+use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
     anchored, deferred, div, prelude::*, px, svg, App, ClickEvent, Context, FocusHandle,
-    IntoElement, KeyDownEvent, MouseButton, Point, Render, Role, SharedString, WeakEntity, Window,
+    IntoElement, KeyDownEvent, MouseButton, Pixels, Point, Render, Role, ScrollHandle,
+    SharedString, WeakEntity, Window,
 };
 
 use crate::menu_tree::{self, MenuRenderEnv};
@@ -278,6 +281,13 @@ pub struct ContextMenu {
     open_path: Vec<usize>,
     selected_path: Vec<usize>,
     hover_intent: menu_tree::HoverIntent,
+    /// One scroll handle per open menu level, keyed by the level's path prefix.
+    scroll_handles: RefCell<HashMap<Vec<usize>, ScrollHandle>>,
+    /// Where each submenu-trigger row was last painted, keyed by its path.
+    row_anchors: RefCell<HashMap<Vec<usize>, menu_tree::RowAnchor>>,
+    /// Set by keyboard navigation; the next render scrolls the selected row
+    /// into view, then clears it so the wheel is not fought on every frame.
+    reveal_selected: Cell<bool>,
 }
 
 impl ContextMenu {
@@ -294,6 +304,9 @@ impl ContextMenu {
             open_path: Vec::new(),
             selected_path: Vec::new(),
             hover_intent: menu_tree::HoverIntent::default(),
+            scroll_handles: RefCell::default(),
+            row_anchors: RefCell::default(),
+            reveal_selected: Cell::new(false),
         }
     }
 
@@ -400,18 +413,21 @@ impl ContextMenu {
     fn move_selection(&mut self, delta: isize, cx: &mut Context<Self>) {
         if menu_tree::move_selection(&self.items, &mut self.selected_path, delta) {
             self.open_path = menu_tree::parent_path(&self.selected_path);
+            self.reveal_selected.set(true);
             cx.notify();
         }
     }
 
     fn enter_submenu(&mut self, cx: &mut Context<Self>) {
         if menu_tree::enter_submenu(&self.items, &mut self.selected_path, &mut self.open_path) {
+            self.reveal_selected.set(true);
             cx.notify();
         }
     }
 
     fn leave_submenu(&mut self, cx: &mut Context<Self>) {
         menu_tree::leave_submenu(&mut self.selected_path, &mut self.open_path);
+        self.reveal_selected.set(true);
         cx.notify();
     }
 
@@ -480,6 +496,7 @@ impl ContextMenu {
         };
         self.selected_path = path;
         self.open_path = parent;
+        self.reveal_selected.set(true);
         self.invoke_selected(window, cx);
         cx.notify();
     }
@@ -490,13 +507,31 @@ impl ContextMenu {
         path_prefix: Vec<usize>,
         self_weak: WeakEntity<Self>,
         env: &MenuRenderEnv,
+        max_height: Pixels,
         cx: &mut Context<Self>,
     ) -> gpui::AnyElement {
+        let scroll = self
+            .scroll_handles
+            .borrow_mut()
+            .entry(path_prefix.clone())
+            .or_default()
+            .clone();
+        if self.reveal_selected.get() && menu_tree::parent_path(&self.selected_path) == path_prefix
+        {
+            if let Some(&idx) = self.selected_path.last() {
+                // Every item, separators included, is one child of the panel.
+                scroll.scroll_to_item(idx);
+            }
+        }
         let mut menu = div()
             .id(SharedString::from(format!(
                 "{}-panel-{:?}",
                 "ctx", path_prefix
             )))
+            .debug_selector({
+                let path_prefix = path_prefix.clone();
+                move || format!("ctx-panel-{path_prefix:?}")
+            })
             .role(Role::Menu)
             .relative()
             .flex()
@@ -507,6 +542,9 @@ impl ContextMenu {
             .rounded(px(env.radii.md))
             .py(px(env.spacing.xs))
             .min_w(px(env.components.dropdown_min_width))
+            .max_h(max_height)
+            .overflow_y_scroll()
+            .track_scroll(&scroll)
             .shadow_md();
 
         for (idx, item) in items.iter().enumerate() {
@@ -737,7 +775,7 @@ impl ContextMenu {
                     label,
                     icon,
                     disabled,
-                    items,
+                    ..
                 } => {
                     let select_path = path.clone();
                     let fg = if *disabled {
@@ -784,14 +822,14 @@ impl ContextMenu {
                                 .size(px(12.0))
                                 .text_color(fg),
                         );
-                    if !disabled && menu_tree::path_starts_with(&self.open_path, &path) {
-                        let submenu =
-                            self.render_menu(items, path.clone(), self_weak.clone(), env, cx);
-                        row = row.child(menu_tree::submenu_flyout(
-                            submenu,
-                            env,
-                            fluent_core::layer::CONTEXT_MENU + path.len(),
-                        ));
+                    if !disabled {
+                        let anchor = self
+                            .row_anchors
+                            .borrow_mut()
+                            .entry(path.clone())
+                            .or_default()
+                            .clone();
+                        row = row.child(menu_tree::track_row(&anchor));
                     }
                     menu = menu.child(row);
                 }
@@ -808,6 +846,60 @@ impl ContextMenu {
         }
 
         menu.into_any_element()
+    }
+
+    /// The open submenus, one layer per level beside the root menu, each
+    /// anchored to its trigger row. They are siblings of the root panel, not
+    /// its children, so the panel can scroll without clipping them.
+    fn render_submenu_layers(
+        &self,
+        self_weak: &WeakEntity<Self>,
+        env: &MenuRenderEnv,
+        max_height: Pixels,
+        cx: &mut Context<Self>,
+    ) -> Vec<gpui::AnyElement> {
+        // Fade only: the anchor row already carries the root panel's slide.
+        let mut motion = cx.theme().motion();
+        motion.popup_offset = 0.0;
+        let mut layers = Vec::new();
+        for depth in 1..=self.open_path.len() {
+            let prefix = &self.open_path[..depth];
+            let Some(ContextMenuItem::Submenu {
+                items,
+                disabled: false,
+                ..
+            }) = menu_tree::item_at_path(&self.items, prefix)
+            else {
+                break;
+            };
+            let panel = self.render_menu(
+                items,
+                prefix.to_vec(),
+                self_weak.clone(),
+                env,
+                max_height,
+                cx,
+            );
+            let panel = fluent_core::popup_motion_surface(
+                ("context-submenu-motion", self.motion_epoch),
+                self.closing,
+                motion,
+                panel,
+            );
+            let anchor = self
+                .row_anchors
+                .borrow_mut()
+                .entry(prefix.to_vec())
+                .or_default()
+                .clone();
+            layers.push(menu_tree::submenu_layer(
+                panel,
+                env,
+                fluent_core::layer::CONTEXT_MENU + depth,
+                anchor,
+            ));
+        }
+        layers
     }
 }
 
@@ -850,7 +942,21 @@ impl Render for ContextMenu {
         let pos = self.position;
         let self_weak = cx.entity().downgrade();
 
-        let menu = self.render_menu(&self.items, Vec::new(), self_weak, &env, cx);
+        let max_height = menu_tree::max_panel_height(window);
+        let menu = self.render_menu(
+            &self.items,
+            Vec::new(),
+            self_weak.clone(),
+            &env,
+            max_height,
+            cx,
+        );
+        let layers = self.render_submenu_layers(&self_weak, &env, max_height, cx);
+        self.reveal_selected.set(false);
+        let open_levels = menu_tree::open_levels(&self.open_path);
+        self.scroll_handles
+            .borrow_mut()
+            .retain(|prefix, _| open_levels.iter().any(|open| open == prefix));
         let menu = fluent_core::popup_motion_surface(
             ("context-menu-motion", self.motion_epoch),
             self.closing,
@@ -879,8 +985,12 @@ impl Render for ContextMenu {
                 }),
             )
             .child(
-                deferred(overlay.child(anchored().position(pos).child(menu)))
-                    .with_priority(fluent_core::layer::CONTEXT_MENU),
+                deferred(
+                    overlay
+                        .child(anchored().position(pos).child(menu))
+                        .children(layers),
+                )
+                .with_priority(fluent_core::layer::CONTEXT_MENU),
             )
     }
 }
@@ -1109,5 +1219,168 @@ mod tests {
         menu.read_with(cx, |menu, _| assert!(menu.closing));
         cx.executor().advance_clock(Duration::from_millis(200));
         menu.read_with(cx, |menu, _| assert!(!menu.open));
+    }
+
+    fn long_menu(at: gpui::Point<gpui::Pixels>, rows: usize) -> ContextMenu {
+        let mut menu = ContextMenu::build(at);
+        for i in 0..rows {
+            menu = menu.action(format!("Item {i}"), |_, _, _| {});
+        }
+        menu
+    }
+
+    fn long_menu_with_submenu(at: gpui::Point<gpui::Pixels>, children: usize) -> ContextMenu {
+        let children = (0..children)
+            .map(|i| ContextMenuItem::action(format!("Child {i}"), |_, _, _| {}))
+            .collect();
+        long_menu(at, 3)
+            .submenu("More", children)
+            .action("Last", |_, _, _| {})
+    }
+
+    #[gpui::test]
+    fn long_menu_is_capped_to_the_window_and_scrolls_selection_into_view(cx: &mut TestAppContext) {
+        let (menu, cx) = open_fluent_test_window(cx, |_, _| long_menu(point(px(40.), px(20.)), 60));
+        cx.simulate_resize(gpui::size(px(800.), px(300.)));
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+
+        let panel = bounds_of(cx, "ctx-panel-[]");
+        // The enter animation still slides the panel by `popup_offset`.
+        assert!(panel.bottom() <= px(300. + 2.), "{panel:?}");
+        assert!(panel.top() >= px(0.), "{panel:?}");
+
+        for _ in 0..40 {
+            cx.type_keys("down");
+        }
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+        menu.read_with(cx, |menu, _| assert_eq!(menu.selected_path, vec![40]));
+
+        let panel = bounds_of(cx, "ctx-panel-[]");
+        let row = bounds_of(cx, "ctx-item-row-[40]");
+        assert!(
+            row.top() >= panel.top() && row.bottom() <= panel.bottom(),
+            "selected row {row:?} not inside panel {panel:?}"
+        );
+        menu.read_with(cx, |menu, _| {
+            let handles = menu.scroll_handles.borrow();
+            assert!(handles[&Vec::<usize>::new()].offset().y < px(0.));
+        });
+
+        // Wrapping past the end scrolls back to the top.
+        for _ in 0..20 {
+            cx.type_keys("down");
+        }
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+        menu.read_with(cx, |menu, _| assert_eq!(menu.selected_path, vec![0]));
+        let panel = bounds_of(cx, "ctx-panel-[]");
+        let row = bounds_of(cx, "ctx-item-row-[0]");
+        assert!(row.top() >= panel.top() && row.bottom() <= panel.bottom());
+    }
+
+    #[gpui::test]
+    fn scrolling_root_menu_does_not_clip_its_submenu(cx: &mut TestAppContext) {
+        let (_menu, cx) = open_fluent_test_window(cx, |_, _| {
+            let mut menu = long_menu_with_submenu(point(px(40.), px(20.)), 3);
+            menu.open_path = vec![3];
+            menu.selected_path = vec![3];
+            menu
+        });
+        cx.simulate_resize(gpui::size(px(800.), px(600.)));
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+
+        let root = bounds_of(cx, "ctx-panel-[]");
+        let sub = bounds_of(cx, "ctx-panel-[3]");
+        let parent = bounds_of(cx, "ctx-item-row-[3]");
+        assert!(sub.left() >= root.right() - px(2.), "{sub:?} vs {root:?}");
+        assert_eq!(bounds_of(cx, "ctx-item-row-[3, 0]").top(), parent.top());
+        assert!(sub.size.height > px(0.));
+    }
+
+    #[gpui::test]
+    fn tall_submenu_is_capped_inside_the_window_and_keyboard_scrolls_it(cx: &mut TestAppContext) {
+        let (menu, cx) = open_fluent_test_window(cx, |_, _| {
+            let mut menu = long_menu_with_submenu(point(px(40.), px(20.)), 40);
+            menu.open_path = vec![3];
+            menu.selected_path = vec![3];
+            menu
+        });
+        cx.simulate_resize(gpui::size(px(800.), px(300.)));
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+
+        let sub = bounds_of(cx, "ctx-panel-[3]");
+        assert!(sub.top() >= px(0.) && sub.bottom() <= px(300.), "{sub:?}");
+
+        cx.type_keys("right");
+        menu.read_with(cx, |menu, _| assert_eq!(menu.selected_path, vec![3, 0]));
+        for _ in 0..30 {
+            cx.type_keys("down");
+        }
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+        menu.read_with(cx, |menu, _| assert_eq!(menu.selected_path, vec![3, 30]));
+        let sub = bounds_of(cx, "ctx-panel-[3]");
+        let row = bounds_of(cx, "ctx-item-row-[3, 30]");
+        assert!(
+            row.top() >= sub.top() && row.bottom() <= sub.bottom(),
+            "selected row {row:?} not inside submenu {sub:?}"
+        );
+    }
+
+    #[gpui::test]
+    fn keyboard_enters_leaves_and_dismisses_submenu_layers(cx: &mut TestAppContext) {
+        let (menu, cx) = open_fluent_test_window(cx, |_, _| {
+            long_menu_with_submenu(point(px(40.), px(20.)), 3)
+        });
+        cx.simulate_resize(gpui::size(px(800.), px(600.)));
+        cx.run_until_parked();
+
+        for _ in 0..3 {
+            cx.type_keys("down");
+        }
+        cx.type_keys("right");
+        menu.read_with(cx, |menu, _| {
+            assert_eq!(menu.selected_path, vec![3, 0]);
+            assert_eq!(menu.open_path, vec![3]);
+        });
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+        assert!(cx.selector_bounds("ctx-panel-[3]").is_some());
+
+        cx.type_keys("left");
+        menu.read_with(cx, |menu, _| {
+            assert_eq!(menu.selected_path, vec![3]);
+            assert!(menu.open_path.is_empty());
+        });
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+        assert!(cx.selector_bounds("ctx-panel-[3]").is_none());
+
+        cx.type_keys("escape");
+        menu.read_with(cx, |menu, _| assert!(menu.closing));
+    }
+
+    #[gpui::test]
+    fn clicking_outside_closes_a_menu_with_an_open_submenu_layer(cx: &mut TestAppContext) {
+        let (menu, cx) = open_fluent_test_window(cx, |_, _| {
+            let mut menu = long_menu_with_submenu(point(px(20.), px(20.)), 3);
+            menu.open_path = vec![3];
+            menu.selected_path = vec![3];
+            menu
+        });
+        cx.simulate_resize(gpui::size(px(800.), px(600.)));
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+
+        cx.click_at(
+            point(px(780.), px(580.)),
+            gpui::MouseButton::Left,
+            gpui::Modifiers::none(),
+        );
+        menu.read_with(cx, |menu, _| assert!(menu.closing));
     }
 }
