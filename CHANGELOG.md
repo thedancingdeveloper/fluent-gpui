@@ -12,6 +12,8 @@ per crate.
 
 ## Unreleased
 
+- Restore the missing layout-to-primitives lockfile dependency so locked release dry-runs resolve without dependency version changes (WI-2951).
+
 - Popups: `Flyout::new` now takes the trigger's window-space `Bounds` and anchors with window snapping (breaking, no in-repo callers); popup motion offsets with `top` instead of a margin; `fluent_core::layer` holds the shared deferred-priority table; menu rows wait 200 ms before closing an open submenu in favour of a sibling row (WI-3255).
 - Pill, badge, dock, app-dot and date-time action radii and the tree/list badge font size now come from theme tokens; avatar and app-dot initials use `on_accent` (WI-3266).
 - Tree/list badge padding, list text gap and ribbon tab vertical padding now use `spacing` tokens (values unchanged) (WI-3266).
