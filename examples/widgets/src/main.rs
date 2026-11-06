@@ -4,9 +4,9 @@ use fluent_core::gpui::{
 };
 use fluent_core::ThemeProvider as _;
 use fluent_layout::{
-    set_tree_checked, ContextMenuItem, DataCellAlign, DataColumn, DataRow, DataSortDirection,
-    DataTable, DocumentViewer, MenuButton, MessageBar, MessageIntent, SelectableList,
-    SelectableListItem, Toolbar, ToolbarItem, Tree, TreeItem,
+    set_tree_checked, ContextMenu, ContextMenuItem, DataCellAlign, DataColumn, DataRow,
+    DataSortDirection, DataTable, DocumentViewer, MenuButton, MessageBar, MessageIntent,
+    SelectableList, SelectableListItem, Toolbar, ToolbarItem, Tree, TreeItem,
 };
 use fluent_primitives::{
     Avatar, Badge, Button, ButtonAppearance, ButtonSize, Checkbox, CheckboxState, Chip, Combobox,
@@ -42,6 +42,7 @@ struct WidgetGallery {
     dropdown_selected: Entity<Dropdown>,
     dropdown_disabled: Entity<Dropdown>,
     menu_button: Entity<MenuButton>,
+    long_menu: Option<Entity<ContextMenu>>,
 }
 
 impl WidgetGallery {
@@ -128,6 +129,7 @@ impl WidgetGallery {
                     .disabled(true)
                     .option("ssh", "SSH")
             }),
+            long_menu: None,
             menu_button: cx.new(|_| {
                 MenuButton::new("mb-actions", "Actions")
                     .item(ContextMenuItem::action_with_icon(
@@ -166,12 +168,15 @@ impl Render for WidgetGallery {
         let message_entity = entity.clone();
         let toolbar_entity = entity.clone();
         let table_entity = entity.clone();
+        let long_menu_entity = entity.clone();
+        let long_menu = self.long_menu.clone().filter(|menu| menu.read(cx).open);
 
         div()
             .id("widget-gallery-scroll")
             .size_full()
             .overflow_y_scroll()
             .bg(colors.surface_dim)
+            .children(long_menu)
             .child(
                 div()
                     .max_w(px(820.0))
@@ -250,7 +255,19 @@ impl Render for WidgetGallery {
                             .flex_row()
                             .gap(px(8.0))
                             .items_center()
-                            .child(self.menu_button.clone()),
+                            .child(self.menu_button.clone())
+                            .child(
+                                Button::new("b-long-menu")
+                                    .label("Long context menu")
+                                    .on_click(move |ev, _, cx| {
+                                        let at = ev.position();
+                                        long_menu_entity.update(cx, |gallery, cx| {
+                                            gallery.long_menu =
+                                                Some(cx.new(|_| long_context_menu(at)));
+                                            cx.notify();
+                                        });
+                                    }),
+                            ),
                     )
                     .child(Divider::horizontal())
                     // ── ICON & ICON BUTTON ────────────────────────────────
@@ -841,6 +858,39 @@ impl Render for WidgetGallery {
                     ),
             )
     }
+}
+
+/// A menu taller than most windows, with nested submenus that are themselves
+/// long: the root panel and each submenu scroll with the wheel and keep the
+/// arrow-key selection in view.
+fn long_context_menu(at: fluent_core::gpui::Point<fluent_core::gpui::Pixels>) -> ContextMenu {
+    let mut menu = ContextMenu::build(at);
+    for i in 1..=12 {
+        menu = menu.action(format!("Recent file {i}"), |_, _, _| {});
+    }
+    menu = menu.separator().submenu(
+        "Open with",
+        (1..=30)
+            .map(|i| ContextMenuItem::action(format!("Application {i}"), |_, _, _| {}))
+            .collect(),
+    );
+    menu = menu.submenu(
+        "Share",
+        vec![
+            ContextMenuItem::action("Copy link", |_, _, _| {}),
+            ContextMenuItem::submenu(
+                "Send to",
+                (1..=20)
+                    .map(|i| ContextMenuItem::action(format!("Contact {i}"), |_, _, _| {}))
+                    .collect(),
+            ),
+        ],
+    );
+    menu = menu.separator();
+    for i in 1..=20 {
+        menu = menu.action(format!("Command {i}"), |_, _, _| {});
+    }
+    menu
 }
 
 fn main() {

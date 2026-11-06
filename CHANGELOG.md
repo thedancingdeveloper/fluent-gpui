@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- `ContextMenu` caps its panels to the window height and scrolls them with the wheel; arrow, access-key and Left/Right navigation scroll the selected row into view. Submenus are now separate layers anchored to their trigger row, so a scrolling parent does not clip them (WI-3262).
 - `FluentApp::window_position(x, y)` opens the window at a saved screen position, clamped onto the display it overlaps (centred if none), and `fluent_app::window_bounds(&Window)` reads the current bounds so apps can save them (WI-3439).
 - Add a `gpui_wgpu` headless regression test that a non-blur quad frame renders after intermediate-texture invalidation, guarding the backdrop placeholder (WI-3122).
 - Restore the missing layout-to-primitives lockfile dependency so locked release dry-runs resolve without dependency version changes (WI-2951).

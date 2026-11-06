@@ -410,6 +410,7 @@ pub(crate) fn row_base(
         .gap(px(env.spacing.sm))
         .px(px(env.spacing.md))
         .h(px(env.components.menu_item_height))
+        .flex_none()
         .bg(if selected {
             env.colors.neutral_selected
         } else {
@@ -433,6 +434,9 @@ pub(crate) const SUBMENU_WINDOW_MARGIN: f32 = 8.0;
 /// [`SUBMENU_WINDOW_MARGIN`], like `anchored().snap_to_window_with_margin`.
 struct SubmenuPlacement {
     child: Option<AnyElement>,
+    /// Where the trigger row was last painted, when the submenu is a layer
+    /// beside the menu instead of a child of the row.
+    anchor: Option<RowAnchor>,
     /// How far above the row the submenu's top edge sits (the parent's top
     /// border and padding), so the first items align.
     top_inset: Pixels,
@@ -486,6 +490,7 @@ impl Element for SubmenuPlacement {
         window: &mut Window,
         cx: &mut App,
     ) {
+        let row = self.anchor.as_ref().and_then(|a| a.get()).unwrap_or(row);
         let child_bounds = window.layout_bounds(*child_id);
         let size = child_bounds.size;
         let viewport = window.viewport_size();
@@ -553,11 +558,61 @@ pub(crate) fn submenu_flyout(
 ) -> AnyElement {
     deferred(SubmenuPlacement {
         child: Some(div().absolute().child(submenu).into_any_element()),
+        anchor: None,
         // Parent border (1) plus its vertical padding.
         top_inset: px(env.spacing.xs + 1.0),
     })
     .with_priority(priority)
     .into_any_element()
+}
+
+/// Where a submenu-trigger row was last painted. The row records its bounds
+/// with [`track_row`]; the submenu layer reads them when it is placed.
+pub(crate) type RowAnchor = std::rc::Rc<std::cell::Cell<Option<Bounds<Pixels>>>>;
+
+/// A zero-cost child that records the bounds of the row it is added to.
+pub(crate) fn track_row(anchor: &RowAnchor) -> AnyElement {
+    let anchor = anchor.clone();
+    gpui::canvas(
+        move |bounds, _, _| anchor.set(Some(bounds)),
+        |_, _, _, _| {},
+    )
+    .absolute()
+    .inset_0()
+    .into_any_element()
+}
+
+/// A deferred submenu layer positioned beside the row recorded in `anchor`.
+///
+/// Unlike [`submenu_flyout`] it is not a child of the row, so a scrolling or
+/// clipping parent menu does not clip it. Add it beside the parent menu.
+pub(crate) fn submenu_layer(
+    submenu: AnyElement,
+    env: &MenuRenderEnv,
+    priority: usize,
+    anchor: RowAnchor,
+) -> AnyElement {
+    deferred(SubmenuPlacement {
+        child: Some(div().absolute().child(submenu).into_any_element()),
+        anchor: Some(anchor),
+        top_inset: px(env.spacing.xs + 1.0),
+    })
+    .with_priority(priority)
+    .into_any_element()
+}
+
+/// The path prefixes of every menu level an `open_path` shows: the root and
+/// each submenu on the way down.
+pub(crate) fn open_levels(open_path: &[usize]) -> Vec<Vec<usize>> {
+    (0..=open_path.len())
+        .map(|n| open_path[..n].to_vec())
+        .collect()
+}
+
+/// The tallest a menu panel may be: the window less the margin kept on each side.
+pub(crate) fn max_panel_height(window: &Window) -> Pixels {
+    let inset = window.client_inset().unwrap_or(px(0.));
+    (window.viewport_size().height - (px(SUBMENU_WINDOW_MARGIN) + inset) * 2.).max(px(0.))
 }
 
 /// A window-sized layer that closes its menu on any click outside the menu.
