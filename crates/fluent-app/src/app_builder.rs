@@ -3,8 +3,8 @@ use std::sync::Arc;
 use fluent_core::{TextRampExt as _, Theme, ThemeMode, ThemeProvider as _};
 use fluent_layout::{modal::ModalStack, ToastStack};
 use gpui::{
-    div, prelude::*, px, size, App, AssetSource, Bounds, Context, Entity, IntoElement, Render,
-    SharedString, TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions,
+    div, point, prelude::*, px, size, App, AssetSource, Bounds, Context, Entity, IntoElement,
+    Render, SharedString, TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions,
 };
 
 use crate::{
@@ -79,6 +79,7 @@ pub struct FluentApp {
     window_w: f32,
     window_h: f32,
     window_min_size: Option<(f32, f32)>,
+    window_position: Option<(f32, f32)>,
     app_id: Option<String>,
     window_status: Option<SharedString>,
     on_window_should_close: Option<WindowShouldCloseHandler>,
@@ -94,6 +95,7 @@ impl FluentApp {
             window_w: DEFAULT_W,
             window_h: DEFAULT_H,
             window_min_size: None,
+            window_position: None,
             app_id: None,
             window_status: None,
             on_window_should_close: None,
@@ -112,6 +114,18 @@ impl FluentApp {
     /// Public API item.
     pub fn window_min_size(mut self, w: f32, h: f32) -> Self {
         self.window_min_size = Some((w, h));
+        self
+    }
+
+    /// Open the window with its top-left corner at `(x, y)` in screen
+    /// coordinates (logical pixels), instead of centred.
+    ///
+    /// The window is clamped to the display it overlaps most so it cannot
+    /// open off-screen; if it overlaps no connected display (for example a
+    /// saved position from a monitor that is gone) it is centred as usual.
+    /// Pair with [`window_bounds`] to save the position on close.
+    pub fn window_position(mut self, x: f32, y: f32) -> Self {
+        self.window_position = Some((x, y));
         self
     }
 
@@ -171,6 +185,7 @@ impl FluentApp {
         let w = self.window_w;
         let h = self.window_h;
         let min_size = self.window_min_size;
+        let position = self.window_position;
         let app_id = self.app_id;
         let window_status = self.window_status;
         let on_window_should_close = self.on_window_should_close;
@@ -214,7 +229,25 @@ impl FluentApp {
                 }
                 cx.set_global(window_title);
 
-                let bounds = Bounds::centered(None, size(px(w), px(h)), cx);
+                let mut bounds = Bounds::centered(None, size(px(w), px(h)), cx);
+                if let Some((x, y)) = position {
+                    let displays: Vec<_> = cx
+                        .displays()
+                        .iter()
+                        .map(|d| {
+                            let b = d.bounds();
+                            (
+                                f32::from(b.origin.x),
+                                f32::from(b.origin.y),
+                                f32::from(b.size.width),
+                                f32::from(b.size.height),
+                            )
+                        })
+                        .collect();
+                    if let Some((x, y)) = clamp_position((x, y, w, h), &displays) {
+                        bounds.origin = point(px(x), px(y));
+                    }
+                }
 
                 cx.open_window(
                     WindowOptions {
@@ -256,6 +289,55 @@ impl FluentApp {
     }
 }
 
+/// Current window bounds as `(x, y, width, height)` in screen coordinates
+/// (logical pixels).
+///
+/// Call it from a close handler (see [`FluentApp::on_window_should_close`])
+/// to save the geometry, then feed `x`/`y` back to
+/// [`FluentApp::window_position`] and `width`/`height` to
+/// [`FluentApp::window_size`] on the next launch. When the window is
+/// maximised or fullscreen this returns its restore bounds, so the saved
+/// geometry is the normal windowed one.
+pub fn window_bounds(window: &Window) -> (f32, f32, f32, f32) {
+    let b = match window.window_bounds() {
+        WindowBounds::Windowed(b) => b,
+        WindowBounds::Maximized(b) | WindowBounds::Fullscreen(b) => b,
+    };
+    (
+        f32::from(b.origin.x),
+        f32::from(b.origin.y),
+        f32::from(b.size.width),
+        f32::from(b.size.height),
+    )
+}
+
+/// Clamp a `(x, y, w, h)` window rectangle into the display it overlaps most.
+/// Displays are `(x, y, w, h)`. Returns the adjusted origin, or `None` when
+/// the rectangle overlaps no display.
+fn clamp_position(
+    (x, y, w, h): (f32, f32, f32, f32),
+    displays: &[(f32, f32, f32, f32)],
+) -> Option<(f32, f32)> {
+    let overlap = |d: &(f32, f32, f32, f32)| {
+        let ow = (x + w).min(d.0 + d.2) - x.max(d.0);
+        let oh = (y + h).min(d.1 + d.3) - y.max(d.1);
+        if ow > 0.0 && oh > 0.0 {
+            ow * oh
+        } else {
+            0.0
+        }
+    };
+    let best = displays
+        .iter()
+        .map(|d| (overlap(d), d))
+        .filter(|(a, _)| *a > 0.0)
+        .max_by(|a, b| a.0.total_cmp(&b.0))?
+        .1;
+    let max_x = (best.0 + best.2 - w).max(best.0);
+    let max_y = (best.1 + best.3 - h).max(best.1);
+    Some((x.clamp(best.0, max_x), y.clamp(best.1, max_y)))
+}
+
 /// Create a `TitleBar` entity — include as the first child of your `Workspace`.
 pub fn title_bar(title: impl Into<SharedString>, cx: &mut App) -> Entity<TitleBar> {
     let t = title.into();
@@ -270,7 +352,42 @@ pub fn window_title_bar(cx: &mut App) -> Entity<TitleBar> {
 
 #[cfg(test)]
 mod tests {
-    use super::FluentApp;
+    use super::{clamp_position, FluentApp};
+
+    const DISPLAY: (f32, f32, f32, f32) = (0.0, 0.0, 1920.0, 1080.0);
+
+    #[test]
+    fn builder_stores_window_position() {
+        let app = FluentApp::new("App").window_position(40.0, 50.0);
+
+        assert_eq!(app.window_position, Some((40.0, 50.0)));
+    }
+
+    #[test]
+    fn clamp_keeps_on_screen_position() {
+        let r = clamp_position((100.0, 200.0, 800.0, 600.0), &[DISPLAY]);
+        assert_eq!(r, Some((100.0, 200.0)));
+    }
+
+    #[test]
+    fn clamp_pulls_partly_off_screen_window_back() {
+        let r = clamp_position((1500.0, -50.0, 800.0, 600.0), &[DISPLAY]);
+        assert_eq!(r, Some((1120.0, 0.0)));
+    }
+
+    #[test]
+    fn clamp_rejects_position_on_missing_display() {
+        let r = clamp_position((5000.0, 100.0, 800.0, 600.0), &[DISPLAY]);
+        assert_eq!(r, None);
+        assert_eq!(clamp_position((0.0, 0.0, 10.0, 10.0), &[]), None);
+    }
+
+    #[test]
+    fn clamp_picks_display_with_most_overlap() {
+        let right = (1920.0, 0.0, 1920.0, 1080.0);
+        let r = clamp_position((1800.0, 100.0, 800.0, 600.0), &[DISPLAY, right]);
+        assert_eq!(r, Some((1920.0, 100.0)));
+    }
 
     #[test]
     fn builder_stores_window_min_size() {
