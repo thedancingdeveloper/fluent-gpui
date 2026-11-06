@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- `FluentApp::window_position(x, y)` opens the window at a saved screen position, clamped onto the display it overlaps (centred if none), and `fluent_app::window_bounds(&Window)` reads the current bounds so apps can save them (WI-3439).
 - Add a `gpui_wgpu` headless regression test that a non-blur quad frame renders after intermediate-texture invalidation, guarding the backdrop placeholder (WI-3122).
 - Restore the missing layout-to-primitives lockfile dependency so locked release dry-runs resolve without dependency version changes (WI-2951).
 - Combobox scrolls the highlighted option into view during keyboard navigation; `Tree` fills its parent height so its virtual list renders inside a fixed-height container (WI-3262).
