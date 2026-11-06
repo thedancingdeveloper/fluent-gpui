@@ -33,7 +33,9 @@ pub(crate) fn handle_tab_navigation(ev: &KeyDownEvent, window: &mut Window, cx: 
 
 /// Shared focus behaviour for focusable primitives: places the element in the
 /// Tab order and draws the Fluent 2 focus stroke for keyboard focus only.
-pub(crate) trait FluentFocus: Sized {
+/// Shared focus behaviour for focusable Fluent controls.
+pub trait FluentFocus: Sized {
+    /// Adds the element to the Tab order and draws `ring` when keyboard-focused.
     fn fluent_focus(self, tab_index: Option<isize>, ring: gpui::Hsla) -> Self;
 }
 

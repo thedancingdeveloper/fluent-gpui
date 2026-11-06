@@ -16,6 +16,7 @@ fluent-layout   = { workspace = true }
 fluent-primitives = { workspace = true }
 
 [dev-dependencies]
+fluent-test-utils = { workspace = true }
 gpui = { workspace = true, features = ["test-support"] }
 
 [package.metadata.estate-gpui]

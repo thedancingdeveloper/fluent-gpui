@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use crate::data_status::{status_block, DataStatusKind};
 use fluent_core::{ThemeProvider as _, TruncateExt as _};
+use fluent_primitives::FluentFocus as _;
 use gpui::{
     div, prelude::*, px, svg, App, ClickEvent, IntoElement, KeyDownEvent, MouseButton,
     MouseDownEvent, RenderOnce, Role, SharedString, Window,
@@ -677,7 +678,7 @@ impl RenderOnce for Tree {
         let root = div()
             .id("tree")
             .role(Role::Tree)
-            .tab_index(0)
+            .fluent_focus(Some(0), cx.theme().colors.focus_ring)
             .key_context("Tree")
             .on_key_down(move |ev: &KeyDownEvent, win, app| {
                 if flat_for_keys.is_empty() {
@@ -720,7 +721,7 @@ impl RenderOnce for Tree {
                             }
                         }
                     }
-                    "return" | "space" => {
+                    "enter" | "space" => {
                         let item = &flat_for_keys[current];
                         if !item.disabled {
                             if let Some(handler) = &key_activate {
@@ -959,5 +960,43 @@ mod check_tests {
                 "TreeItem \"X\" [selected=false, level=3]".to_string(),
             ]
         );
+    }
+}
+
+#[cfg(test)]
+mod keyboard_tests {
+    use std::{cell::RefCell, rc::Rc};
+
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Context, TestAppContext};
+
+    use super::*;
+
+    struct Host(Rc<RefCell<Vec<SharedString>>>);
+
+    impl gpui::Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let log = self.0.clone();
+            Tree::new()
+                .items(vec![TreeItem::new("a", "A"), TreeItem::new("b", "B")])
+                .selected("b")
+                .on_activate(move |id, _, _, _| log.borrow_mut().push(id))
+        }
+    }
+
+    #[gpui::test]
+    fn tab_focuses_tree_and_enter_activates_selection(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(Vec::new()));
+        let (_host, vcx) = open_fluent_test_window(cx, {
+            let log = log.clone();
+            move |_, _| Host(log)
+        });
+        vcx.update(|_, app| fluent_primitives::install_focus_keybindings(app));
+        vcx.update(|window, app| window.draw(app).clear(app));
+        vcx.update(|window, app| window.focus_next(app));
+        vcx.run_until_parked();
+        vcx.update(|window, app| window.draw(app).clear(app));
+        vcx.type_keys("enter");
+        assert_eq!(log.borrow().as_slice(), ["b"]);
     }
 }

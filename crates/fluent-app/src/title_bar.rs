@@ -1,10 +1,11 @@
 use fluent_core::{LayoutDirection, TextRampExt as _, Theme, ThemeProvider as _, TruncateExt as _};
 use gpui::{
     div, prelude::*, px, svg, ClickEvent, Context, IntoElement, MouseButton, MouseDownEvent,
-    Render, SharedString, Window,
+    Render, Role, SharedString, Window,
 };
 
 use crate::window_title::WindowTitle;
+use fluent_primitives::FluentFocus as _;
 
 /// Pixel threshold below which two left-button presses on the title bar are
 /// treated as a double-click that maximizes / restores the window.
@@ -136,6 +137,10 @@ impl Render for TitleBar {
                 window.remove_window();
             });
 
+        let min_key = caption_key(|window| window.minimize_window());
+        let max_key = caption_key(|window| window.zoom_window());
+        let close_key = caption_key(|window| window.remove_window());
+
         // The drag area is only the title text, NOT the window control buttons.
         // Putting on_mouse_down on the full bar would intercept clicks on min/max/close.
         let icon = self.icon.clone();
@@ -190,6 +195,10 @@ impl Render for TitleBar {
                 .child(
                     div()
                         .id("titlebar-min")
+                        .role(Role::Button)
+                        .aria_label("Minimize")
+                        .fluent_focus(Some(0), colors.focus_ring)
+                        .on_key_down(min_key)
                         .w(px(components.title_bar_button_width))
                         .h_full()
                         .flex()
@@ -209,6 +218,10 @@ impl Render for TitleBar {
                 .child(
                     div()
                         .id("titlebar-max")
+                        .role(Role::Button)
+                        .aria_label("Maximize")
+                        .fluent_focus(Some(0), colors.focus_ring)
+                        .on_key_down(max_key)
                         .w(px(components.title_bar_button_width))
                         .h_full()
                         .flex()
@@ -228,6 +241,10 @@ impl Render for TitleBar {
                 .child(
                     div()
                         .id("titlebar-close")
+                        .role(Role::Button)
+                        .aria_label("Close")
+                        .fluent_focus(Some(0), colors.focus_ring)
+                        .on_key_down(close_key)
                         .w(px(components.title_bar_button_width))
                         .h_full()
                         .flex()
@@ -245,5 +262,45 @@ impl Render for TitleBar {
                         ),
                 ),
         )
+    }
+}
+
+/// Key handler for a caption button: Enter and Space activate it.
+fn caption_key(
+    act: impl Fn(&mut Window) + 'static,
+) -> impl Fn(&gpui::KeyDownEvent, &mut Window, &mut gpui::App) + 'static {
+    move |ev, window, _| {
+        if matches!(ev.keystroke.key.as_str(), "enter" | "space") {
+            act(window);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::TestAppContext;
+
+    use super::*;
+
+    #[gpui::test]
+    fn tab_visits_each_caption_button(cx: &mut TestAppContext) {
+        let (_bar, vcx) = open_fluent_test_window(cx, |_, cx| TitleBar::new(cx, "App"));
+        vcx.update(|_, app| fluent_primitives::install_focus_keybindings(app));
+        let joined = vcx.accessibility_snapshot().join("\n");
+        assert!(joined.contains("Button \"Close\""), "{joined}");
+        let mut seen = Vec::new();
+        for _ in 0..3 {
+            vcx.update(|window, app| window.focus_next(app));
+            vcx.run_until_parked();
+            vcx.update(|window, app| window.draw(app).clear(app));
+            let focused = vcx.update(|window, app| window.focused(app));
+            seen.push(focused);
+        }
+        assert!(seen.iter().all(Option::is_some), "{seen:?}");
+        assert!(
+            seen[0] != seen[1] && seen[1] != seen[2] && seen[0] != seen[2],
+            "Tab must visit three distinct caption buttons: {seen:?}"
+        );
     }
 }
