@@ -738,7 +738,7 @@ impl RenderOnce for Tree {
             })
             .flex()
             .flex_col()
-            .w_full();
+            .size_full();
         let status = match self.status {
             Some(status) => Some(status),
             None if self.items.is_empty() => Some((DataStatusKind::Empty, "No items".into())),
@@ -998,5 +998,54 @@ mod keyboard_tests {
         vcx.update(|window, app| window.draw(app).clear(app));
         vcx.type_keys("enter");
         assert_eq!(log.borrow().as_slice(), ["b"]);
+    }
+
+    struct LongHost {
+        selected: SharedString,
+    }
+
+    impl gpui::Render for LongHost {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let this = cx.entity();
+            div().w(px(300.0)).h(px(200.0)).flex().flex_col().child(
+                Tree::new()
+                    .items((0..60).map(|i| TreeItem::new(format!("n{i}"), format!("Node {i}"))))
+                    .selected(self.selected.clone())
+                    .on_select(move |id, _, _, app| {
+                        this.update(app, |host, cx| {
+                            host.selected = id;
+                            cx.notify();
+                        })
+                    }),
+            )
+        }
+    }
+
+    #[gpui::test]
+    fn keyboard_navigation_keeps_selected_row_rendered(cx: &mut TestAppContext) {
+        let (host, vcx) = open_fluent_test_window(cx, |_, _| LongHost {
+            selected: "n0".into(),
+        });
+        vcx.update(|_, app| fluent_primitives::install_focus_keybindings(app));
+        vcx.update(|window, app| window.draw(app).clear(app));
+        vcx.update(|window, app| window.focus_next(app));
+        vcx.run_until_parked();
+        vcx.update(|window, app| window.draw(app).clear(app));
+        for _ in 0..3 {
+            vcx.run_until_parked();
+            vcx.update(|window, app| window.draw(app).clear(app));
+        }
+        for _ in 0..40 {
+            vcx.type_keys("down");
+            vcx.update(|window, app| window.draw(app).clear(app));
+        }
+        assert_eq!(host.read_with(vcx, |h, _| h.selected.clone()), "n40");
+        let snapshot = vcx.accessibility_snapshot();
+        assert!(
+            snapshot
+                .iter()
+                .any(|row| row.contains("\"Node 40\"") && row.contains("selected=true")),
+            "selected row was not scrolled into view: {snapshot:?}"
+        );
     }
 }
