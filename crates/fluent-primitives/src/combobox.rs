@@ -41,6 +41,7 @@ pub struct Combobox {
     closing: bool,
     motion_epoch: u64,
     highlighted: usize,
+    list_scroll: gpui::ScrollHandle,
     focus_handle: Option<FocusHandle>,
     a11y_name: Option<SharedString>,
     a11y_description: Option<SharedString>,
@@ -64,6 +65,7 @@ impl Default for Combobox {
             closing: false,
             motion_epoch: 0,
             highlighted: 0,
+            list_scroll: gpui::ScrollHandle::new(),
             focus_handle: None,
             a11y_name: None,
             a11y_description: None,
@@ -467,6 +469,7 @@ impl Render for Combobox {
                 .min_w(px(popup_min_width))
                 .max_h(px(components.dropdown_max_height))
                 .overflow_y_scroll()
+                .track_scroll(&self.list_scroll)
                 .bg(colors.surface)
                 .border_1()
                 .border_color(colors.stroke_neutral)
@@ -475,6 +478,9 @@ impl Render for Combobox {
                 .py(px(spacing.xs))
                 .on_mouse_down_out(close_listener);
 
+            if !is_empty {
+                self.list_scroll.scroll_to_item(self.highlighted);
+            }
             for (idx, option) in filtered.into_iter().enumerate() {
                 let value = option.value.clone();
                 let label = option.label.clone();
@@ -636,6 +642,26 @@ mod tests {
             Some("banana".into())
         );
         assert_eq!(changes.get(), 2);
+    }
+
+    #[gpui::test]
+    fn keyboard_navigation_scrolls_highlighted_option_into_view(cx: &mut TestAppContext) {
+        let (combobox, cx) = open_fluent_test_window(cx, |_, _| {
+            (0..40).fold(Combobox::new(), |combo, i| {
+                combo.option(format!("v{i}"), format!("Option {i}"))
+            })
+        });
+        cx.click_selector("combobox-trigger");
+        cx.type_keys("down down down down down down down down down down down down down down down down down down down down");
+        cx.update(|window, app| window.draw(app).clear(app));
+        combobox.read_with(cx, |combo, _| {
+            assert_eq!(combo.highlighted, 20);
+            assert!(
+                combo.list_scroll.offset().y < px(0.0),
+                "list did not scroll: {:?}",
+                combo.list_scroll.offset()
+            );
+        });
     }
 
     #[gpui::test]
