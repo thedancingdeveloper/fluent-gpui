@@ -3259,6 +3259,28 @@ mod tests {
 
     #[cfg(target_os = "linux")]
     #[test]
+    fn headless_renderer_draws_quads_after_surface_invalidation() -> anyhow::Result<()> {
+        let mut renderer = WgpuHeadlessRenderer::new()?;
+        let mut scene = Scene::default();
+        scene.insert_primitive(solid_quad(0.0, 0.0, 8.0, 8.0, gpui::red()));
+        scene.finish();
+
+        renderer.render_scene(&scene, device_size(16, 16))?;
+
+        // A surface resize or reconfigure invalidates the intermediate textures. The
+        // 1x1 backdrop placeholder must survive, because every quad pipeline binds it
+        // even on frames with no backdrop blur.
+        renderer.core.resources.invalidate_intermediate_textures();
+        assert!(renderer.core.resources.backdrop_bind_group.is_some());
+
+        let image = renderer.render_scene_to_image(&scene, device_size(16, 16))?;
+        assert_pixel(&image, 4, 4, RED);
+        assert_pixel(&image, 12, 12, BLACK);
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
     fn headless_renderer_reuses_target_for_same_size() -> anyhow::Result<()> {
         let mut renderer = WgpuHeadlessRenderer::new()?;
         let target_texture = |renderer: &WgpuHeadlessRenderer| {
