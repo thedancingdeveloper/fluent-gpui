@@ -14,6 +14,7 @@ per crate.
 
 - Add a `gpui_wgpu` headless regression test that a non-blur quad frame renders after intermediate-texture invalidation, guarding the backdrop placeholder (WI-3122).
 - Restore the missing layout-to-primitives lockfile dependency so locked release dry-runs resolve without dependency version changes (WI-2951).
+- Tree, ribbon items/tabs and title-bar caption buttons are now Tab stops with the Fluent keyboard focus ring; caption buttons activate on Enter/Space and the tree activates its selection on Enter (the key was matched as `return`) (WI-3261).
 
 - Popups: `Flyout::new` now takes the trigger's window-space `Bounds` and anchors with window snapping (breaking, no in-repo callers); popup motion offsets with `top` instead of a margin; `fluent_core::layer` holds the shared deferred-priority table; menu rows wait 200 ms before closing an open submenu in favour of a sibling row (WI-3255).
 - Pill, badge, dock, app-dot and date-time action radii and the tree/list badge font size now come from theme tokens; avatar and app-dot initials use `on_accent` (WI-3266).

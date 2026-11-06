@@ -12,6 +12,7 @@ use crate::defs::{
     ContextualTabDef, RibbonGroupDef, RibbonItemDef, RibbonTabBuilder, RibbonTabDef,
     RibbonToggleCallback,
 };
+use fluent_primitives::FluentFocus as _;
 
 struct RibbonRenderTokens<'a> {
     colors: &'a ColorScheme,
@@ -212,7 +213,7 @@ impl RibbonBar {
                     .debug_selector(move || format!("ribbon-item-{gidx}-{iidx}"))
                     .role(Role::Button)
                     .aria_label(label.clone())
-                    .tab_index(0)
+                    .fluent_focus(Some(0), colors.focus_ring)
                     .on_key_down(move |ev, win, app| {
                         if is_activation_key(ev.keystroke.key.as_str()) {
                             invoke(&key_bar, &key_label, app, |app| {
@@ -267,7 +268,7 @@ impl RibbonBar {
                     .id(("rbi", (gidx * 100 + iidx) as u64))
                     .role(Role::Button)
                     .aria_label(label.clone())
-                    .tab_index(0)
+                    .fluent_focus(Some(0), colors.focus_ring)
                     .on_key_down(move |ev, win, app| {
                         if is_activation_key(ev.keystroke.key.as_str()) {
                             invoke(&key_bar, &key_label, app, |app| {
@@ -322,7 +323,7 @@ impl RibbonBar {
                     .id(("rib", (gidx * 100 + iidx) as u64))
                     .role(Role::Button)
                     .aria_label(tooltip.clone())
-                    .tab_index(0)
+                    .fluent_focus(Some(0), colors.focus_ring)
                     .on_key_down(move |ev, win, app| {
                         if is_activation_key(ev.keystroke.key.as_str()) {
                             invoke(&key_bar, &key_label, app, |app| {
@@ -376,7 +377,7 @@ impl RibbonBar {
                     } else {
                         Toggled::False
                     })
-                    .tab_index(0)
+                    .fluent_focus(Some(0), colors.focus_ring)
                     .on_key_down(move |ev, win, app| {
                         if is_activation_key(ev.keystroke.key.as_str()) {
                             invoke(&key_bar, &key_label, app, |app| {
@@ -658,7 +659,7 @@ impl Render for RibbonBar {
                     .aria_position_in_set(i + 1)
                     .aria_size_of_set(tab_count)
                     .track_focus(&tab_handles[i])
-                    .tab_index(0)
+                    .fluent_focus(Some(0), colors.focus_ring)
                     .tab_stop(is_active)
                     .on_key_down(tab_keys(i))
                     .relative()
@@ -734,7 +735,7 @@ impl Render for RibbonBar {
                         .aria_position_in_set(global_idx + 1)
                         .aria_size_of_set(tab_count)
                         .track_focus(&tab_handles[global_idx])
-                        .tab_index(0)
+                        .fluent_focus(Some(0), colors.focus_ring)
                         .tab_stop(is_active)
                         .on_key_down(tab_keys(global_idx))
                         .relative()
@@ -804,7 +805,7 @@ impl Render for RibbonBar {
                         "Collapse the ribbon"
                     })
                     .aria_expanded(!collapsed)
-                    .tab_index(0)
+                    .fluent_focus(Some(0), colors.focus_ring)
                     .on_key_down({
                         let bar = cx.entity().downgrade();
                         move |ev, _, app| {
@@ -893,7 +894,7 @@ impl Render for RibbonBar {
                         .role(Role::Button)
                         .aria_label("More commands")
                         .aria_expanded(self.overflow_open)
-                        .tab_index(0)
+                        .fluent_focus(Some(0), colors.focus_ring)
                         .on_key_down({
                             let bar = cx.entity().downgrade();
                             move |ev, _, app| {

@@ -74,7 +74,7 @@ pub use divider::{Divider, DividerOrientation};
 pub use dropdown::Dropdown;
 pub use expander::Expander;
 pub use field::{Field, FieldControl, FieldValidationState};
-pub use focus::install_focus_keybindings;
+pub use focus::{install_focus_keybindings, FluentFocus};
 pub use icon::{Icon, IconSize};
 pub use icon_button::IconButton;
 pub use info_label::InfoLabel;
