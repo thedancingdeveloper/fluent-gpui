@@ -219,6 +219,21 @@ fn next_checked(state: TreeCheckState) -> bool {
 }
 
 /// A generic Fluent-style hierarchical tree.
+///
+/// ```no_run
+/// use fluent_layout::{Tree, TreeItem};
+///
+/// let tree = Tree::new()
+///     .id("servers")
+///     .item(
+///         TreeItem::new("prod", "Production")
+///             .expanded(true)
+///             .child(TreeItem::new("web", "web-01"))
+///             .child(TreeItem::new("db", "db-01")),
+///     )
+///     .selected("web")
+///     .on_select(|id, _event, _window, _cx| println!("selected {id}"));
+/// ```
 #[allow(clippy::type_complexity)]
 #[derive(IntoElement)]
 pub struct Tree {

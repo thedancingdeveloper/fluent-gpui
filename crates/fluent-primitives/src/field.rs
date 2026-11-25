@@ -72,6 +72,20 @@ pub enum FieldValidationState {
 
 /// A Fluent form field wrapper: label, required marker, control, helper text,
 /// and validation message.
+///
+/// ```no_run
+/// use fluent_primitives::{Field, FieldValidationState, TextInput};
+/// use gpui::{App, AppContext};
+///
+/// fn host_field(cx: &mut App) -> Field {
+///     let input = cx.new(|_| TextInput::new().placeholder("example.com"));
+///     Field::input(input)
+///         .label("Host")
+///         .required(true)
+///         .helper_text("The server to connect to")
+///         .validation(FieldValidationState::Error, "Host is required")
+/// }
+/// ```
 #[derive(IntoElement)]
 pub struct Field {
     label: Option<SharedString>,
