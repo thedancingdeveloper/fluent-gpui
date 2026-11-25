@@ -269,6 +269,10 @@ impl MenuButton {
                 "{}-panel-{:?}",
                 "menubtn", path_prefix
             )))
+            .debug_selector({
+                let path_prefix = path_prefix.clone();
+                move || format!("menubtn-panel-{path_prefix:?}")
+            })
             .role(Role::Menu)
             .relative()
             .flex()
@@ -353,10 +357,14 @@ impl MenuButton {
                         .child(menu_tree::icon_slot(icon.clone(), fg, env))
                         .child(
                             div()
+                                .debug_selector({
+                                    let path = path.clone();
+                                    move || format!("menu-button-label-{path:?}")
+                                })
                                 .flex_1()
                                 .min_w_0()
                                 .overflow_hidden()
-                                .child(label.clone()),
+                                .child(menu_tree::label_element(label, true)),
                         );
                     if let Some(shortcut) = shortcut.clone() {
                         row = row.child(menu_tree::shortcut_column(shortcut, env));
@@ -448,7 +456,7 @@ impl MenuButton {
                                 .flex_1()
                                 .min_w_0()
                                 .overflow_hidden()
-                                .child(label.clone()),
+                                .child(menu_tree::label_element(label, true)),
                         );
                     if let Some(shortcut) = shortcut.clone() {
                         row = row.child(menu_tree::shortcut_column(shortcut, env));
@@ -536,7 +544,7 @@ impl MenuButton {
                                 .flex_1()
                                 .min_w_0()
                                 .overflow_hidden()
-                                .child(label.clone()),
+                                .child(menu_tree::label_element(label, true)),
                         );
                     if let Some(shortcut) = shortcut.clone() {
                         row = row.child(menu_tree::shortcut_column(shortcut, env));
@@ -595,7 +603,7 @@ impl MenuButton {
                                 .flex_1()
                                 .min_w_0()
                                 .overflow_hidden()
-                                .child(label.clone()),
+                                .child(menu_tree::label_element(label, true)),
                         )
                         .child(menu_tree::submenu_chevron(fg, env));
                     if !disabled && menu_tree::path_starts_with(&self.open_path, &path) {
@@ -1030,5 +1038,50 @@ mod tests {
     #[gpui::test]
     fn menu_rows_follow_compact_density(cx: &mut TestAppContext) {
         assert_eq!(menu_row_height(true, cx), 28.0);
+    }
+
+    #[gpui::test]
+    fn long_item_label_is_truncated_to_one_line_within_max_width(cx: &mut TestAppContext) {
+        use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+
+        let (button, cx) = open_fluent_test_window(cx, |_, _| {
+            MenuButton::new("test-menu-button", "Actions").item(
+                ContextMenuItem::action(
+                    "A very long menu item label that would otherwise stretch the menu far past any sensible width and wrap",
+                    |_, _, _| {},
+                )
+                .shortcut("Ctrl+X"),
+            )
+        });
+        cx.simulate_resize(gpui::size(px(1200.), px(600.)));
+        cx.run_until_parked();
+        button.update(cx, |button, cx| button.open_popup(cx));
+        cx.accessibility_snapshot();
+
+        let max = cx.update(|_, app| app.theme().components.menu_max_width);
+        let row_h = cx.update(|_, app| app.theme().components.list_item_height);
+        let panel = cx
+            .selector_bounds("menubtn-panel-[]")
+            .expect("panel painted");
+        let row = cx
+            .selector_bounds("menu-button-item-row-[0]")
+            .expect("row painted");
+        let label = cx
+            .selector_bounds("menu-button-label-[0]")
+            .expect("label painted");
+        assert!(
+            f32::from(label.size.height) < row_h,
+            "label wrapped to several lines: {label:?}"
+        );
+        let shortcut = cx
+            .selector_bounds("menu-shortcut-Ctrl+X")
+            .expect("shortcut painted");
+        assert!(f32::from(panel.size.width) <= max + 0.5, "{panel:?}");
+        assert_eq!(f32::from(row.size.height), row_h, "row wrapped: {row:?}");
+        assert!(shortcut.right() <= row.right(), "{shortcut:?} vs {row:?}");
+        assert!(
+            f32::from(shortcut.size.width) >= 30.0,
+            "shortcut shrank: {shortcut:?}"
+        );
     }
 }
