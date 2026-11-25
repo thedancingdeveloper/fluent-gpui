@@ -347,6 +347,7 @@ mod tests {
     use gpui::TestAppContext;
 
     use super::*;
+    use crate::roving::test_support::clipped_ring_quads;
 
     fn nav(cx: &mut Context<SettingsNav>, log: Rc<RefCell<Vec<String>>>) -> SettingsNav {
         SettingsNav::new(cx)
@@ -459,6 +460,27 @@ mod tests {
         );
         tab_to(cx, 2);
         assert_eq!(outer_ring_quads(cx), 1, "one ring, on the focused item");
+    }
+
+    #[gpui::test]
+    fn ring_is_not_clipped_by_the_nav(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (_nav, cx) = open_fluent_test_window(cx, |_, cx| nav(cx, log.clone()));
+        // First item, last item, then the section header (shift-tab twice):
+        // the nav's `overflow_hidden` clips to its own bounds, so each ring
+        // must lie inside them.
+        tab_to(cx, 2);
+        let check = |cx: &mut gpui::VisualTestContext, what: &str| {
+            assert_eq!(outer_ring_quads(cx), 1, "one ring on {what}");
+            let clipped = clipped_ring_quads(cx);
+            assert!(clipped.is_empty(), "ring clipped on {what}: {clipped:?}");
+        };
+        check(cx, "item A");
+        cx.type_keys("tab");
+        check(cx, "item B");
+        cx.type_keys("shift-tab");
+        cx.type_keys("shift-tab");
+        check(cx, "the section header");
     }
 
     #[gpui::test]
