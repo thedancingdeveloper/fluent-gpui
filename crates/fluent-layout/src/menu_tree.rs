@@ -1,4 +1,5 @@
 use fluent_core::TextRampExt;
+use fluent_core::TruncateExt as _;
 use fluent_core::{
     ColorScheme, ComponentTokens, RadiiTokens, SpacingTokens, Theme, TypographyTokens,
 };
@@ -78,12 +79,13 @@ pub(crate) fn label_element(label: &str, show_underline: bool) -> AnyElement {
             div()
                 .flex()
                 .flex_row()
+                .truncate_label()
                 .child(display[..at].to_string())
                 .child(div().underline().child(display[at..end].to_string()))
                 .child(display[end..].to_string())
                 .into_any_element()
         }
-        _ => div().child(display).into_any_element(),
+        _ => div().truncate_label().child(display).into_any_element(),
     }
 }
 
@@ -647,6 +649,7 @@ pub(crate) fn submenu_chevron(fg: gpui::Hsla, env: &MenuRenderEnv) -> gpui::Svg 
     let chevron = svg()
         .path("icons/chevron_right.svg")
         .size(px(12.0))
+        .flex_none()
         .text_color(fg);
     match chevron_x_scale(env.rtl) {
         scale if scale < 0.0 => {
@@ -687,10 +690,12 @@ pub(crate) fn icon_slot(
         Some(icon) => svg()
             .path(icon)
             .size(px(env.components.popup_icon_slot))
+            .flex_none()
             .text_color(fg)
             .into_any_element(),
         None => div()
             .size(px(env.components.popup_icon_slot))
+            .flex_none()
             .into_any_element(),
     }
 }

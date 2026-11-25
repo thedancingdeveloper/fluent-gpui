@@ -52,6 +52,8 @@ per crate.
 
 - Single-line ellipsis truncation (`TruncateExt::truncate_label`) on tab labels (max width 240px token), tree rows, data table cells and headers, the title bar title and message bar/toast titles (WI-3268).
 
+- Single-line ellipsis truncation also on `Button` labels, menu / context-menu / menu-button item labels and the menu-button trigger label, and command-palette rows; menus gain a `menu_max_width` token (320px) and keep icon, chevron and shortcut columns from shrinking (WI-3268).
+
 Workspace release. Includes `VideoSurface` (3.1.0), the AccessKit tree snapshot test helper and the `test-a11y-activation` vendor patch (headless test-window AccessKit activation) that rdpapp-fluent needs. Crate versions are unchanged, as in v3.1.0; consumers pin the tag.
 
 - fluent-core, fluent-primitives, fluent-layout, fluent-ribbon, fluent-app: text no longer inherits gpui's 1.618x line height. `TextRampExt::text_ramp` sets a ramp step's size and whole-pixel line height together, `FluentApp` sets the body ramp (13/20) as the root text style, and Button, ToggleButton and dialog actions share one border-box height per size, always centre their content, and take 12/8px padding and gap from new `ComponentTokens` (WI-3256, WI-3257).
