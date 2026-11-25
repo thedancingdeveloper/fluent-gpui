@@ -409,7 +409,7 @@ pub(crate) fn row_base(
         .items_center()
         .gap(px(env.spacing.sm))
         .px(px(env.spacing.md))
-        .h(px(env.components.menu_item_height))
+        .h(px(env.components.list_item_height))
         .flex_none()
         .bg(if selected {
             env.colors.neutral_selected

@@ -1,7 +1,29 @@
+/// Row density for list-like rows (menus, dropdown options, trees, tables,
+/// settings nav). `Default` is the Fluent 2 32px minimum; `Compact` is the
+/// explicit 28px dense variant.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum RowDensity {
+    /// Fluent 2 list item minimum, 32px.
+    #[default]
+    Default,
+    /// Explicit compact rows, 28px.
+    Compact,
+}
+
+impl RowDensity {
+    /// Row height in logical pixels for this density.
+    pub const fn list_item_height(self) -> f32 {
+        match self {
+            RowDensity::Default => 32.0,
+            RowDensity::Compact => 28.0,
+        }
+    }
+}
+
 /// Component geometry and interaction-size defaults.
 ///
 /// These values define the framework's Fluent/Microsoft-app style density:
-/// compact command surfaces, 28px menu rows, 32px form controls, and stable
+/// compact command surfaces, 32px list rows (28px compact), 32px form controls, and stable
 /// icon gutters for aligned menus and popups.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ComponentTokens {
@@ -30,9 +52,9 @@ pub struct ComponentTokens {
     pub button_medium_gap: f32,
     /// Public API item.
     pub menu_bar_height: f32,
-    /// Public API item.
-    pub menu_item_height: f32,
-    /// Row height for list, tree and table rows (Fluent 2 list item minimum).
+    /// Row height for every list-like row: menu items, dropdown/combobox options,
+    /// tree rows, table rows and settings-nav rows (Fluent 2 list item minimum).
+    /// Change it with [`ComponentTokens::with_row_density`].
     pub list_item_height: f32,
     /// Public API item.
     pub menu_min_width: f32,
@@ -42,8 +64,6 @@ pub struct ComponentTokens {
     pub popup_separator_height: f32,
     /// Public API item.
     pub dropdown_height: f32,
-    /// Public API item.
-    pub dropdown_option_height: f32,
     /// Public API item.
     pub dropdown_min_width: f32,
     /// Public API item.
@@ -59,7 +79,6 @@ pub struct ComponentTokens {
     /// Public API item.
     pub settings_nav_width: f32,
     /// Public API item.
-    pub settings_nav_section_height: f32,
     /// Public API item.
     pub settings_nav_item_height: f32,
     /// Public API item.
@@ -113,6 +132,14 @@ pub struct ComponentTokens {
     pub document_viewer_image_max_height: f32,
 }
 
+impl ComponentTokens {
+    /// These tokens with every list-like row set to `density`'s height.
+    pub fn with_row_density(mut self, density: RowDensity) -> Self {
+        self.list_item_height = density.list_item_height();
+        self
+    }
+}
+
 impl Default for ComponentTokens {
     fn default() -> Self {
         Self {
@@ -128,13 +155,11 @@ impl Default for ComponentTokens {
             button_small_gap: 4.0,
             button_medium_gap: 8.0,
             menu_bar_height: 28.0,
-            menu_item_height: 28.0,
             list_item_height: 32.0,
             menu_min_width: 200.0,
             popup_icon_slot: 16.0,
             popup_separator_height: 1.0,
             dropdown_height: 32.0,
-            dropdown_option_height: 28.0,
             dropdown_min_width: 180.0,
             dropdown_max_height: 240.0,
             text_input_height: 32.0,
@@ -142,7 +167,6 @@ impl Default for ComponentTokens {
             dock_header_height: 28.0,
             dock_action_size: 20.0,
             settings_nav_width: 200.0,
-            settings_nav_section_height: 28.0,
             settings_nav_item_height: 32.0,
             settings_nav_accent_width: 3.0,
             settings_nav_item_indent: 28.0,

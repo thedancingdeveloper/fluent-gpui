@@ -495,7 +495,7 @@ impl Render for Combobox {
                     .debug_selector(move || format!("combobox-option-{idx}"))
                     .flex()
                     .items_center()
-                    .h(px(components.dropdown_option_height))
+                    .h(px(components.list_item_height))
                     .px(px(spacing.md))
                     .bg(row_bg)
                     .text_ramp(&typography.body)
@@ -539,7 +539,7 @@ impl Render for Combobox {
             if is_empty {
                 list = list.child(
                     div()
-                        .h(px(components.dropdown_option_height))
+                        .h(px(components.list_item_height))
                         .px(px(spacing.md))
                         .flex()
                         .items_center()
@@ -725,5 +725,32 @@ mod tests {
             assert!(combobox.open);
             assert!(!combobox.closing);
         });
+    }
+
+    fn combobox_row_height(compact: bool, cx: &mut TestAppContext) -> f32 {
+        let (_w, cx) = open(cx, Rc::new(Cell::new(0)));
+        if compact {
+            cx.update(|_, app| {
+                let theme = app.global_mut::<fluent_core::Theme>();
+                theme.components = theme
+                    .components
+                    .with_row_density(fluent_core::RowDensity::Compact);
+            });
+        }
+        cx.click_selector("combobox-trigger");
+        let b = cx
+            .selector_bounds("combobox-option-0")
+            .expect("option painted");
+        f32::from(b.size.height)
+    }
+
+    #[gpui::test]
+    fn combobox_rows_are_list_item_height_at_default_density(cx: &mut TestAppContext) {
+        assert_eq!(combobox_row_height(false, cx), 32.0);
+    }
+
+    #[gpui::test]
+    fn combobox_rows_follow_compact_density(cx: &mut TestAppContext) {
+        assert_eq!(combobox_row_height(true, cx), 28.0);
     }
 }
