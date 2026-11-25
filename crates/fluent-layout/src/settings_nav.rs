@@ -298,7 +298,7 @@ impl Render for SettingsNav {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .h(px(components.settings_nav_item_height))
+                    .h(px(components.list_item_height))
                     .cursor_pointer()
                     .bg(if is_active {
                         active_bg
@@ -532,7 +532,7 @@ mod tests {
     }
 
     #[gpui::test]
-    fn nav_section_follows_compact_density(cx: &mut TestAppContext) {
-        assert_eq!(nav_row_heights(true, cx).0, 28.0);
+    fn nav_section_and_items_follow_compact_density(cx: &mut TestAppContext) {
+        assert_eq!(nav_row_heights(true, cx), (28.0, 28.0));
     }
 }

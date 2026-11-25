@@ -305,6 +305,7 @@ impl Render for Nav {
                 root = root.child(
                     div()
                         .id(("nav-category", ci as u64))
+                        .debug_selector(move || format!("nav-category-{ci}"))
                         .role(Role::List)
                         .flex()
                         .items_center()
@@ -352,6 +353,7 @@ fn render_item(
     selected: Option<&SharedString>,
     callback: Option<Arc<dyn Fn(SharedString, &mut App) + 'static>>,
 ) -> gpui::AnyElement {
+    let row_height = cx.theme().components.list_item_height;
     let id = item.id.clone();
     let label = item.label.clone();
     let active = selected == Some(&id);
@@ -367,6 +369,7 @@ fn render_item(
     });
     let mut row = div()
         .id(("nav-item", index as u64))
+        .debug_selector(move || format!("nav-item-{index}"))
         .role(Role::TreeItem)
         .aria_label(label.clone())
         .aria_selected(active)
@@ -374,7 +377,7 @@ fn render_item(
         .flex()
         .items_center()
         .gap(px(spacing.xs))
-        .h(px(components_height(nav)))
+        .h(px(row_height))
         .pl(px(spacing.md + depth as f32 * 16.))
         .pr(px(spacing.sm))
         .cursor_pointer()
@@ -442,10 +445,6 @@ fn render_item(
     row.into_any_element()
 }
 
-fn components_height(nav: &Nav) -> f32 {
-    nav.categories.first().map(|_| 32.).unwrap_or(32.)
-}
-
 struct NavTooltip {
     text: SharedString,
 }
@@ -457,5 +456,44 @@ impl Render for NavTooltip {
             .bg(cx.theme().colors.surface_blur_layer)
             .text_color(cx.theme().colors.on_neutral)
             .child(self.text.clone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::TestAppContext;
+
+    use super::*;
+
+    fn row_heights(compact_density: bool, cx: &mut TestAppContext) -> (f32, f32) {
+        let (nav_entity, cx) = open_fluent_test_window(cx, |_, cx| {
+            Nav::new(cx).category(NavCategory::new("General").item(NavItem::new("a", "A")))
+        });
+        if compact_density {
+            cx.update(|_, app| {
+                let theme = app.global_mut::<fluent_core::Theme>();
+                theme.components = theme
+                    .components
+                    .with_row_density(fluent_core::RowDensity::Compact);
+            });
+            nav_entity.update(cx, |_, cx| cx.notify());
+        }
+        cx.run_until_parked();
+        let category = cx
+            .selector_bounds("nav-category-0")
+            .expect("category painted");
+        let item = cx.selector_bounds("nav-item-0").expect("item painted");
+        (f32::from(category.size.height), f32::from(item.size.height))
+    }
+
+    #[gpui::test]
+    fn category_and_item_rows_match_list_item_height(cx: &mut TestAppContext) {
+        assert_eq!(row_heights(false, cx), (32.0, 32.0));
+    }
+
+    #[gpui::test]
+    fn category_and_item_rows_follow_compact_density(cx: &mut TestAppContext) {
+        assert_eq!(row_heights(true, cx), (28.0, 28.0));
     }
 }
