@@ -1,4 +1,4 @@
-use crate::focus::FluentFocus as _;
+use crate::focus::{control_focus_handle, focus_ring, is_keyboard_focused, FluentFocus as _};
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, Role, SharedString,
@@ -90,7 +90,9 @@ impl Checkbox {
 }
 
 impl RenderOnce for Checkbox {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let focus =
+            (!self.disabled).then(|| control_focus_handle(&self.id, self.tab_index, window, cx));
         let theme = cx.theme();
         let colors = &theme.colors;
         let radii = &theme.radii;
@@ -128,7 +130,6 @@ impl RenderOnce for Checkbox {
 
         let disabled = self.disabled;
         let tab_index = self.tab_index;
-        let focus_ring = colors.focus_ring;
         let current = self.state;
         let on_click = self.on_click;
         let label = self.label;
@@ -160,11 +161,11 @@ impl RenderOnce for Checkbox {
 
         if !disabled {
             el = el
-                .focusable()
-                .tab_stop(true)
-                .fluent_focus(tab_index, focus_ring)
+                .track_focus(focus.as_ref().expect("enabled control has a focus handle"))
+                .key_context("Checkbox")
+                .fluent_tab_stop(tab_index.unwrap_or(0))
                 .cursor_pointer()
-                .hover(move |s| s.border_color(colors.focus_ring))
+                .hover(move |s| s.border_color(colors.neutral_stroke_1.hover))
                 .active(move |s| s.bg(box_pressed));
         }
 
@@ -190,7 +191,10 @@ impl RenderOnce for Checkbox {
             );
         }
 
-        el
+        let ring = focus
+            .as_ref()
+            .is_some_and(|h| is_keyboard_focused(h, window));
+        focus_ring(el, ring, colors, px(radii.md))
     }
 }
 

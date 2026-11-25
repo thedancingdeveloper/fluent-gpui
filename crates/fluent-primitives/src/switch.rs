@@ -1,4 +1,4 @@
-use crate::focus::FluentFocus as _;
+use crate::focus::{control_focus_handle, focus_ring, is_keyboard_focused, FluentFocus as _};
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, ease_out_quint, prelude::*, px, Animation, AnimationExt as _, App, ClickEvent, ElementId,
@@ -68,7 +68,9 @@ impl Switch {
 }
 
 impl RenderOnce for Switch {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let focus =
+            (!self.disabled).then(|| control_focus_handle(&self.id, self.tab_index, window, cx));
         let theme = cx.theme();
         let colors = &theme.colors;
 
@@ -99,7 +101,6 @@ impl RenderOnce for Switch {
 
         let disabled = self.disabled;
         let tab_index = self.tab_index;
-        let focus_ring = colors.focus_ring;
         let new_state = !self.on;
         let on_click = self.on_click;
         let on = self.on;
@@ -132,9 +133,9 @@ impl RenderOnce for Switch {
 
         if !disabled {
             el = el
-                .focusable()
-                .tab_stop(true)
-                .fluent_focus(tab_index, focus_ring)
+                .track_focus(focus.as_ref().expect("enabled control has a focus handle"))
+                .key_context("Switch")
+                .fluent_tab_stop(tab_index.unwrap_or(0))
                 .cursor_pointer()
                 .hover(move |s| s.bg(track_hover))
                 .active(move |s| s.bg(track_pressed));
@@ -144,7 +145,10 @@ impl RenderOnce for Switch {
             el = el.on_click(move |ev, win, app| handler(new_state, ev, win, app));
         }
 
-        el.child(
+        let ring = focus
+            .as_ref()
+            .is_some_and(|h| is_keyboard_focused(h, window));
+        let el = el.child(
             div()
                 .id("switch-knob")
                 .absolute()
@@ -161,7 +165,8 @@ impl RenderOnce for Switch {
                     Animation::new(motion.popup_enter_duration()).with_easing(ease_out_quint()),
                     move |thumb, delta| thumb.ml(px(from_ml + (to_ml - from_ml) * delta)),
                 ),
-        )
+        );
+        focus_ring(el, ring, &theme.colors, px(theme.radii.pill))
     }
 }
 
