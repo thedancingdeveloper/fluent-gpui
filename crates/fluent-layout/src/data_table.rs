@@ -815,6 +815,29 @@ mod tests {
         assert_eq!(outer_ring_quads(cx), 0, "mouse focus draws no ring");
     }
 
+    /// The table inset 8px in the window, so a ring 2px outside it still lies
+    /// inside the window and any clip seen is the table's own.
+    struct Padded(gpui::Entity<Host>);
+
+    impl Render for Padded {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            gpui::div().p(gpui::px(8.0)).child(self.0.clone())
+        }
+    }
+
+    #[gpui::test]
+    fn grid_ring_is_not_clipped_by_the_table(cx: &mut TestAppContext) {
+        use crate::roving::test_support::{clipped_ring_quads, outer_ring_quads, tab};
+        let log = Rc::new(RefCell::new(Log::default()));
+        let (_host, cx) =
+            open_fluent_test_window(cx, |_, cx| Padded(cx.new(|_| Host(log.clone()))));
+        tab(cx, 1);
+        cx.type_keys("down");
+        assert_eq!(outer_ring_quads(cx), 1);
+        let clipped = clipped_ring_quads(cx);
+        assert!(clipped.is_empty(), "ring clipped by the table: {clipped:?}");
+    }
+
     /// Host that sorts through `on_sort` and keeps a keyed multi-selection fed by click modifiers.
     struct Model {
         sort: Option<(SharedString, DataSortDirection)>,
