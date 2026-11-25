@@ -1,4 +1,5 @@
 use fluent_core::TextRampExt;
+use fluent_core::TruncateExt as _;
 use std::{fmt, rc::Rc};
 
 use fluent_core::{Theme, ThemeProvider as _};
@@ -574,14 +575,20 @@ impl Render for CommandPalette {
                     gpui::svg()
                         .path(icon_path)
                         .size(px(components.command_palette_icon_slot))
+                        .flex_none()
                         .text_color(colors.on_neutral),
                 );
             } else {
-                row_el = row_el.child(div().size(px(components.command_palette_icon_slot)));
+                row_el = row_el.child(
+                    div()
+                        .size(px(components.command_palette_icon_slot))
+                        .flex_none(),
+                );
             }
 
-            let mut text_col = div().flex().flex_col().flex_1().child(
+            let mut text_col = div().flex().flex_col().flex_1().min_w_0().child(
                 div()
+                    .truncate_label()
                     .text_ramp(&typography.body)
                     .text_color(label_fg)
                     .when(is_selected, |d| d.font_weight(FontWeight::SEMIBOLD))
@@ -591,6 +598,7 @@ impl Render for CommandPalette {
             if let Some(sub) = subtitle {
                 text_col = text_col.child(
                     div()
+                        .truncate_label()
                         .text_ramp(&typography.caption)
                         .text_color(sub_fg)
                         .child(sub),
@@ -601,6 +609,7 @@ impl Render for CommandPalette {
             if let Some(hint) = hint {
                 row_el = row_el.child(
                     div()
+                        .flex_none()
                         .px(px(6.0))
                         .py(px(2.0))
                         .rounded(px(radii.sm))

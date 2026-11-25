@@ -1,4 +1,5 @@
 use fluent_core::TextRampExt;
+use fluent_core::TruncateExt as _;
 use std::sync::{Arc, Mutex};
 
 use fluent_core::{Theme, ThemeProvider as _};
@@ -278,6 +279,7 @@ impl MenuButton {
             .rounded(px(env.radii.md))
             .py(px(env.spacing.xs))
             .min_w(px(env.components.menu_min_width))
+            .max_w(px(env.components.menu_max_width))
             .shadow_md();
 
         for (idx, item) in items.iter().enumerate() {
@@ -349,7 +351,13 @@ impl MenuButton {
 
                     row = row
                         .child(menu_tree::icon_slot(icon.clone(), fg, env))
-                        .child(div().flex_1().child(label.clone()));
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .child(label.clone()),
+                        );
                     if let Some(shortcut) = shortcut.clone() {
                         row = row.child(menu_tree::shortcut_column(shortcut, env));
                     }
@@ -435,7 +443,13 @@ impl MenuButton {
                                 .size(px(env.components.popup_icon_slot))
                                 .child(check),
                         )
-                        .child(div().flex_1().child(label.clone()));
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .child(label.clone()),
+                        );
                     if let Some(shortcut) = shortcut.clone() {
                         row = row.child(menu_tree::shortcut_column(shortcut, env));
                     }
@@ -517,7 +531,13 @@ impl MenuButton {
                                         .bg(fg),
                                 ),
                         )
-                        .child(div().flex_1().child(label.clone()));
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .child(label.clone()),
+                        );
                     if let Some(shortcut) = shortcut.clone() {
                         row = row.child(menu_tree::shortcut_column(shortcut, env));
                     }
@@ -570,7 +590,13 @@ impl MenuButton {
 
                     row = row
                         .child(menu_tree::icon_slot(icon.clone(), fg, env))
-                        .child(div().flex_1().child(label.clone()))
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .child(label.clone()),
+                        )
                         .child(menu_tree::submenu_chevron(fg, env));
                     if !disabled && menu_tree::path_starts_with(&self.open_path, &path) {
                         let submenu =
@@ -690,12 +716,14 @@ impl Render for MenuButton {
             );
         }
 
-        trigger = trigger.child(div().child(self.label.clone())).child(
-            svg()
-                .path("icons/chevron_down.svg")
-                .size(px(components.popup_icon_slot))
-                .text_color(fg),
-        );
+        trigger = trigger
+            .child(div().truncate_label().child(self.label.clone()))
+            .child(
+                svg()
+                    .path("icons/chevron_down.svg")
+                    .size(px(components.popup_icon_slot))
+                    .text_color(fg),
+            );
 
         if !self.disabled {
             let focus_handle = focus_handle.clone();

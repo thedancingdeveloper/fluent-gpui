@@ -1,5 +1,7 @@
 use crate::focus::{control_focus_handle, focus_ring, is_keyboard_focused, FluentFocus as _};
-use fluent_core::{ControlStates, NeutralColorStates, TextRampExt as _, ThemeProvider as _};
+use fluent_core::{
+    ControlStates, NeutralColorStates, TextRampExt as _, ThemeProvider as _, TruncateExt as _,
+};
 use gpui::{
     div, prelude::*, px, transparent_black, App, ClickEvent, ElementId, Hsla, IntoElement,
     RenderOnce, Role, SharedString, Window,
@@ -317,6 +319,7 @@ impl RenderOnce for Button {
             el = el.child(
                 div()
                     .debug_selector(move || format!("{label_debug_id}-label"))
+                    .truncate_label()
                     .child(text),
             );
         }
@@ -609,6 +612,36 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[gpui::test]
+    fn long_label_is_truncated_to_one_line_inside_the_button(cx: &mut TestAppContext) {
+        let (_, vcx) = open_fluent_test_window(cx, |_, _| {
+            A11yHost(Box::new(|| {
+                div()
+                    .flex()
+                    .flex_col()
+                    .w(px(120.))
+                    .child(
+                        Button::new("long")
+                            .label("A very long button label that cannot possibly fit on one line")
+                            .icon("icons/none.svg"),
+                    )
+                    .into_any_element()
+            }))
+        });
+        vcx.update(|window, app| window.draw(app).clear(app));
+        let height = vcx.update(|_, app| app.theme().components.button_medium_height);
+        let button = vcx.selector_bounds("long").expect("button");
+        let label = vcx.selector_bounds("long-label").expect("label");
+        let icon = vcx.selector_bounds("long-icon").expect("icon");
+        assert_eq!(f32::from(button.size.height), height);
+        assert!(label.right() <= button.right(), "{label:?} vs {button:?}");
+        assert!(
+            f32::from(label.size.height) <= height,
+            "label wrapped: {label:?}"
+        );
+        assert!(f32::from(icon.size.width) > 0.0 && icon.right() <= label.left() + px(1.));
     }
 
     #[gpui::test]
