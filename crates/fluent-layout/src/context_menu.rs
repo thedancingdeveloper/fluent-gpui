@@ -1,4 +1,3 @@
-use fluent_core::TextRampExt;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -37,6 +36,8 @@ pub enum ContextMenuItem {
         label: SharedString,
         /// Public API item.
         checked: bool,
+        /// Secondary text shown in the trailing column, e.g. a keyboard shortcut.
+        shortcut: Option<SharedString>,
         /// Public API item.
         disabled: bool,
         /// Public API item.
@@ -48,6 +49,8 @@ pub enum ContextMenuItem {
         label: SharedString,
         /// Public API item.
         selected: bool,
+        /// Secondary text shown in the trailing column, e.g. a keyboard shortcut.
+        shortcut: Option<SharedString>,
         /// Public API item.
         disabled: bool,
         /// Public API item.
@@ -107,6 +110,7 @@ impl ContextMenuItem {
         Self::Checkbox {
             label: label.into(),
             checked,
+            shortcut: None,
             disabled: false,
             on_click: Arc::new(on_click),
         }
@@ -121,6 +125,7 @@ impl ContextMenuItem {
         Self::Radio {
             label: label.into(),
             selected,
+            shortcut: None,
             disabled: false,
             on_click: Arc::new(on_click),
         }
@@ -136,7 +141,8 @@ impl ContextMenuItem {
         }
     }
 
-    /// Public API item.
+    /// Sets the trailing secondary-text column (a keyboard shortcut) of an action,
+    /// checkbox or radio item; other items ignore it.
     pub fn shortcut(self, shortcut: impl Into<SharedString>) -> Self {
         match self {
             Self::Action {
@@ -149,6 +155,32 @@ impl ContextMenuItem {
                 label,
                 shortcut: Some(shortcut.into()),
                 icon,
+                disabled,
+                on_click,
+            },
+            Self::Checkbox {
+                label,
+                checked,
+                disabled,
+                on_click,
+                ..
+            } => Self::Checkbox {
+                label,
+                checked,
+                shortcut: Some(shortcut.into()),
+                disabled,
+                on_click,
+            },
+            Self::Radio {
+                label,
+                selected,
+                disabled,
+                on_click,
+                ..
+            } => Self::Radio {
+                label,
+                selected,
+                shortcut: Some(shortcut.into()),
                 disabled,
                 on_click,
             },
@@ -175,22 +207,26 @@ impl ContextMenuItem {
             Self::Checkbox {
                 label,
                 checked,
+                shortcut,
                 on_click,
                 ..
             } => Self::Checkbox {
                 label,
                 checked,
+                shortcut,
                 disabled,
                 on_click,
             },
             Self::Radio {
                 label,
                 selected,
+                shortcut,
                 on_click,
                 ..
             } => Self::Radio {
                 label,
                 selected,
+                shortcut,
                 disabled,
                 on_click,
             },
@@ -612,20 +648,14 @@ impl ContextMenu {
                     row = row.child(menu_tree::icon_slot(icon.clone(), fg, env));
                     row = row.child(div().flex_1().child(menu_tree::label_element(label, true)));
                     if let Some(shortcut) = shortcut.clone() {
-                        row = row.child(
-                            div()
-                                .flex_none()
-                                .pl(px(env.spacing.xl))
-                                .text_ramp(&env.typography.caption)
-                                .text_color(env.colors.on_subtle_disabled)
-                                .child(shortcut),
-                        );
+                        row = row.child(menu_tree::shortcut_column(shortcut, env));
                     }
                     menu = menu.child(row);
                 }
                 ContextMenuItem::Checkbox {
                     label,
                     checked,
+                    shortcut,
                     disabled,
                     on_click,
                 } => {
@@ -689,19 +719,23 @@ impl ContextMenu {
                             .size(px(env.components.popup_icon_slot))
                             .into_any_element()
                     };
-                    menu = menu.child(
-                        row.child(
+                    row = row
+                        .child(
                             div()
                                 .flex_none()
                                 .size(px(env.components.popup_icon_slot))
                                 .child(check),
                         )
-                        .child(div().flex_1().child(menu_tree::label_element(label, true))),
-                    );
+                        .child(div().flex_1().child(menu_tree::label_element(label, true)));
+                    if let Some(shortcut) = shortcut.clone() {
+                        row = row.child(menu_tree::shortcut_column(shortcut, env));
+                    }
+                    menu = menu.child(row);
                 }
                 ContextMenuItem::Radio {
                     label,
                     selected: checked,
+                    shortcut,
                     disabled,
                     on_click,
                 } => {
@@ -753,8 +787,8 @@ impl ContextMenu {
                             });
                     }
 
-                    menu = menu.child(
-                        row.child(
+                    row = row
+                        .child(
                             div()
                                 .flex_none()
                                 .size(px(env.components.popup_icon_slot))
@@ -768,8 +802,11 @@ impl ContextMenu {
                                         .bg(fg),
                                 ),
                         )
-                        .child(div().flex_1().child(menu_tree::label_element(label, true))),
-                    );
+                        .child(div().flex_1().child(menu_tree::label_element(label, true)));
+                    if let Some(shortcut) = shortcut.clone() {
+                        row = row.child(menu_tree::shortcut_column(shortcut, env));
+                    }
+                    menu = menu.child(row);
                 }
                 ContextMenuItem::Submenu {
                     label,
@@ -816,12 +853,7 @@ impl ContextMenu {
                     row = row.child(menu_tree::icon_slot(icon.clone(), fg, env));
                     row = row
                         .child(div().flex_1().child(menu_tree::label_element(label, true)))
-                        .child(
-                            svg()
-                                .path("icons/chevron_right.svg")
-                                .size(px(12.0))
-                                .text_color(fg),
-                        );
+                        .child(menu_tree::submenu_chevron(fg, env));
                     if !disabled {
                         let anchor = self
                             .row_anchors
@@ -938,7 +970,8 @@ impl Render for ContextMenu {
 
         let theme = cx.theme();
         let motion = theme.motion();
-        let env = MenuRenderEnv::from_theme(theme);
+        let env =
+            MenuRenderEnv::from_theme(theme, fluent_core::LayoutDirection::current(cx).is_rtl());
         let pos = self.position;
         let self_weak = cx.entity().downgrade();
 
@@ -999,7 +1032,9 @@ impl Render for ContextMenu {
 mod tests {
     use std::time::Duration;
 
-    use fluent_test_utils::{init_fluent_test, open_fluent_test_window, FluentInteractionExt as _};
+    use fluent_test_utils::{
+        init_fluent_test, open_fluent_test_window, FluentAssertExt as _, FluentInteractionExt as _,
+    };
     use gpui::{point, px, TestAppContext};
 
     use super::*;
@@ -1382,5 +1417,71 @@ mod tests {
             gpui::Modifiers::none(),
         );
         menu.read_with(cx, |menu, _| assert!(menu.closing));
+    }
+
+    fn checkable_menu() -> ContextMenu {
+        ContextMenu::build(point(px(0.0), px(0.0)))
+            .checkbox("Bold", false, |_, _, _, _| {})
+            .item(ContextMenuItem::radio("Left", true, |_, _, _| {}).shortcut("Ctrl+L"))
+            .item(ContextMenuItem::checkbox("Wrap", true, |_, _, _, _| {}).shortcut("Alt+Z"))
+            .submenu("More", vec![ContextMenuItem::action("Deep", |_, _, _| {})])
+    }
+
+    #[gpui::test]
+    fn checkbox_and_radio_items_expose_their_menu_roles(cx: &mut TestAppContext) {
+        let (_menu, cx) = open_fluent_test_window(cx, |_, _| checkable_menu());
+        let snap = cx.accessibility_snapshot().join("\n");
+        assert!(snap.contains("MenuItemCheckBox \"Bold\""), "{snap}");
+        assert!(snap.contains("MenuItemRadio \"Left\""), "{snap}");
+        assert!(snap.contains("MenuItemCheckBox \"Wrap\""), "{snap}");
+    }
+
+    #[gpui::test]
+    fn checkbox_toggles_and_radio_selects_on_click(cx: &mut TestAppContext) {
+        let seen = std::rc::Rc::new(std::cell::RefCell::new(Vec::<String>::new()));
+        let s = seen.clone();
+        let (_menu, cx) = open_fluent_test_window(cx, move |_, _| {
+            let (a, b) = (s.clone(), s.clone());
+            ContextMenu::build(point(px(0.0), px(0.0)))
+                .checkbox("Bold", false, move |v, _, _, _| {
+                    a.borrow_mut().push(format!("bold={v}"))
+                })
+                .radio("Left", false, move |_, _, _| {
+                    b.borrow_mut().push("left".into())
+                })
+        });
+        cx.accessibility_snapshot();
+        cx.click_selector("ctx-item-row-[0]");
+        assert_eq!(*seen.borrow(), ["bold=true"], "an unchecked box toggles on");
+        cx.run_until_parked();
+    }
+
+    #[gpui::test]
+    fn checkbox_radio_and_action_rows_render_a_shortcut_column(cx: &mut TestAppContext) {
+        let (_menu, cx) = open_fluent_test_window(cx, |_, _| checkable_menu());
+        cx.accessibility_snapshot();
+        for (row, shortcut) in [
+            ("ctx-item-row-[1]", "menu-shortcut-Ctrl+L"),
+            ("ctx-item-row-[2]", "menu-shortcut-Alt+Z"),
+        ] {
+            let row = bounds_of(cx, row);
+            let col = bounds_of(cx, shortcut);
+            assert!(col.right() <= row.right(), "{shortcut} inside its row");
+            assert!(
+                col.left() > row.center().x,
+                "{shortcut} sits at the trailing edge"
+            );
+        }
+    }
+
+    #[gpui::test]
+    fn submenu_row_still_opens_in_rtl_with_a_mirrored_chevron(cx: &mut TestAppContext) {
+        let (_menu, cx) = open_fluent_test_window(cx, |_, _| checkable_menu());
+        cx.set_layout_direction(fluent_core::LayoutDirection::Rtl);
+        cx.accessibility_snapshot();
+        assert!(cx.update(|_, app| fluent_core::LayoutDirection::current(app).is_rtl()));
+        cx.type_keys("down down down");
+        let snap = cx.accessibility_snapshot().join("\n");
+        assert!(snap.contains("MenuItem \"More\""), "{snap}");
     }
 }
