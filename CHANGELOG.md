@@ -40,6 +40,7 @@ per crate.
 
 - Pressed (active) backgrounds on toggle button, checkbox, radio, chip, tabs, tree, list, toolbar, menus, dialogs, dock, ribbon and title bar; switch knob grows on hover/press; command palette disabled rows drop the opacity hack (WI-3265).
 
+- Menu, dropdown/combobox option and settings-nav rows now use `list_item_height` (32px). `menu_item_height`, `dropdown_option_height` and `settings_nav_section_height` are removed; new `RowDensity` and `ComponentTokens::with_row_density` give an explicit 28px compact density (WI-3259).
 - New `list_item_height` component token (32px, Fluent 2); tree and data table rows use it instead of `menu_item_height` (WI-3259).
 
 - Text input error state and selection, and title-bar close hover, now use theme colours (WI-3264, WI-3266)

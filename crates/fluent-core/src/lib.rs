@@ -22,7 +22,7 @@ pub use async_resource::{AsyncResource, AsyncResourceState, ResourceRequest};
 pub use colors::{
     gradient_from_hue, hue_for, tint, with_alpha, ColorScheme, ControlStates, NeutralColorStates,
 };
-pub use components::ComponentTokens;
+pub use components::{ComponentTokens, RowDensity};
 pub use motion::{popup_motion_surface, MotionCurve, MotionTokens};
 pub use radii::RadiiTokens;
 pub use shadows::ShadowTokens;
@@ -115,10 +115,16 @@ mod tests {
     fn component_geometry_defaults() {
         let c = ComponentTokens::default();
         assert_eq!(c.menu_bar_height, 28.0);
-        assert_eq!(c.menu_item_height, 28.0);
         assert_eq!(c.list_item_height, 32.0);
         assert_eq!(c.dropdown_height, 32.0);
-        assert_eq!(c.dropdown_option_height, 28.0);
+        assert_eq!(
+            c.with_row_density(RowDensity::Compact).list_item_height,
+            28.0
+        );
+        assert_eq!(
+            c.with_row_density(RowDensity::Default).list_item_height,
+            32.0
+        );
         assert_eq!(c.text_input_height, 32.0);
         assert_eq!(c.ribbon_tab_height, 28.0);
     }

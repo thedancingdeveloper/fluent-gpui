@@ -319,9 +319,8 @@ impl RenderOnce for SuggestionPopover {
         }
 
         if self.items.is_empty() {
-            let empty_py = ((components.dropdown_option_height - typography.body.line_height)
-                .max(spacing.xs))
-                / 2.0;
+            let empty_py =
+                ((components.list_item_height - typography.body.line_height).max(spacing.xs)) / 2.0;
             list = list.child(
                 div()
                     .flex_shrink_0()
@@ -360,8 +359,7 @@ impl RenderOnce for SuggestionPopover {
                 let row_py = if has_detail {
                     spacing.xs
                 } else {
-                    (components.dropdown_option_height - typography.body.line_height)
-                        .max(spacing.xs)
+                    (components.list_item_height - typography.body.line_height).max(spacing.xs)
                         / 2.0
                 };
                 let mut row = div()

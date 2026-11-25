@@ -631,6 +631,7 @@ impl RenderOnce for DataTable {
             let row_id = row.id.clone();
             let mut row_el = div()
                 .id(("data-row", idx as u64))
+                .debug_selector(move || format!("data-row-{idx}"))
                 .role(Role::Row)
                 .aria_row_index(idx + 2)
                 .aria_selected(is_selected)
@@ -926,12 +927,12 @@ mod tests {
         gpui::point(b.origin.x + px(1.0 + x), b.origin.y + px(1.0 + 16.0))
     }
 
-    /// Centre of body row `idx` as laid out (header 32px, rows 28px).
+    /// Centre of body row `idx` as laid out (header 32px, rows `list_item_height`).
     fn row_point(cx: &mut gpui::VisualTestContext, idx: usize) -> gpui::Point<gpui::Pixels> {
         let b = cx.selector_bounds("data-table").expect("table painted");
         gpui::point(
             b.origin.x + px(40.0),
-            b.origin.y + px(1.0 + 32.0 + 28.0 * idx as f32 + 14.0),
+            b.origin.y + px(1.0 + 32.0 + 32.0 * idx as f32 + 16.0),
         )
     }
 
@@ -1052,5 +1053,41 @@ mod tests {
                 "Cell \"1\" [column_index=2]".to_string(),
             ]
         );
+    }
+
+    struct DensityHost;
+
+    impl Render for DensityHost {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            DataTable::new()
+                .column(DataColumn::new("n", "N"))
+                .rows((0..2).map(|i| DataRow::new(format!("r{i}"), [format!("{i}")])))
+        }
+    }
+
+    fn table_row_height(compact: bool, cx: &mut TestAppContext) -> f32 {
+        let (host, cx) = open_fluent_test_window(cx, |_, _| DensityHost);
+        if compact {
+            cx.update(|_, app| {
+                let theme = app.global_mut::<fluent_core::Theme>();
+                theme.components = theme
+                    .components
+                    .with_row_density(fluent_core::RowDensity::Compact);
+            });
+            host.update(cx, |_, cx| cx.notify());
+        }
+        cx.run_until_parked();
+        let b = cx.selector_bounds("data-row-0").expect("row painted");
+        f32::from(b.size.height)
+    }
+
+    #[gpui::test]
+    fn table_rows_are_list_item_height_at_default_density(cx: &mut TestAppContext) {
+        assert_eq!(table_row_height(false, cx), 32.0);
+    }
+
+    #[gpui::test]
+    fn table_rows_follow_compact_density(cx: &mut TestAppContext) {
+        assert_eq!(table_row_height(true, cx), 28.0);
     }
 }

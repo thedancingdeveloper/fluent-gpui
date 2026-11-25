@@ -978,4 +978,38 @@ mod tests {
         cx.executor().advance_clock(Duration::from_millis(200));
         button.read_with(cx, |button, _| assert!(!button.open));
     }
+
+    fn menu_row_height(compact: bool, cx: &mut TestAppContext) -> f32 {
+        use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+
+        let (button, cx) = open_fluent_test_window(cx, |_, _| {
+            MenuButton::new("test-menu-button", "Actions").item(item("One"))
+        });
+        if compact {
+            cx.update(|_, app| {
+                let theme = app.global_mut::<fluent_core::Theme>();
+                theme.components = theme
+                    .components
+                    .with_row_density(fluent_core::RowDensity::Compact);
+            });
+        }
+        cx.simulate_resize(gpui::size(px(800.), px(600.)));
+        cx.run_until_parked();
+        button.update(cx, |button, cx| button.open_popup(cx));
+        cx.accessibility_snapshot();
+        let b = cx
+            .selector_bounds("menu-button-item-row-[0]")
+            .expect("menu row painted");
+        f32::from(b.size.height)
+    }
+
+    #[gpui::test]
+    fn menu_rows_are_list_item_height_at_default_density(cx: &mut TestAppContext) {
+        assert_eq!(menu_row_height(false, cx), 32.0);
+    }
+
+    #[gpui::test]
+    fn menu_rows_follow_compact_density(cx: &mut TestAppContext) {
+        assert_eq!(menu_row_height(true, cx), 28.0);
+    }
 }
