@@ -2,7 +2,8 @@ use std::time::Duration;
 
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
-    deferred, div, prelude::*, px, Context, Global, IntoElement, Render, SharedString, Window,
+    deferred, div, prelude::*, px, Context, ElementId, Global, IntoElement, Render, SharedString,
+    Window,
 };
 
 use crate::{MessageBar, MessageIntent};
@@ -145,12 +146,23 @@ impl ToastStack {
     }
 }
 
-#[derive(Default)]
 /// Public API item.
 pub struct ToastHost {
+    id: ElementId,
     observing: bool,
     placement: ToastPlacement,
     width: f32,
+}
+
+impl Default for ToastHost {
+    fn default() -> Self {
+        Self {
+            id: "toast-host".into(),
+            observing: false,
+            placement: ToastPlacement::default(),
+            width: 0.0,
+        }
+    }
 }
 
 impl ToastHost {
@@ -160,10 +172,20 @@ impl ToastHost {
         cx.observe_global::<ToastStack>(|_, cx| cx.notify())
             .detach();
         Self {
+            id: "toast-host".into(),
             observing: true,
             placement: ToastPlacement::TopEnd,
             width: 360.0,
         }
+    }
+
+    /// Sets the element id, which is also the id of the host's accessibility
+    /// node; the stack and each toast's message bar derive their ids from it.
+    /// Give each host in a window its own id; two with the same id collide in
+    /// the accessibility tree. Defaults to `"toast-host"`.
+    pub fn id(mut self, id: impl Into<ElementId>) -> Self {
+        self.id = id.into();
+        self
     }
 
     /// Public API item.
@@ -196,10 +218,11 @@ impl Render for ToastHost {
             .unwrap_or_default();
 
         if toasts.is_empty() {
-            return div();
+            return div().id(self.id.clone());
         }
 
         let mut stack = div()
+            .id((self.id.clone(), "stack"))
             .absolute()
             .w(px(self.width))
             .flex()
@@ -225,7 +248,9 @@ impl Render for ToastHost {
 
         for toast in toasts {
             let id = toast.id.clone();
-            let mut bar = MessageBar::new(toast.message).intent(toast.intent);
+            let mut bar = MessageBar::new(toast.message)
+                .id((self.id.clone(), toast.id.clone()))
+                .intent(toast.intent);
             if let Some(title) = toast.title {
                 bar = bar.title(title);
             }
@@ -234,7 +259,11 @@ impl Render for ToastHost {
             }));
         }
 
-        div().absolute().inset_0().child(deferred(stack))
+        div()
+            .id(self.id.clone())
+            .absolute()
+            .inset_0()
+            .child(deferred(stack))
     }
 }
 
@@ -242,8 +271,8 @@ impl Render for ToastHost {
 mod tests {
     use std::time::Duration;
 
-    use fluent_test_utils::open_fluent_test_window;
-    use gpui::TestAppContext;
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Entity, TestAppContext};
 
     use super::*;
 
@@ -327,5 +356,54 @@ mod tests {
             }
         });
         assert_eq!(ids(cx), ["b", "c"]);
+    }
+
+    struct TwoHosts {
+        a: Entity<ToastHost>,
+        b: Entity<ToastHost>,
+    }
+
+    impl Render for TwoHosts {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div().child(self.a.clone()).child(self.b.clone())
+        }
+    }
+
+    /// Two hosts in one window used to share one fixed element id and trip the
+    /// duplicate accessibility node id assertion (debug builds); in-process, no
+    /// real window or GPU.
+    #[gpui::test]
+    fn two_toast_hosts_with_distinct_ids_render_in_one_window(cx: &mut TestAppContext) {
+        let (_, cx) = open_fluent_test_window(cx, |_, cx| {
+            ToastStack::init(cx);
+            ToastStack::push(Toast::new("t", "hello").persistent(), cx);
+            TwoHosts {
+                a: cx.new(|cx| ToastHost::new(cx).id("host-a")),
+                b: cx.new(|cx| ToastHost::new(cx).id("host-b")),
+            }
+        });
+        let snapshot = cx.accessibility_snapshot();
+        assert_eq!(
+            snapshot.iter().filter(|n| n.starts_with("Status")).count(),
+            2
+        );
+    }
+
+    /// Several toasts in one host used to share the message bar's fixed element
+    /// id and trip the duplicate accessibility node id assertion (debug builds);
+    /// in-process, no real window or GPU.
+    #[gpui::test]
+    fn several_toasts_in_one_host_get_distinct_a11y_nodes(cx: &mut TestAppContext) {
+        let (_, cx) = open_fluent_test_window(cx, |_, cx| {
+            ToastStack::init(cx);
+            ToastStack::push(Toast::new("one", "First").persistent(), cx);
+            ToastStack::push(Toast::new("two", "Second").persistent(), cx);
+            ToastHost::new(cx)
+        });
+        let snapshot = cx.accessibility_snapshot();
+        assert_eq!(
+            snapshot.iter().filter(|n| n.starts_with("Status")).count(),
+            2
+        );
     }
 }
