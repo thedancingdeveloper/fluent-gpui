@@ -5,9 +5,10 @@
 //! theme row on top switches light, dark, high contrast and RTL so each
 //! family can be checked in every variant without leaving the page.
 
+use crate::pages::{InputsPage, LayoutPage, StatusPage};
 use fluent_core::gpui::{
-    div, prelude::*, px, AnyElement, AnyView, Context, Entity, FocusHandle, IntoElement, Render,
-    ScrollHandle, Window,
+    div, prelude::*, px, AnyElement, AnyView, App, Context, Entity, FocusHandle, IntoElement,
+    Render, ScrollHandle, Window,
 };
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_layout::{
@@ -17,7 +18,7 @@ use fluent_layout::{
 use fluent_primitives::{
     Button, ButtonAppearance, ButtonIconPosition, ButtonShape, ButtonSize, Checkbox, CheckboxState,
     Chip, Divider, Expander, InputCapture, Label, LabelSize, Link, LinkAppearance, RadioGroup,
-    Scrollbar, Switch, TerminalView, ToggleButton, VideoSurface,
+    Scrollbar, Switch, TerminalCell, TerminalGrid, TerminalView, ToggleButton, VideoSurface,
 };
 
 pub struct GroupedListPage;
@@ -257,18 +258,20 @@ pub enum Family {
     StatusAndFeedback,
     DataAndLists,
     DateAndInput,
+    Layout,
     Media,
     ThemeAndDirection,
 }
 
 impl Family {
-    pub const ALL: [Family; 8] = [
+    pub const ALL: [Family; 9] = [
         Family::ButtonsAndLinks,
         Family::Selection,
         Family::Text,
         Family::StatusAndFeedback,
         Family::DataAndLists,
         Family::DateAndInput,
+        Family::Layout,
         Family::Media,
         Family::ThemeAndDirection,
     ];
@@ -280,7 +283,8 @@ impl Family {
             Family::Text => "Text and labels",
             Family::StatusAndFeedback => "Status and feedback",
             Family::DataAndLists => "Data and lists",
-            Family::DateAndInput => "Date and input",
+            Family::DateAndInput => "Inputs",
+            Family::Layout => "Layout components",
             Family::Media => "Terminal and video",
             Family::ThemeAndDirection => "Theme and direction",
         }
@@ -292,8 +296,68 @@ pub struct DemoViews {
     pub status: Vec<AnyView>,
     pub data: Vec<AnyView>,
     pub date_input: Vec<AnyView>,
+    pub layout: Vec<AnyView>,
     pub media: Vec<AnyView>,
     pub theme: Vec<AnyView>,
+}
+
+impl DemoViews {
+    /// Builds every demo page the gallery shows.
+    pub fn build(cx: &mut App) -> Self {
+        let video = cx.new(VideoSurface::new);
+        video.update(cx, |surface, cx| {
+            let mut pixels = Vec::with_capacity(160 * 90 * 4);
+            for y in 0..90u32 {
+                for x in 0..160u32 {
+                    pixels.extend([((x * 255) / 159) as u8, ((y * 255) / 89) as u8, 180, 255]);
+                }
+            }
+            let _ = surface.submit_frame(160, 90, pixels, cx);
+        });
+        let video_page = cx.new(|_| VideoPage { surface: video });
+
+        let grid = cx.new(|_| TerminalGrid::new(64, 12));
+        grid.update(cx, |grid, _| {
+            for (row, line) in [
+                "Fluent terminal demo",
+                "$ cargo run --example gallery",
+                "[  OK  ] compositor connected",
+                "[  OK  ] synthetic output ready",
+                "Type, scroll, and select this terminal surface.",
+            ]
+            .iter()
+            .enumerate()
+            {
+                grid.write_str(row, 0, line, TerminalCell::new(' '));
+            }
+        });
+        let terminal = cx.new(|cx| TerminalView::new(grid, cx).label("Scripted terminal"));
+        let terminal_page = cx.new(|_| TerminalPage { terminal });
+
+        let capture_log = cx.new(|_| EventLog);
+        let capture = cx.new(|cx| InputCapture::new(cx).content(capture_log.clone().into()));
+        let input_page = cx.new(|_| InputPage { capture });
+
+        let expander_page = cx.new(|_| ExpanderPage);
+        let drag_drop_page = cx.new(DragDropPage::new);
+        let grouped_list_page = cx.new(|_| GroupedListPage);
+        let scrollbar_page = cx.new(|_| ScrollbarPage::new());
+        let inputs_page = cx.new(InputsPage::new);
+        let status_page = cx.new(|_| StatusPage);
+        let layout_page = cx.new(|_| LayoutPage);
+        Self {
+            status: vec![status_page.into()],
+            data: vec![
+                drag_drop_page.into(),
+                grouped_list_page.into(),
+                scrollbar_page.into(),
+            ],
+            date_input: vec![inputs_page.into()],
+            layout: vec![layout_page.into()],
+            media: vec![video_page.into(), terminal_page.into()],
+            theme: vec![input_page.into(), expander_page.into()],
+        }
+    }
 }
 
 pub struct FamilyHost {
@@ -302,6 +366,12 @@ pub struct FamilyHost {
 }
 
 impl FamilyHost {
+    /// Shows a family page, as the sidebar does.
+    pub fn set_active(&mut self, family: Family, cx: &mut Context<Self>) {
+        self.active = family;
+        cx.notify();
+    }
+
     pub fn new(demos: DemoViews) -> Self {
         Self {
             active: Family::ButtonsAndLinks,
@@ -324,6 +394,15 @@ impl FamilyHost {
                     .children(items),
             )
             .child(Divider::horizontal())
+    }
+
+    /// Pages that size to their content instead of a fixed-height frame.
+    fn pages(views: &[AnyView]) -> impl IntoElement {
+        div()
+            .flex()
+            .flex_col()
+            .gap_3()
+            .children(views.iter().cloned())
     }
 
     fn views(views: &[AnyView]) -> impl IntoElement {
@@ -534,9 +613,10 @@ impl Render for FamilyHost {
             Family::ButtonsAndLinks => Self::buttons().into_any_element(),
             Family::Selection => Self::selection().into_any_element(),
             Family::Text => Self::text().into_any_element(),
-            Family::StatusAndFeedback => Self::views(&self.demos.status).into_any_element(),
+            Family::StatusAndFeedback => Self::pages(&self.demos.status).into_any_element(),
             Family::DataAndLists => Self::views(&self.demos.data).into_any_element(),
-            Family::DateAndInput => Self::views(&self.demos.date_input).into_any_element(),
+            Family::DateAndInput => Self::pages(&self.demos.date_input).into_any_element(),
+            Family::Layout => Self::pages(&self.demos.layout).into_any_element(),
             Family::Media => Self::views(&self.demos.media).into_any_element(),
             Family::ThemeAndDirection => Self::views(&self.demos.theme).into_any_element(),
         };
@@ -613,10 +693,7 @@ impl Render for FamilyNav {
                     .label(family.title())
                     .selected(family == active)
                     .on_click(move |_, _, _, cx| {
-                        host.update(cx, |h, cx| {
-                            h.active = family;
-                            cx.notify();
-                        });
+                        host.update(cx, |h, cx| h.set_active(family, cx));
                         nav.update(cx, |_, cx| cx.notify());
                     })
             }))
