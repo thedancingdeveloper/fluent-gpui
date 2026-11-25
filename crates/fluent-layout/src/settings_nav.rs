@@ -1,11 +1,11 @@
 use fluent_core::TextRampExt;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use fluent_core::{Theme, ThemeProvider as _};
-use fluent_primitives::FluentFocus as _;
+use fluent_primitives::{focus_ring, is_keyboard_focused, FluentFocus as _};
 use gpui::{
-    div, prelude::*, px, App, ClickEvent, Context, FontWeight, IntoElement, KeyDownEvent, Render,
-    SharedString, Window,
+    div, prelude::*, px, App, ClickEvent, Context, FocusHandle, FontWeight, IntoElement,
+    KeyDownEvent, Render, SharedString, Window,
 };
 
 // ---------------------------------------------------------------------------
@@ -103,6 +103,9 @@ pub struct SettingsNav {
     pub active_id: Option<SharedString>,
     /// Public API item.
     pub on_select: Option<Arc<dyn Fn(SharedString, &mut App) + 'static>>,
+    /// Focus handles of the section headers (`(section, None)`) and items
+    /// (`(section, Some(item))`), created on first render.
+    focus_handles: HashMap<(usize, Option<usize>), FocusHandle>,
 }
 
 impl SettingsNav {
@@ -113,6 +116,7 @@ impl SettingsNav {
             sections: vec![],
             active_id: None,
             on_select: None,
+            focus_handles: HashMap::new(),
         }
     }
 
@@ -151,7 +155,7 @@ fn is_activation_key(key: &str) -> bool {
 }
 
 impl Render for SettingsNav {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
         let colors = theme.colors.clone();
         let spacing = theme.spacing;
@@ -197,9 +201,17 @@ impl Render for SettingsNav {
                 }
             });
 
-            nav = nav.child(
+            let header_focus = self
+                .focus_handles
+                .entry((si, None))
+                .or_insert_with(|| cx.focus_handle().tab_index(0).tab_stop(true))
+                .clone();
+            let header_ring = is_keyboard_focused(&header_focus, window);
+
+            nav = nav.child(focus_ring(
                 div()
                     .id(("nav-section", si as u64))
+                    .debug_selector(move || format!("nav-section-{si}"))
                     .flex()
                     .flex_row()
                     .items_center()
@@ -208,7 +220,8 @@ impl Render for SettingsNav {
                     .h(px(components.settings_nav_section_height))
                     .cursor_pointer()
                     .hover(move |s| s.bg(hover_bg))
-                    .fluent_focus(Some(0), colors.focus_ring)
+                    .track_focus(&header_focus)
+                    .fluent_tab_stop(0)
                     .on_key_down(toggle_key)
                     .on_click(toggle_handler)
                     .child(
@@ -230,7 +243,10 @@ impl Render for SettingsNav {
                             .text_color(on_neutral)
                             .child(section_title),
                     ),
-            );
+                header_ring,
+                &colors,
+                px(0.0),
+            ));
 
             if !expanded {
                 continue;
@@ -268,6 +284,13 @@ impl Render for SettingsNav {
                     })
                 };
 
+                let item_focus = self
+                    .focus_handles
+                    .entry((si, Some(ii)))
+                    .or_insert_with(|| cx.focus_handle().tab_index(0).tab_stop(true))
+                    .clone();
+                let item_ring = is_keyboard_focused(&item_focus, window);
+
                 // Active item: 3px accent bar on the left, offset by 16px indent
                 let row = div()
                     .id(("nav-item", (si * 100 + ii) as u64))
@@ -283,7 +306,8 @@ impl Render for SettingsNav {
                         colors.panel_bg
                     })
                     .hover(move |s| s.bg(if is_active { active_bg } else { hover_bg }))
-                    .fluent_focus(Some(0), colors.focus_ring)
+                    .track_focus(&item_focus)
+                    .fluent_tab_stop(0)
                     .on_key_down(select_key)
                     .on_click(select_handler)
                     // Left accent bar (3px, accent colour when active)
@@ -307,7 +331,7 @@ impl Render for SettingsNav {
                             .child(item_label),
                     );
 
-                nav = nav.child(row);
+                nav = nav.child(focus_ring(row, item_ring, &colors, px(0.0)));
             }
         }
 
@@ -365,6 +389,90 @@ mod tests {
         cx.type_keys("enter");
         nav.read_with(cx, |n, _| assert_eq!(n.active_id.as_deref(), Some("b")));
         assert_eq!(*log.borrow(), vec!["b".to_string()]);
+    }
+
+    /// Focuses the `n`th Tab stop (header, item A, item B, ...) the way a
+    /// keyboard user does: the first stop via the window, the rest via Tab, so
+    /// the window ends in keyboard input modality.
+    fn tab_to(cx: &mut gpui::VisualTestContext, stops: usize) {
+        cx.update(|_, app| fluent_primitives::install_focus_keybindings(app));
+        cx.update(|window, app| window.draw(app).clear(app));
+        cx.update(|window, app| window.focus_next(app));
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+        for _ in 1..stops {
+            cx.type_keys("tab");
+            cx.update(|window, app| window.draw(app).clear(app));
+        }
+    }
+
+    /// Number of distinct painted rings in the Fluent 2 outer focus-ring colour.
+    fn outer_ring_quads(cx: &mut gpui::VisualTestContext) -> usize {
+        cx.update(|window, app| window.draw(app).clear(app));
+        cx.update(|window, app| {
+            let outer = app.theme().colors.stroke_focus_outer;
+            // Identical quads from repeated draws count once.
+            let mut rings: Vec<String> = window
+                .painted_quads()
+                .iter()
+                .filter(|q| q.border_color == outer)
+                .map(|q| format!("{:?}", q.bounds))
+                .collect();
+            rings.sort();
+            rings.dedup();
+            rings.len()
+        })
+    }
+
+    #[gpui::test]
+    fn tab_then_space_selects_item(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (nav, cx) = open_fluent_test_window(cx, |_, cx| nav(cx, log.clone()));
+        tab_to(cx, 3);
+        cx.type_keys("space");
+        nav.read_with(cx, |n, _| assert_eq!(n.active_id.as_deref(), Some("b")));
+        assert_eq!(*log.borrow(), vec!["b".to_string()]);
+    }
+
+    #[gpui::test]
+    fn keyboard_toggles_section_header(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (nav, cx) = open_fluent_test_window(cx, |_, cx| nav(cx, log.clone()));
+        tab_to(cx, 1);
+        nav.read_with(cx, |n, _| assert!(n.sections[0].expanded));
+        cx.type_keys("enter");
+        nav.read_with(cx, |n, _| assert!(!n.sections[0].expanded));
+        cx.type_keys("space");
+        nav.read_with(cx, |n, _| assert!(n.sections[0].expanded));
+        // Toggling a header never selects an item.
+        assert!(log.borrow().is_empty());
+    }
+
+    #[gpui::test]
+    fn keyboard_focus_draws_the_ring(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (_nav, cx) = open_fluent_test_window(cx, |_, cx| nav(cx, log.clone()));
+        assert_eq!(
+            outer_ring_quads(cx),
+            0,
+            "no ring before anything is focused"
+        );
+        tab_to(cx, 2);
+        assert_eq!(outer_ring_quads(cx), 1, "one ring, on the focused item");
+    }
+
+    #[gpui::test]
+    fn mouse_click_does_not_draw_the_ring(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (_nav, cx) = open_fluent_test_window(cx, |_, cx| nav(cx, log.clone()));
+        cx.click_selector("nav-item-0-1");
+        cx.update(|window, app| window.draw(app).clear(app));
+        // The click did focus the row; only the ring is withheld.
+        assert!(cx.update(|window, app| window.focused(app).is_some()));
+        assert_eq!(outer_ring_quads(cx), 0, "mouse focus must not draw a ring");
+        // Tabbing afterwards (keyboard modality) does draw one.
+        cx.type_keys("tab");
+        assert_eq!(outer_ring_quads(cx), 1);
     }
 
     #[gpui::test]
