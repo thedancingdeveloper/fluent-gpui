@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- `Toolbar` collapses the items that do not fit its width (measured, or `available_width`) into a "More" menu; the More button is the last member of the toolbar's roving Tab stop with a keyboard-only focus ring, Enter/Space/Down open the menu (menu roles, arrows, Escape returns focus) (WI-3041).
 - `RibbonBar` keys each command's focus handle by an `(item, Option<sub>)` position instead of `item * 10 + sub`, so the controls of a `Stack` no longer share a handle (one Tab stop, two rings) with the plain buttons after it.
 - `Checkbox` box, `RadioGroup` circle (inner dot half) and the `Switch` track height now read one `ComponentTokens::toggle_box` (20px, Fluent 2), so the three toggles share a size; layout tests assert the sizes and a symmetric switch knob inset in both states (WI-3258).
 - `ToggleButton` and `IconButton` read icon size and square size from the `button_*` component tokens (ToggleButton icons were fixed at 16px at every size) (WI-3257).
