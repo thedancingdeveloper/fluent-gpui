@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Capture screenshots of every FluentGUI primitive.
+# Capture screenshots of every FluentGUI primitive and layout component.
 #
 # Requirements: screenshot-rs (from /home/sprooty/Working/Active/apps/sceenshot-rs), cargo
 #
@@ -50,6 +50,28 @@ ALL_COMPONENTS=(
     card
     section-header
     states
+    message-bar
+    toolbar
+    tree
+    data-table
+    selectable-list
+    document-viewer
+    token-input
+    date-time-picker
+    tooltip
+    suggestion-popover
+    tab-strip
+    title-bar
+    ribbon
+    settings-nav
+    toast
+    dialog
+    flyout
+    popover
+    context-menu
+    command-palette
+    menu-bar-open
+    submenu-open
 )
 
 # ── Argument parsing ──────────────────────────────────────────────────────
