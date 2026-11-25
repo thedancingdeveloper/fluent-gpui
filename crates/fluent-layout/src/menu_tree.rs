@@ -668,6 +668,27 @@ pub(crate) fn chevron_x_scale(rtl: bool) -> f32 {
     }
 }
 
+/// A menu separator, shared by the context menu, menu button and menu bar.
+///
+/// The hairline sits in a `flex_none` wrapper whose vertical padding is the
+/// same above and below, so it is centred between its neighbouring rows
+/// whatever the panel padding or row density, and it keeps its 1px thickness
+/// when a capped panel overflows and scrolls.
+pub(crate) fn separator(env: &MenuRenderEnv) -> AnyElement {
+    div()
+        .debug_selector(|| "menu-separator".into())
+        .flex_none()
+        .px(px(env.spacing.sm))
+        .py(px(env.spacing.xs))
+        .child(
+            div()
+                .debug_selector(|| "menu-separator-line".into())
+                .h(px(env.components.popup_separator_height))
+                .bg(env.colors.stroke_neutral_subtle),
+        )
+        .into_any_element()
+}
+
 /// The trailing secondary-text column of a row: its keyboard shortcut.
 pub(crate) fn shortcut_column(shortcut: SharedString, env: &MenuRenderEnv) -> AnyElement {
     let selector = format!("menu-shortcut-{shortcut}");

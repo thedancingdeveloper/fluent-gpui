@@ -871,13 +871,7 @@ impl MenuBar {
                     menu = menu.child(row);
                 }
                 ContextMenuItem::Separator => {
-                    menu = menu.child(
-                        div()
-                            .h(px(env.components.popup_separator_height))
-                            .mx(px(env.spacing.sm))
-                            .my(px(env.spacing.xs))
-                            .bg(env.colors.stroke_neutral_subtle),
-                    );
+                    menu = menu.child(menu_tree::separator(env));
                 }
             }
         }
