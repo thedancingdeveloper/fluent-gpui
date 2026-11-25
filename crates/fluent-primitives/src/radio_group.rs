@@ -242,7 +242,8 @@ impl RenderOnce for RadioGroup {
             }
 
             let circle = div()
-                .size(px(20.0))
+                .debug_selector(move || format!("radio-circle-{idx}"))
+                .size(px(theme.components.toggle_box))
                 .rounded(px(theme.radii.pill))
                 .border_1()
                 .border_color(outer_border)
@@ -251,7 +252,11 @@ impl RenderOnce for RadioGroup {
                 .justify_center()
                 .child(
                     div()
-                        .size(px(if checked { 10.0 } else { 0.0 }))
+                        .size(px(if checked {
+                            theme.components.toggle_box / 2.0
+                        } else {
+                            0.0
+                        }))
                         .rounded(px(theme.radii.pill))
                         .bg(colors.accent),
                 );
@@ -404,5 +409,30 @@ mod tests {
                 "RadioButton \"Large\" [toggled=True]".to_string(),
             ]
         );
+    }
+
+    #[gpui::test]
+    fn radio_circle_matches_the_toggle_token(cx: &mut TestAppContext) {
+        let snap = open_fluent_test_window(cx, |_, _| {
+            A11yHost(Box::new(|| {
+                RadioGroup::new("r")
+                    .option("a", "A")
+                    .option("b", "B")
+                    .selected("b")
+                    .into_any_element()
+            }))
+        });
+        let cx = snap.1;
+        let token = cx.update(|_, app| app.theme().components.toggle_box);
+        for idx in 0..2 {
+            let sel: &'static str = if idx == 0 {
+                "radio-circle-0"
+            } else {
+                "radio-circle-1"
+            };
+            let b = cx.selector_bounds(sel).expect("radio circle painted");
+            assert_eq!(f32::from(b.size.width), token, "{sel}");
+            assert_eq!(f32::from(b.size.height), token, "{sel}");
+        }
     }
 }
