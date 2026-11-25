@@ -309,13 +309,14 @@ impl RibbonBar {
                 let icon_empty = icon.is_empty();
                 div()
                     .id(("rbi", pos.uid(gidx)))
+                    .debug_selector(move || pos.selector(gidx))
                     .role(Role::Button)
                     .aria_label(label.clone())
                     .map(|el| Self::focusable(el, tokens, (overflow, gidx, pos)))
                     .flex()
                     .flex_row()
                     .items_center()
-                    .when(icon_empty, |d| d.justify_center())
+                    .justify_center()
                     .gap(px(spacing.xs))
                     .px(px(spacing.sm))
                     .py(px(spacing.xs))
@@ -329,6 +330,7 @@ impl RibbonBar {
                     .when(!icon_empty, |d| {
                         d.child(
                             svg()
+                                .debug_selector(move || format!("{}-icon", pos.selector(gidx)))
                                 .path(icon.clone())
                                 .size(px(components.ribbon_small_icon_size))
                                 .text_color(fg),
@@ -336,6 +338,7 @@ impl RibbonBar {
                     })
                     .child(
                         div()
+                            .debug_selector(move || format!("{}-label", pos.selector(gidx)))
                             .text_ramp(&typography.caption)
                             .text_color(fg)
                             .child(label.clone()),
@@ -399,6 +402,7 @@ impl RibbonBar {
                     .flex()
                     .flex_row()
                     .items_center()
+                    .justify_center()
                     .gap(px(spacing.xs))
                     .px(px(spacing.sm))
                     .py(px(spacing.xs))
@@ -1076,6 +1080,7 @@ mod tests {
     use gpui::TestAppContext;
 
     use super::*;
+    use crate::RibbonStackBuilder;
 
     #[test]
     fn tab_navigation_wraps_and_jumps() {
@@ -1288,5 +1293,51 @@ mod tests {
         );
         let joined = vcx.accessibility_snapshot().join("\n");
         assert!(joined.contains("Last command: Run"), "{joined}");
+    }
+
+    /// A stacked icon+label button stretched to its column's width centres
+    /// its content, as a plain label-only button does.
+    fn stretched_content_gaps(
+        cx: &mut TestAppContext,
+        build: impl Fn(RibbonStackBuilder) -> RibbonStackBuilder + 'static,
+        selector: &'static str,
+        icon_selector: &'static str,
+        label_selector: &'static str,
+    ) -> (f32, f32, f32) {
+        let (_bar, vcx) = open_fluent_test_window(cx, move |_, cx| {
+            let build = &build;
+            RibbonBar::new(cx).tab("Home", |t| t.group("G", |g| g.stack(build)))
+        });
+        vcx.update(|window, app| window.draw(app).clear(app));
+        let button = vcx.selector_bounds(selector).expect("button");
+        let icon = vcx.selector_bounds(icon_selector).expect("icon");
+        let label = vcx.selector_bounds(label_selector).expect("label");
+        (
+            f32::from(button.size.width),
+            f32::from(icon.origin.x - button.origin.x),
+            f32::from(button.right() - label.right()),
+        )
+    }
+
+    #[gpui::test]
+    fn stretched_icon_button_content_is_centred(cx: &mut TestAppContext) {
+        let (width, left, right) = stretched_content_gaps(
+            cx,
+            |s| {
+                s.button("Hi", "icons/none.svg", |_, _, _| {}).button(
+                    "A much longer sibling label",
+                    "",
+                    |_, _, _| {},
+                )
+            },
+            "ribbon-item-0-0-0",
+            "ribbon-item-0-0-0-icon",
+            "ribbon-item-0-0-0-label",
+        );
+        assert!(width > 100.0, "button was not stretched: {width}");
+        assert!(
+            (left - right).abs() <= 1.0,
+            "content not centred: {left} left vs {right} right"
+        );
     }
 }
