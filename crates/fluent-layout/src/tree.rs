@@ -5,7 +5,7 @@ use crate::data_status::{status_block, DataStatusKind};
 use fluent_core::{ThemeProvider as _, TruncateExt as _};
 use fluent_primitives::{focus_ring, is_keyboard_focused, FluentFocus as _};
 use gpui::{
-    div, prelude::*, px, svg, App, ClickEvent, IntoElement, KeyDownEvent, MouseButton,
+    div, prelude::*, px, svg, App, ClickEvent, ElementId, IntoElement, KeyDownEvent, MouseButton,
     MouseDownEvent, RenderOnce, Role, SharedString, Window,
 };
 
@@ -222,6 +222,7 @@ fn next_checked(state: TreeCheckState) -> bool {
 #[allow(clippy::type_complexity)]
 #[derive(IntoElement)]
 pub struct Tree {
+    id: ElementId,
     items: Vec<TreeItem>,
     selected_id: Option<SharedString>,
     filter: Option<SharedString>,
@@ -283,6 +284,7 @@ impl Tree {
     /// Public API item.
     pub fn new() -> Self {
         Self {
+            id: "tree".into(),
             items: Vec::new(),
             selected_id: None,
             filter: None,
@@ -294,6 +296,14 @@ impl Tree {
             on_load_children: None,
             status: None,
         }
+    }
+
+    /// Sets the element id. It keys the tree's focus handle, so give each tree
+    /// that shares a parent its own id; trees with the same id share one Tab
+    /// stop. Defaults to `"tree"`.
+    pub fn id(mut self, id: impl Into<ElementId>) -> Self {
+        self.id = id.into();
+        self
     }
 
     /// Show a loading, empty or error state instead of the items.
@@ -649,7 +659,7 @@ impl Default for Tree {
 
 impl RenderOnce for Tree {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let focus = crate::roving::container_handle(window, cx, &"tree".into());
+        let focus = crate::roving::container_handle(window, cx, &self.id);
         let ring = is_keyboard_focused(&focus, window);
         let colors = cx.theme().colors.clone();
         let mut flat = Vec::new();
@@ -679,7 +689,7 @@ impl RenderOnce for Tree {
         let key_activate = on_activate.clone();
         let key_toggle = on_toggle.clone();
         let root = div()
-            .id("tree")
+            .id(self.id.clone())
             .role(Role::Tree)
             .track_focus(&focus)
             .fluent_tab_stop(0)
@@ -1190,5 +1200,56 @@ mod focus_tests {
         assert_eq!(outer_ring_quads(cx), 0, "mouse focus must not draw a ring");
         cx.type_keys("down");
         assert_eq!(outer_ring_quads(cx), 1, "keyboard focus draws one ring");
+    }
+
+    /// Two trees under one parent, each with its own id.
+    struct TwoTrees;
+
+    impl gpui::Render for TwoTrees {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div()
+                .w(px(300.0))
+                .h(px(200.0))
+                .flex()
+                .flex_col()
+                .child(
+                    Tree::new()
+                        .id("tree-one")
+                        .items(vec![TreeItem::new("a", "A")])
+                        .selected("a"),
+                )
+                .child(
+                    Tree::new()
+                        .id("tree-two")
+                        .items(vec![TreeItem::new("b", "B")])
+                        .selected("b"),
+                )
+        }
+    }
+
+    #[gpui::test]
+    fn sibling_trees_have_separate_focus(cx: &mut TestAppContext) {
+        let (_, cx) = open_fluent_test_window(cx, |_, _| TwoTrees);
+        tab(cx, 1);
+        cx.type_keys("down");
+        assert_eq!(outer_ring_quads(cx), 1, "first Tab ring on one tree only");
+        let first = ring_bounds(cx);
+        cx.type_keys("tab");
+        cx.update(|window, app| window.draw(app).clear(app));
+        assert_eq!(outer_ring_quads(cx), 1, "second tree is its own Tab stop");
+        assert_ne!(first, ring_bounds(cx), "the ring moved to the other tree");
+    }
+
+    fn ring_bounds(cx: &mut gpui::VisualTestContext) -> String {
+        use fluent_core::ThemeProvider as _;
+        cx.update(|window, app| {
+            let outer = app.theme().colors.stroke_focus_outer;
+            window
+                .painted_quads()
+                .iter()
+                .find(|q| q.border_color == outer)
+                .map(|q| format!("{:?}", q.bounds))
+                .unwrap_or_default()
+        })
     }
 }
