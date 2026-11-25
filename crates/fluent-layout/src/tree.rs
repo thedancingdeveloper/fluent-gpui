@@ -433,6 +433,7 @@ impl Tree {
 
         let mut row = div()
             .id(("tree-item", index as u64))
+            .debug_selector(move || format!("tree-item-{index}"))
             .role(Role::TreeItem)
             .aria_label(item.label.clone())
             .aria_level(depth + 1)
@@ -1251,5 +1252,47 @@ mod focus_tests {
                 .map(|q| format!("{:?}", q.bounds))
                 .unwrap_or_default()
         })
+    }
+}
+
+#[cfg(test)]
+mod density_tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Context, TestAppContext};
+
+    use super::*;
+
+    struct Host;
+
+    impl gpui::Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            Tree::new().items(vec![TreeItem::new("a", "A"), TreeItem::new("b", "B")])
+        }
+    }
+
+    fn tree_row_height(compact: bool, cx: &mut TestAppContext) -> f32 {
+        let (host, cx) = open_fluent_test_window(cx, |_, _| Host);
+        if compact {
+            cx.update(|_, app| {
+                let theme = app.global_mut::<fluent_core::Theme>();
+                theme.components = theme
+                    .components
+                    .with_row_density(fluent_core::RowDensity::Compact);
+            });
+            host.update(cx, |_, cx| cx.notify());
+        }
+        cx.run_until_parked();
+        let b = cx.selector_bounds("tree-item-0").expect("row painted");
+        f32::from(b.size.height)
+    }
+
+    #[gpui::test]
+    fn tree_rows_are_list_item_height_at_default_density(cx: &mut TestAppContext) {
+        assert_eq!(tree_row_height(false, cx), 32.0);
+    }
+
+    #[gpui::test]
+    fn tree_rows_follow_compact_density(cx: &mut TestAppContext) {
+        assert_eq!(tree_row_height(true, cx), 28.0);
     }
 }

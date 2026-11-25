@@ -308,7 +308,7 @@ impl Render for Nav {
                         .role(Role::List)
                         .flex()
                         .items_center()
-                        .h(px(components.settings_nav_section_height))
+                        .h(px(components.list_item_height))
                         .px(px(spacing.md))
                         .cursor_pointer()
                         .on_click(toggle)

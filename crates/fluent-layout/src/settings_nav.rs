@@ -217,7 +217,7 @@ impl Render for SettingsNav {
                     .items_center()
                     .gap(px(spacing.xs))
                     .px(px(spacing.md))
-                    .h(px(components.settings_nav_section_height))
+                    .h(px(components.list_item_height))
                     .cursor_pointer()
                     .hover(move |s| s.bg(hover_bg))
                     .track_focus(&header_focus)
@@ -504,5 +504,35 @@ mod tests {
         nav.update(cx, |n, cx| n.set_active("b".into(), cx));
         nav.read_with(cx, |n, _| assert_eq!(n.active_id.as_deref(), Some("b")));
         assert!(log.borrow().is_empty());
+    }
+
+    fn nav_row_heights(compact: bool, cx: &mut TestAppContext) -> (f32, f32) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (nav_entity, cx) = open_fluent_test_window(cx, |_, cx| nav(cx, log.clone()));
+        if compact {
+            cx.update(|_, app| {
+                let theme = app.global_mut::<fluent_core::Theme>();
+                theme.components = theme
+                    .components
+                    .with_row_density(fluent_core::RowDensity::Compact);
+            });
+            nav_entity.update(cx, |_, cx| cx.notify());
+        }
+        cx.run_until_parked();
+        let section = cx
+            .selector_bounds("nav-section-0")
+            .expect("section painted");
+        let item = cx.selector_bounds("nav-item-0-0").expect("item painted");
+        (f32::from(section.size.height), f32::from(item.size.height))
+    }
+
+    #[gpui::test]
+    fn nav_section_and_item_rows_match_list_item_height(cx: &mut TestAppContext) {
+        assert_eq!(nav_row_heights(false, cx), (32.0, 32.0));
+    }
+
+    #[gpui::test]
+    fn nav_section_follows_compact_density(cx: &mut TestAppContext) {
+        assert_eq!(nav_row_heights(true, cx).0, 28.0);
     }
 }
