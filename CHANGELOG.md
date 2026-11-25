@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Gallery: new Inputs, Status and feedback, and Layout components pages (text/textarea/dropdown/combobox/field states, spinner, progress, skeleton, message bars, toolbar narrow with overflow, tree loading/error), an Edit menu plus checkbox/radio/shortcut menu items, and in-process smoke tests for every page and the theme buttons (WI-3263).
 - Menus (`ContextMenu`, `MenuButton`, `MenuBar`): the submenu chevron mirrors in right-to-left layouts, and `ContextMenuItem::shortcut` now also sets the trailing secondary-text column of checkbox and radio items (new `shortcut` field on those variants) (WI-3041).
 - `Toolbar` collapses the items that do not fit its width (measured, or `available_width`) into a "More" menu; the More button is the last member of the toolbar's roving Tab stop with a keyboard-only focus ring, Enter/Space/Down open the menu (menu roles, arrows, Escape returns focus) (WI-3041).
 - `RibbonBar` keys each command's focus handle by an `(item, Option<sub>)` position instead of `item * 10 + sub`, so the controls of a `Stack` no longer share a handle (one Tab stop, two rings) with the plain buttons after it.
