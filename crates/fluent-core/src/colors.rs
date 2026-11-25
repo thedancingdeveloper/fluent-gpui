@@ -178,6 +178,10 @@ pub struct ColorScheme {
     pub stroke_accent: Hsla,
     /// Keyboard focus ring; kept distinct from accent fills for high contrast themes
     pub focus_ring: Hsla,
+    /// Fluent 2 focus indicator, outer 2px ring (dark `#FFFFFF`, light `#000000`)
+    pub stroke_focus_outer: Hsla,
+    /// Fluent 2 focus indicator, inner 1px ring; the inverse of `stroke_focus_outer`
+    pub stroke_focus_inner: Hsla,
 
     // --- Semantic status colours ---
     /// Informational status accent
@@ -389,6 +393,8 @@ impl ColorScheme {
             stroke_neutral_subtle: hex(0x383838),
             stroke_accent: hex(0x479EF5),
             focus_ring: hex(0xFFFFFF),
+            stroke_focus_outer: hex(0xFFFFFF),
+            stroke_focus_inner: hex(0x000000),
 
             // --- Semantic status ---
             status_info: hex(0x479EF5),
@@ -473,6 +479,8 @@ impl ColorScheme {
             stroke_neutral_subtle: hex(0xEBEBEB),
             stroke_accent: hex(0x0078D4),
             focus_ring: hex(0x000000),
+            stroke_focus_outer: hex(0x000000),
+            stroke_focus_inner: hex(0xFFFFFF),
 
             // --- Semantic status ---
             status_info: hex(0x005A9E),
@@ -556,6 +564,8 @@ impl ColorScheme {
             stroke_neutral_subtle: hex(0x0F1A30),
             stroke_accent: hex(0x7C3FFF),
             focus_ring: hex(0xFFFFFF),
+            stroke_focus_outer: hex(0xFFFFFF),
+            stroke_focus_inner: hex(0x000000),
 
             // --- Semantic status ---
             status_info: hex(0x79B8FF),
@@ -639,6 +649,8 @@ impl ColorScheme {
             stroke_neutral_subtle: hex(0x281E10),
             stroke_accent: hex(0xE07B39),
             focus_ring: hex(0xFFFFFF),
+            stroke_focus_outer: hex(0xFFFFFF),
+            stroke_focus_inner: hex(0x000000),
 
             // --- Semantic status ---
             status_info: hex(0x79B8FF),
@@ -747,6 +759,8 @@ impl ColorScheme {
             stroke_neutral_subtle: text,
             stroke_accent: highlight,
             focus_ring: text,
+            stroke_focus_outer: text,
+            stroke_focus_inner: canvas,
 
             status_info: highlight,
             status_info_bg: canvas,
@@ -790,7 +804,7 @@ mod tests {
         ]
     }
 
-    fn tokens(colors: &ColorScheme) -> [(&'static str, Hsla); 52] {
+    fn tokens(colors: &ColorScheme) -> [(&'static str, Hsla); 54] {
         [
             ("neutral", colors.neutral),
             ("neutral_hover", colors.neutral_hover),
@@ -823,6 +837,8 @@ mod tests {
             ("stroke_neutral_subtle", colors.stroke_neutral_subtle),
             ("stroke_accent", colors.stroke_accent),
             ("focus_ring", colors.focus_ring),
+            ("stroke_focus_outer", colors.stroke_focus_outer),
+            ("stroke_focus_inner", colors.stroke_focus_inner),
             ("status_info", colors.status_info),
             ("status_info_bg", colors.status_info_bg),
             ("status_info_border", colors.status_info_border),
@@ -963,6 +979,23 @@ mod tests {
                     contrast(c.focus_ring, bg) >= 3.0,
                     "{theme} focus ring on {name} is {:.2}:1",
                     contrast(c.focus_ring, bg)
+                );
+            }
+            // The Fluent 2 two-tone indicator: outer and inner are inverses, and
+            // the outer ring is visible against every surface.
+            assert_ne!(
+                c.stroke_focus_outer, c.stroke_focus_inner,
+                "{theme} focus rings must differ"
+            );
+            for (name, bg) in [
+                ("surface", c.surface),
+                ("surface dim", c.surface_dim),
+                ("neutral", c.neutral),
+            ] {
+                assert!(
+                    contrast(c.stroke_focus_outer, bg) >= 3.0,
+                    "{theme} outer focus ring on {name} is {:.2}:1",
+                    contrast(c.stroke_focus_outer, bg)
                 );
             }
         }

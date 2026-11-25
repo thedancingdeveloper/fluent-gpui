@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Add `stroke_focus_outer` / `stroke_focus_inner` colour tokens (all themes) and the shared `fluent_primitives::focus_ring` / `is_keyboard_focused` helpers: a 2px outer plus 1px inner ring drawn only for keyboard focus. `SettingsNav` now draws it (new `SettingsNav` focus handles; the private field means it can no longer be built by struct literal) and has tests for Space, header toggle, keyboard-only ring (WI-3261).
 - `SettingsNav` section headers and items are Tab stops with the Fluent keyboard focus ring, activate on Enter/Space, and keep 2px headroom so the ring is not clipped by the nav's `overflow_hidden` (WI-3261).
 - README: status now says 3.x is released on the vendored upstream Zed gpui (latest `v3.2.0+zed.ba63a022c9a2`); the consumer snippet uses that tag and no longer calls the first 3.x tag missing (WI-4702).
 - Add a Fluent 2 `Scrollbar` (vertical and horizontal, overlay auto-hide, thumb drag, track paging, hover/pressed states from theme tokens) over a `ScrollHandle` or `ListState` via `ScrollbarSource`; `VirtualList::scrollbar(true)` shows it, and the gallery has a scrollbar page (WI-3459).
