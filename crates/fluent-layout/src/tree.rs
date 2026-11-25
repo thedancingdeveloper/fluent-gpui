@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::data_status::{status_block, DataStatusKind};
 use fluent_core::{ThemeProvider as _, TruncateExt as _};
-use fluent_primitives::FluentFocus as _;
+use fluent_primitives::{focus_ring, is_keyboard_focused, FluentFocus as _};
 use gpui::{
     div, prelude::*, px, svg, App, ClickEvent, IntoElement, KeyDownEvent, MouseButton,
     MouseDownEvent, RenderOnce, Role, SharedString, Window,
@@ -648,7 +648,10 @@ impl Default for Tree {
 }
 
 impl RenderOnce for Tree {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let focus = crate::roving::container_handle(window, cx, &"tree".into());
+        let ring = is_keyboard_focused(&focus, window);
+        let colors = cx.theme().colors.clone();
         let mut flat = Vec::new();
         Self::flatten_visible_for_keys(
             &self.items,
@@ -678,7 +681,8 @@ impl RenderOnce for Tree {
         let root = div()
             .id("tree")
             .role(Role::Tree)
-            .fluent_focus(Some(0), cx.theme().colors.focus_ring)
+            .track_focus(&focus)
+            .fluent_tab_stop(0)
             .key_context("Tree")
             .on_key_down(move |ev: &KeyDownEvent, win, app| {
                 if flat_for_keys.is_empty() {
@@ -721,7 +725,7 @@ impl RenderOnce for Tree {
                             }
                         }
                     }
-                    "enter" | "space" => {
+                    "enter" | "return" | "space" => {
                         let item = &flat_for_keys[current];
                         if !item.disabled {
                             if let Some(handler) = &key_activate {
@@ -739,6 +743,7 @@ impl RenderOnce for Tree {
             .flex()
             .flex_col()
             .size_full();
+        let root = focus_ring(root, ring, &colors, px(0.0));
         let status = match self.status {
             Some(status) => Some(status),
             None if self.items.is_empty() => Some((DataStatusKind::Empty, "No items".into())),
@@ -1047,5 +1052,143 @@ mod keyboard_tests {
                 .any(|row| row.contains("\"Node 40\"") && row.contains("selected=true")),
             "selected row was not scrolled into view: {snapshot:?}"
         );
+    }
+}
+
+#[cfg(test)]
+mod focus_tests {
+    use std::{cell::RefCell, rc::Rc};
+
+    use crate::roving::test_support::{outer_ring_quads, press, tab};
+    use fluent_primitives::Button;
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Context, TestAppContext};
+
+    use super::*;
+
+    type Log = Rc<RefCell<Vec<String>>>;
+
+    /// A tree (a, disabled b, c, collapsible folder f) followed by a button.
+    struct Host {
+        selected: SharedString,
+        folder_expanded: bool,
+        log: Log,
+    }
+
+    impl gpui::Render for Host {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let view = cx.entity();
+            let (select, toggle) = (view.clone(), view);
+            let (activate_log, button_log) = (self.log.clone(), self.log.clone());
+            div()
+                .w(px(300.0))
+                .h(px(200.0))
+                .flex()
+                .flex_col()
+                .child(
+                    Tree::new()
+                        .items(vec![
+                            TreeItem::new("a", "A"),
+                            TreeItem::new("b", "B").disabled(true),
+                            TreeItem::new("c", "C"),
+                            TreeItem::new("f", "F")
+                                .expanded(self.folder_expanded)
+                                .child(TreeItem::new("f1", "F1")),
+                        ])
+                        .selected(self.selected.clone())
+                        .on_select(move |id, _, _, app| {
+                            select.update(app, |h, cx| {
+                                h.selected = id;
+                                cx.notify();
+                            })
+                        })
+                        .on_toggle(move |_, expanded, _, _, app| {
+                            toggle.update(app, |h, cx| {
+                                h.folder_expanded = expanded;
+                                cx.notify();
+                            })
+                        })
+                        .on_activate(move |id, _, _, _| {
+                            activate_log.borrow_mut().push(format!("activate {id}"))
+                        }),
+                )
+                .child(Button::new("after").on_click(move |_, _, _| {
+                    button_log.borrow_mut().push("after".into());
+                }))
+        }
+    }
+
+    fn host<'a>(
+        cx: &'a mut TestAppContext,
+        selected: &'static str,
+    ) -> (gpui::Entity<Host>, Log, &'a mut gpui::VisualTestContext) {
+        let log: Log = Rc::new(RefCell::new(vec![]));
+        let (host, cx) = open_fluent_test_window(cx, {
+            let log = log.clone();
+            move |_, _| Host {
+                selected: selected.into(),
+                folder_expanded: false,
+                log,
+            }
+        });
+        (host, log, cx)
+    }
+
+    #[gpui::test]
+    fn tab_reaches_the_tree_once(cx: &mut TestAppContext) {
+        let (_, log, cx) = host(cx, "a");
+        tab(cx, 2);
+        press(cx, "enter");
+        assert_eq!(*log.borrow(), vec!["after".to_string()]);
+    }
+
+    #[gpui::test]
+    fn arrows_move_the_selection_and_skip_disabled_rows(cx: &mut TestAppContext) {
+        let (host, _, cx) = host(cx, "a");
+        tab(cx, 1);
+        cx.type_keys("down");
+        assert_eq!(host.read_with(cx, |h, _| h.selected.clone()), "c");
+        cx.type_keys("up");
+        assert_eq!(host.read_with(cx, |h, _| h.selected.clone()), "a");
+    }
+
+    #[gpui::test]
+    fn right_and_left_expand_and_collapse(cx: &mut TestAppContext) {
+        let (host, _, cx) = host(cx, "f");
+        tab(cx, 1);
+        cx.type_keys("right");
+        assert!(host.read_with(cx, |h, _| h.folder_expanded));
+        cx.type_keys("left");
+        assert!(!host.read_with(cx, |h, _| h.folder_expanded));
+    }
+
+    #[gpui::test]
+    fn enter_and_space_activate_the_selection(cx: &mut TestAppContext) {
+        let (_, log, cx) = host(cx, "c");
+        tab(cx, 1);
+        cx.type_keys("enter");
+        cx.type_keys("space");
+        assert_eq!(
+            *log.borrow(),
+            vec!["activate c".to_string(), "activate c".to_string()]
+        );
+    }
+
+    #[gpui::test]
+    fn ring_only_for_keyboard_focus(cx: &mut TestAppContext) {
+        let (_, _, cx) = host(cx, "a");
+        assert_eq!(
+            outer_ring_quads(cx),
+            0,
+            "no ring before anything is focused"
+        );
+        cx.click_at(
+            gpui::point(px(20.0), px(10.0)),
+            MouseButton::Left,
+            gpui::Modifiers::default(),
+        );
+        assert_eq!(outer_ring_quads(cx), 0, "mouse focus must not draw a ring");
+        cx.type_keys("down");
+        assert_eq!(outer_ring_quads(cx), 1, "keyboard focus draws one ring");
     }
 }

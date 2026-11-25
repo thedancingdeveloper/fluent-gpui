@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- `TabStrip`, `Tree` and `SelectableList` are single Tab stops (tabs: arrows move and select, Enter/Space select) with a tracked `FocusHandle`, key context and the two-tone keyboard-only `focus_ring`; `SelectableList` now activates on Enter (matched as `return` before) (WI-3261).
 - `Checkbox`, `Switch`, `RadioGroup`, `Dropdown`, a dismissable `Chip` and a clickable `Card` own a persistent tracked `FocusHandle` (key context, Tab stop at `tab_index`, Enter/Space activation) and draw the two-tone `focus_ring` for keyboard focus only; disabled controls are not Tab stops and never activate. A `RadioGroup` stays one Tab stop with arrows moving within it. A `Chip` focuses its dismiss button; set `Card::id` on clickable cards so each keeps its own focus (WI-3261).
 - `Button`, `IconButton` and `ToggleButton` own a tracked `FocusHandle` (`Button` key context, Tab stop at `tab_index`, Enter/Space activation) and draw the two-tone `focus_ring` for keyboard focus only; disabled buttons are not Tab stops and never activate. Other `fluent_focus` callers are unchanged (WI-3261).
 - Add `stroke_focus_outer` / `stroke_focus_inner` colour tokens (all themes) and the shared `fluent_primitives::focus_ring` / `is_keyboard_focused` helpers: a 2px outer plus 1px inner ring drawn only for keyboard focus. `SettingsNav` now draws it (new `SettingsNav` focus handles; the private field means it can no longer be built by struct literal) and has tests for Space, header toggle, keyboard-only ring (WI-3261).
