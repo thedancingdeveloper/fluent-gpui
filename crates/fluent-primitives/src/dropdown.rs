@@ -1,7 +1,7 @@
 use fluent_core::TextRampExt;
 use std::sync::{Arc, Mutex};
 
-use crate::focus::FluentFocus as _;
+use crate::focus::{control_focus_handle, focus_ring, is_keyboard_focused, FluentFocus as _};
 use fluent_core::{Theme, ThemeProvider as _};
 use gpui::{
     anchored, canvas, deferred, div, point, prelude::*, px, svg, Anchor, App, Bounds, ClickEvent,
@@ -256,23 +256,29 @@ impl Dropdown {
                     self.close_popup(cx);
                 }
             }
-            "enter" | "space" => self.open_popup(cx),
+            // Opening on Enter/Space is the focused trigger's keyboard click
+            // (fired on key-up); handling the key-down too would open the list
+            // and the click would close it again.
+            "enter" | "space" => {}
             _ => {}
         }
     }
 }
 
 impl Render for Dropdown {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if !self.observing_theme {
             cx.observe_global::<Theme>(|_, cx| cx.notify()).detach();
             self.observing_theme = true;
         }
 
+        let focus =
+            (!self.disabled).then(|| control_focus_handle(&self.id, self.tab_index, window, cx));
+        let ring = focus
+            .as_ref()
+            .is_some_and(|h| is_keyboard_focused(h, window));
         let theme = cx.theme();
         let colors = theme.colors.clone();
-        let tab_index = self.tab_index;
-        let focus_ring = colors.focus_ring;
         let radii = theme.radii;
         let spacing = theme.spacing;
         let typography = theme.typography;
@@ -302,9 +308,11 @@ impl Render for Dropdown {
         let mut el = div()
             .id(self.id.clone())
             .debug_selector(|| "dropdown-trigger".into())
-            .focusable()
-            .tab_stop(true)
-            .fluent_focus(tab_index, focus_ring)
+            .when_some(focus.as_ref(), |d, focus| {
+                d.track_focus(focus)
+                    .key_context("Dropdown")
+                    .fluent_tab_stop(self.tab_index.unwrap_or(0))
+            })
             .on_key_down(
                 cx.listener(|dropdown: &mut Dropdown, ev: &KeyDownEvent, _, cx| {
                     dropdown.handle_key(ev, cx);
@@ -466,7 +474,7 @@ impl Render for Dropdown {
             );
         }
 
-        el
+        focus_ring(el, ring, &colors, px(radii.md))
     }
 }
 

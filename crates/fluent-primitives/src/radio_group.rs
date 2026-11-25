@@ -1,7 +1,7 @@
 use fluent_core::TextRampExt;
 use std::sync::Arc;
 
-use crate::focus::FluentFocus as _;
+use crate::focus::{focus_ring, is_keyboard_focused, FluentFocus as _};
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, App, ClickEvent, ElementId, Hsla, IntoElement, KeyDownEvent, RenderOnce,
@@ -167,7 +167,7 @@ impl RenderOnce for RadioGroup {
         for (idx, option) in self.options.into_iter().enumerate() {
             let checked = self.selected.as_ref() == Some(&option.value);
             let tab_index = self.tab_index;
-            let focus_ring = colors.focus_ring;
+            let ring = enabled[idx] && is_keyboard_focused(&handles[idx], window);
             let disabled = self.disabled || option.disabled;
             let on_select = self.on_select.clone();
             let value = option.value.clone();
@@ -205,10 +205,16 @@ impl RenderOnce for RadioGroup {
                 let nav_enabled = enabled.clone();
                 let nav_values = values.clone();
                 let nav_handler = on_select.clone();
+                // `track_focus` makes gpui ignore the element's own tab settings, so
+                // the Tab stop (one per group) is configured on the handle itself.
+                let handle = handles[idx]
+                    .clone()
+                    .tab_index(tab_index.unwrap_or(0))
+                    .tab_stop(stop == Some(idx));
                 row = row
-                    .track_focus(&handles[idx])
-                    .fluent_focus(tab_index, focus_ring)
-                    .tab_stop(stop == Some(idx))
+                    .track_focus(&handle)
+                    .key_context("RadioGroup")
+                    .fluent_tab_stop(tab_index.unwrap_or(0))
                     .on_key_down(move |ev: &KeyDownEvent, win, app| {
                         if let Some(next) =
                             crate::roving::target(ev.keystroke.key.as_str(), idx, &nav_enabled)
@@ -230,35 +236,27 @@ impl RenderOnce for RadioGroup {
                         move |s| s.bg(pressed)
                     });
                 if let Some(handler) = on_select {
-                    let key_handler = handler.clone();
-                    let key_value = value.clone();
-                    row = row
-                        .on_key_down(move |ev: &KeyDownEvent, win, app| {
-                            if matches!(ev.keystroke.key.as_str(), "enter" | "space") {
-                                key_handler(key_value.clone(), &ClickEvent::default(), win, app);
-                            }
-                        })
-                        .on_click(move |ev, win, app| handler(value.clone(), ev, win, app));
+                    // Enter/Space arrive as gpui's keyboard click on key-up.
+                    row = row.on_click(move |ev, win, app| handler(value.clone(), ev, win, app));
                 }
             }
 
-            row = row
+            let circle = div()
+                .size(px(20.0))
+                .rounded(px(theme.radii.pill))
+                .border_1()
+                .border_color(outer_border)
+                .flex()
+                .items_center()
+                .justify_center()
                 .child(
                     div()
-                        .size(px(20.0))
+                        .size(px(if checked { 10.0 } else { 0.0 }))
                         .rounded(px(theme.radii.pill))
-                        .border_1()
-                        .border_color(outer_border)
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(
-                            div()
-                                .size(px(if checked { 10.0 } else { 0.0 }))
-                                .rounded(px(theme.radii.pill))
-                                .bg(colors.accent),
-                        ),
-                )
+                        .bg(colors.accent),
+                );
+            row = row
+                .child(focus_ring(circle, ring, colors, px(theme.radii.pill)))
                 .child(option.label);
 
             root = root.child(row);
@@ -351,6 +349,19 @@ mod tests {
             cx.notify();
         });
         cx.type_keys("space");
+        // Space activates on key-up (gpui's keyboard click).
+        let keystroke = gpui::Keystroke::parse("space").unwrap();
+        cx.update(|window, app| {
+            use gpui::InputEvent as _;
+            window.dispatch_event(
+                gpui::KeyUpEvent {
+                    keystroke,
+                    scan_code: None,
+                }
+                .to_platform_input(),
+                app,
+            );
+        });
 
         host.read_with(cx, |host, _| {
             assert_eq!(host.selected.as_ref(), "two");

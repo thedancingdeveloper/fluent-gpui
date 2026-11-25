@@ -449,3 +449,344 @@ mod button_family_tests {
         }
     }
 }
+
+/// Keyboard-focus behaviour shared by the selection controls (`Checkbox`,
+/// `Switch`, `RadioGroup`, `Dropdown`, dismissable `Chip`, clickable `Card`):
+/// Tab stop, Space/Enter activation, two-tone ring for keyboard focus only,
+/// and disabled controls skipped.
+#[cfg(test)]
+mod selection_family_tests {
+    use std::{cell::Cell, cell::RefCell, rc::Rc};
+
+    use fluent_core::ThemeProvider as _;
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{
+        div, AppContext as _, Context, Entity, InputEvent as _, IntoElement, KeyUpEvent, Keystroke,
+        ParentElement as _, Render, SharedString, TestAppContext, VisualTestContext, Window,
+    };
+
+    use crate::radio_group::RadioOption;
+    use crate::{Card, Checkbox, Chip, Dropdown, RadioGroup, Switch};
+
+    #[derive(Clone, Copy, Debug)]
+    enum Kind {
+        Checkbox,
+        Switch,
+        Chip,
+        Card,
+        Dropdown,
+    }
+
+    const KINDS: [Kind; 5] = [
+        Kind::Checkbox,
+        Kind::Switch,
+        Kind::Chip,
+        Kind::Card,
+        Kind::Dropdown,
+    ];
+
+    /// `[first (maybe disabled)] [second]`; only `second` is always enabled.
+    struct Host {
+        kind: Kind,
+        first_disabled: bool,
+        first: Rc<Cell<usize>>,
+        second: Rc<Cell<usize>>,
+        dropdowns: Vec<Entity<Dropdown>>,
+    }
+
+    fn control(
+        kind: Kind,
+        id: &'static str,
+        disabled: bool,
+        hits: Rc<Cell<usize>>,
+        dropdown: &Entity<Dropdown>,
+    ) -> gpui::AnyElement {
+        match kind {
+            Kind::Checkbox => Checkbox::new(id)
+                .disabled(disabled)
+                .on_click(move |_, _, _, _| hits.set(hits.get() + 1))
+                .into_any_element(),
+            Kind::Switch => Switch::new(id)
+                .disabled(disabled)
+                .on_click(move |_, _, _, _| hits.set(hits.get() + 1))
+                .into_any_element(),
+            // A chip's only control is its dismiss button; a disabled chip
+            // simply has none.
+            Kind::Chip => {
+                let chip = Chip::new(id, "Tag");
+                if disabled {
+                    chip.into_any_element()
+                } else {
+                    chip.on_dismiss(move |_, _, _| hits.set(hits.get() + 1))
+                        .into_any_element()
+                }
+            }
+            // A card without a click handler is not a control.
+            Kind::Card => {
+                let card = Card::new().id(id).child(div().child("Card"));
+                if disabled {
+                    card.into_any_element()
+                } else {
+                    card.on_click(move |_, _, _| hits.set(hits.get() + 1))
+                        .into_any_element()
+                }
+            }
+            Kind::Dropdown => dropdown.clone().into_any_element(),
+        }
+    }
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div()
+                .child(control(
+                    self.kind,
+                    "first",
+                    self.first_disabled,
+                    self.first.clone(),
+                    &self.dropdowns[0],
+                ))
+                .child(control(
+                    self.kind,
+                    "second",
+                    false,
+                    self.second.clone(),
+                    &self.dropdowns[1],
+                ))
+        }
+    }
+
+    fn make_dropdown(
+        cx: &mut Context<Host>,
+        id: &'static str,
+        disabled: bool,
+        hits: Rc<Cell<usize>>,
+    ) -> Entity<Dropdown> {
+        cx.new(|_| {
+            Dropdown::new(id)
+                .option("one", "One")
+                .disabled(disabled)
+                .on_select(move |_, _| hits.set(hits.get() + 1))
+        })
+    }
+
+    fn open(
+        cx: &mut TestAppContext,
+        kind: Kind,
+        first_disabled: bool,
+    ) -> (Rc<Cell<usize>>, Rc<Cell<usize>>, &mut VisualTestContext) {
+        let (first, second) = (Rc::new(Cell::new(0)), Rc::new(Cell::new(0)));
+        let (f, s) = (first.clone(), second.clone());
+        let (_, cx) = open_fluent_test_window(cx, move |_, cx| Host {
+            kind,
+            first_disabled,
+            dropdowns: vec![
+                make_dropdown(cx, "dd-first", first_disabled, f.clone()),
+                make_dropdown(cx, "dd-second", false, s.clone()),
+            ],
+            first: f,
+            second: s,
+        });
+        cx.update(|_, app| super::install_focus_keybindings(app));
+        cx.update(|window, app| window.draw(app).clear(app));
+        (first, second, cx)
+    }
+
+    fn press(cx: &mut VisualTestContext, key: &'static str) {
+        cx.type_keys(key);
+        let keystroke = Keystroke::parse(key).expect("valid test keystroke");
+        cx.update(|window, app| {
+            window.dispatch_event(
+                KeyUpEvent {
+                    keystroke,
+                    scan_code: None,
+                }
+                .to_platform_input(),
+                app,
+            );
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+    }
+
+    fn focus_first(cx: &mut VisualTestContext) {
+        cx.update(|window, app| window.focus_next(app));
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+    }
+
+    fn outer_ring_quads(cx: &mut VisualTestContext) -> usize {
+        cx.update(|window, app| window.draw(app).clear(app));
+        cx.update(|window, app| {
+            let outer = app.theme().colors.stroke_focus_outer;
+            let mut rings: Vec<String> = window
+                .painted_quads()
+                .iter()
+                .filter(|q| q.border_color == outer)
+                .map(|q| format!("{:?}", q.bounds))
+                .collect();
+            rings.sort();
+            rings.dedup();
+            rings.len()
+        })
+    }
+
+    /// Activate the focused control. A dropdown needs a second press: the
+    /// first opens its list, the second picks the highlighted option.
+    fn activate(cx: &mut VisualTestContext, kind: Kind, key: &'static str) {
+        press(cx, key);
+        if matches!(kind, Kind::Dropdown) {
+            press(cx, key);
+        }
+    }
+
+    #[gpui::test]
+    fn tab_reaches_each_control_in_order(cx: &mut TestAppContext) {
+        for kind in KINDS {
+            let (first, second, cx) = open(cx, kind, false);
+            focus_first(cx);
+            activate(cx, kind, "space");
+            assert_eq!((first.get(), second.get()), (1, 0), "{kind:?}: first stop");
+            press(cx, "tab");
+            activate(cx, kind, "space");
+            assert_eq!((first.get(), second.get()), (1, 1), "{kind:?}: second stop");
+        }
+    }
+
+    #[gpui::test]
+    fn space_toggles_checkbox_and_switch(cx: &mut TestAppContext) {
+        for kind in [Kind::Checkbox, Kind::Switch] {
+            let (first, _, cx) = open(cx, kind, false);
+            focus_first(cx);
+            press(cx, "space");
+            press(cx, "space");
+            assert_eq!(first.get(), 2, "{kind:?}");
+        }
+    }
+
+    #[gpui::test]
+    fn ring_shows_for_keyboard_focus_only(cx: &mut TestAppContext) {
+        for kind in KINDS {
+            let (_, _, cx) = open(cx, kind, false);
+            assert_eq!(outer_ring_quads(cx), 0, "{kind:?}: nothing focused");
+            focus_first(cx);
+            press(cx, "tab");
+            assert_eq!(outer_ring_quads(cx), 1, "{kind:?}: keyboard focus");
+        }
+    }
+
+    #[gpui::test]
+    fn disabled_control_is_skipped_and_never_activates(cx: &mut TestAppContext) {
+        for kind in KINDS {
+            let (first, second, cx) = open(cx, kind, true);
+            focus_first(cx);
+            activate(cx, kind, "space");
+            assert_eq!(first.get(), 0, "{kind:?}: disabled must not activate");
+            assert_eq!(
+                second.get(),
+                1,
+                "{kind:?}: focus skipped to the enabled one"
+            );
+        }
+    }
+
+    type RadioLog = Rc<RefCell<Vec<String>>>;
+
+    /// `[RadioGroup a b(disabled) c] [Checkbox]`.
+    struct RadioHost {
+        selected: SharedString,
+        log: Rc<RefCell<Vec<String>>>,
+        after: Rc<Cell<usize>>,
+    }
+
+    impl Render for RadioHost {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let entity = cx.entity();
+            let after = self.after.clone();
+            let log = self.log.clone();
+            div()
+                .child(
+                    RadioGroup::new("radios")
+                        .options([
+                            RadioOption::new("a", "A"),
+                            RadioOption::new("b", "B").disabled(true),
+                            RadioOption::new("c", "C"),
+                        ])
+                        .selected(self.selected.clone())
+                        .on_select(move |value, _, _, cx| {
+                            log.borrow_mut().push(value.to_string());
+                            entity.update(cx, |host, cx| {
+                                host.selected = value;
+                                cx.notify();
+                            });
+                        }),
+                )
+                .child(
+                    Checkbox::new("after").on_click(move |_, _, _, _| after.set(after.get() + 1)),
+                )
+        }
+    }
+
+    fn open_radios(cx: &mut TestAppContext) -> (RadioLog, Rc<Cell<usize>>, &mut VisualTestContext) {
+        let (log, after) = (Rc::new(RefCell::new(Vec::new())), Rc::new(Cell::new(0)));
+        let (l, a) = (log.clone(), after.clone());
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| RadioHost {
+            selected: "a".into(),
+            log: l,
+            after: a,
+        });
+        cx.update(|_, app| super::install_focus_keybindings(app));
+        cx.update(|window, app| window.draw(app).clear(app));
+        (log, after, cx)
+    }
+
+    #[gpui::test]
+    fn radio_arrows_move_selection_and_tab_leaves_the_group(cx: &mut TestAppContext) {
+        let (log, after, cx) = open_radios(cx);
+        focus_first(cx);
+        // Arrows move within the group, skipping the disabled option.
+        press(cx, "down");
+        assert_eq!(*log.borrow(), ["c"]);
+        press(cx, "up");
+        assert_eq!(*log.borrow(), ["c", "a"]);
+        // Space selects the focused option exactly once.
+        press(cx, "space");
+        assert_eq!(*log.borrow(), ["c", "a", "a"]);
+        // One Tab stop per group: a single Tab leaves it for the checkbox.
+        press(cx, "tab");
+        press(cx, "space");
+        assert_eq!(after.get(), 1);
+        // And Shift-Tab re-enters the group at the selected option.
+        press(cx, "shift-tab");
+        press(cx, "down");
+        assert_eq!(*log.borrow(), ["c", "a", "a", "c"]);
+    }
+
+    #[gpui::test]
+    fn radio_ring_shows_for_keyboard_focus_only(cx: &mut TestAppContext) {
+        let (_, _, cx) = open_radios(cx);
+        assert_eq!(outer_ring_quads(cx), 0);
+        focus_first(cx);
+        press(cx, "down");
+        assert_eq!(outer_ring_quads(cx), 1);
+        cx.click_selector("radio-option-0");
+        cx.update(|window, app| window.draw(app).clear(app));
+        assert_eq!(outer_ring_quads(cx), 0, "mouse focus draws no ring");
+    }
+
+    #[gpui::test]
+    fn mouse_focus_draws_no_ring_on_selection_controls(cx: &mut TestAppContext) {
+        for (kind, selector) in [(Kind::Checkbox, "first"), (Kind::Switch, "first")] {
+            let (_, _, cx) = open(cx, kind, false);
+            focus_first(cx);
+            press(cx, "tab");
+            assert_eq!(outer_ring_quads(cx), 1, "{kind:?}: keyboard focus");
+            cx.click_selector(selector);
+            cx.update(|window, app| window.draw(app).clear(app));
+            assert_eq!(
+                outer_ring_quads(cx),
+                0,
+                "{kind:?}: mouse focus draws no ring"
+            );
+        }
+    }
+}
