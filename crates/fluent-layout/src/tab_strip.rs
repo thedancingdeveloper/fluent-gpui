@@ -1,5 +1,7 @@
 use fluent_core::TextRampExt;
-use fluent_primitives::{ButtonAppearance, ButtonSize, IconButton};
+use fluent_primitives::{
+    focus_ring, is_keyboard_focused, ButtonAppearance, ButtonSize, FluentFocus as _, IconButton,
+};
 use std::sync::Arc;
 
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _, TruncateExt as _};
@@ -135,6 +137,7 @@ impl Render for TabStrip {
         let on_neutral = colors.on_neutral;
         let border_c = colors.stroke_neutral_subtle;
 
+        let ring_colors = colors.clone();
         let mut strip = div()
             .id("tab-strip")
             .role(Role::TabList)
@@ -187,6 +190,15 @@ impl Render for TabStrip {
                     (true, "right") => "left",
                     (_, key) => key,
                 };
+                if matches!(key, "enter" | "return" | "space") {
+                    ts.active = i;
+                    if let Some(f) = &ts.on_select.clone() {
+                        f(i, ts, win, cx);
+                    }
+                    cx.stop_propagation();
+                    cx.notify();
+                    return;
+                }
                 if let Some(next) = crate::roving::target(key, i, &enabled) {
                     ts.focus_handles[next].focus(win, cx);
                     ts.active = next;
@@ -197,7 +209,13 @@ impl Render for TabStrip {
                     cx.notify();
                 }
             });
-            let tab_handle = self.focus_handles[i].clone();
+            // A tracked handle carries its own tab settings: only the roving
+            // stop (the focused or active tab) is in the Tab order.
+            let tab_handle = self.focus_handles[i]
+                .clone()
+                .tab_index(0)
+                .tab_stop(stop == Some(i));
+            let tab_ring = is_keyboard_focused(&tab_handle, window);
 
             let tab_bg = if is_active { active_bg } else { tab_strip_bg };
 
@@ -210,7 +228,9 @@ impl Render for TabStrip {
                 .aria_position_in_set(i + 1)
                 .aria_size_of_set(n_tabs)
                 .track_focus(&tab_handle)
+                .fluent_tab_stop(0)
                 .tab_stop(stop == Some(i))
+                .key_context("TabStrip")
                 .on_key_down(key_handler)
                 .flex()
                 .when(rtl, |tab| tab.flex_row_reverse())
@@ -253,7 +273,7 @@ impl Render for TabStrip {
                 );
             }
 
-            strip = strip.child(tab_el);
+            strip = strip.child(focus_ring(tab_el, tab_ring, &ring_colors, px(0.0)));
         }
 
         strip
@@ -262,10 +282,110 @@ impl Render for TabStrip {
 
 #[cfg(test)]
 mod tests {
+    use std::{cell::RefCell, rc::Rc};
+
+    use crate::roving::test_support::{outer_ring_quads, press, tab};
+    use fluent_primitives::Button;
     use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
     use gpui::TestAppContext;
 
     use super::*;
+
+    /// A tab strip followed by a button, to count how many Tab stops the strip has.
+    struct Host {
+        strip: gpui::Entity<TabStrip>,
+        log: Rc<RefCell<Vec<String>>>,
+    }
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let log = self.log.clone();
+            div()
+                .child(self.strip.clone())
+                .child(Button::new("after").on_click(move |_, _, _| {
+                    log.borrow_mut().push("after".into());
+                }))
+        }
+    }
+
+    fn host(
+        cx: &mut TestAppContext,
+        log: Rc<RefCell<Vec<String>>>,
+    ) -> (gpui::Entity<TabStrip>, &mut gpui::VisualTestContext) {
+        let strip_log = log.clone();
+        let (host, cx) = open_fluent_test_window(cx, move |_, cx| {
+            let strip = cx.new(|cx| {
+                let mut ts = TabStrip::new(cx).on_select(move |i, _, _, _| {
+                    strip_log.borrow_mut().push(format!("select {i}"));
+                });
+                for id in ["a", "b", "c"] {
+                    ts.add_tab(TabItem::new(id).label(id));
+                }
+                ts
+            });
+            Host { strip, log }
+        });
+        let strip = host.read_with(cx, |h, _| h.strip.clone());
+        (strip, cx)
+    }
+
+    #[gpui::test]
+    fn tab_reaches_the_strip_once(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (_, cx) = host(cx, log.clone());
+        tab(cx, 2);
+        // The second Tab left the strip for the next control, not the next tab.
+        press(cx, "enter");
+        assert_eq!(*log.borrow(), vec!["after".to_string()]);
+    }
+
+    #[gpui::test]
+    fn arrows_move_the_active_tab_after_tabbing_in(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (ts, cx) = host(cx, log);
+        tab(cx, 1);
+        let f = ts.read_with(cx, |t, _| t.focus_handles.clone());
+        let st: Vec<bool> = cx.update(|w, _| f.iter().map(|h| h.is_focused(w)).collect());
+        assert_eq!(
+            st,
+            [true, false, false],
+            "first Tab lands on the active tab"
+        );
+        cx.type_keys("right");
+        ts.read_with(cx, |t, _| assert_eq!(t.active, 1));
+        cx.type_keys("right");
+        ts.read_with(cx, |t, _| assert_eq!(t.active, 2));
+    }
+
+    #[gpui::test]
+    fn enter_and_space_select_the_focused_tab(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (_, cx) = host(cx, log.clone());
+        cx.click_selector("tab-1");
+        log.borrow_mut().clear();
+        cx.type_keys("enter");
+        cx.type_keys("space");
+        assert_eq!(
+            *log.borrow(),
+            vec!["select 1".to_string(), "select 1".to_string()]
+        );
+    }
+
+    #[gpui::test]
+    fn ring_only_for_keyboard_focus(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (_, cx) = host(cx, log);
+        assert_eq!(
+            outer_ring_quads(cx),
+            0,
+            "no ring before anything is focused"
+        );
+        cx.click_selector("tab-1");
+        assert!(cx.update(|window, app| window.focused(app).is_some()));
+        assert_eq!(outer_ring_quads(cx), 0, "mouse focus must not draw a ring");
+        cx.type_keys("right");
+        assert_eq!(outer_ring_quads(cx), 1, "keyboard focus draws one ring");
+    }
 
     fn strip(cx: &mut TestAppContext) -> (gpui::Entity<TabStrip>, &mut gpui::VisualTestContext) {
         open_fluent_test_window(cx, |_, cx| {
