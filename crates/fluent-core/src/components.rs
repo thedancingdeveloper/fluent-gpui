@@ -58,6 +58,8 @@ pub struct ComponentTokens {
     pub list_item_height: f32,
     /// Public API item.
     pub menu_min_width: f32,
+    /// Maximum width of a menu or context menu; longer item labels are truncated with an ellipsis.
+    pub menu_max_width: f32,
     /// Public API item.
     pub popup_icon_slot: f32,
     /// Public API item.
@@ -154,6 +156,7 @@ impl Default for ComponentTokens {
             menu_bar_height: 28.0,
             list_item_height: 32.0,
             menu_min_width: 200.0,
+            menu_max_width: 320.0,
             popup_icon_slot: 16.0,
             popup_separator_height: 1.0,
             dropdown_height: 32.0,

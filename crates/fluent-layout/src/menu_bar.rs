@@ -559,6 +559,7 @@ impl MenuBar {
             .rounded(px(env.radii.md))
             .py(px(env.spacing.xs))
             .min_w(px(env.components.menu_min_width))
+            .max_w(px(env.components.menu_max_width))
             .shadow_md();
 
         for (idx, item) in items.iter().enumerate() {
@@ -625,7 +626,13 @@ impl MenuBar {
                     }
                     row = row
                         .child(menu_tree::icon_slot(icon.clone(), fg, env))
-                        .child(div().flex_1().child(menu_tree::label_element(label, true)));
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .child(menu_tree::label_element(label, true)),
+                        );
                     if let Some(shortcut) = shortcut.clone() {
                         row = row.child(menu_tree::shortcut_column(shortcut, env));
                     }
@@ -706,7 +713,13 @@ impl MenuBar {
                                 .size(px(env.components.popup_icon_slot))
                                 .child(check),
                         )
-                        .child(div().flex_1().child(menu_tree::label_element(label, true)));
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .child(menu_tree::label_element(label, true)),
+                        );
                     if let Some(shortcut) = shortcut.clone() {
                         row = row.child(menu_tree::shortcut_column(shortcut, env));
                     }
@@ -783,7 +796,13 @@ impl MenuBar {
                                         .bg(fg),
                                 ),
                         )
-                        .child(div().flex_1().child(menu_tree::label_element(label, true)));
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .child(menu_tree::label_element(label, true)),
+                        );
                     if let Some(shortcut) = shortcut.clone() {
                         row = row.child(menu_tree::shortcut_column(shortcut, env));
                     }
@@ -832,7 +851,13 @@ impl MenuBar {
                     }
                     row = row
                         .child(menu_tree::icon_slot(icon.clone(), fg, env))
-                        .child(div().flex_1().child(menu_tree::label_element(label, true)))
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .child(menu_tree::label_element(label, true)),
+                        )
                         .child(menu_tree::submenu_chevron(fg, env));
                     if !disabled && menu_tree::path_starts_with(&self.open_path, &path) {
                         let submenu =

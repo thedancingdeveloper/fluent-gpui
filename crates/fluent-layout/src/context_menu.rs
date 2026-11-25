@@ -578,6 +578,7 @@ impl ContextMenu {
             .rounded(px(env.radii.md))
             .py(px(env.spacing.xs))
             .min_w(px(env.components.dropdown_min_width))
+            .max_w(px(env.components.menu_max_width))
             .max_h(max_height)
             .overflow_y_scroll()
             .track_scroll(&scroll)
@@ -646,7 +647,13 @@ impl ContextMenu {
                     }
 
                     row = row.child(menu_tree::icon_slot(icon.clone(), fg, env));
-                    row = row.child(div().flex_1().child(menu_tree::label_element(label, true)));
+                    row = row.child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .overflow_hidden()
+                            .child(menu_tree::label_element(label, true)),
+                    );
                     if let Some(shortcut) = shortcut.clone() {
                         row = row.child(menu_tree::shortcut_column(shortcut, env));
                     }
@@ -726,7 +733,13 @@ impl ContextMenu {
                                 .size(px(env.components.popup_icon_slot))
                                 .child(check),
                         )
-                        .child(div().flex_1().child(menu_tree::label_element(label, true)));
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .child(menu_tree::label_element(label, true)),
+                        );
                     if let Some(shortcut) = shortcut.clone() {
                         row = row.child(menu_tree::shortcut_column(shortcut, env));
                     }
@@ -802,7 +815,13 @@ impl ContextMenu {
                                         .bg(fg),
                                 ),
                         )
-                        .child(div().flex_1().child(menu_tree::label_element(label, true)));
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .child(menu_tree::label_element(label, true)),
+                        );
                     if let Some(shortcut) = shortcut.clone() {
                         row = row.child(menu_tree::shortcut_column(shortcut, env));
                     }
@@ -852,7 +871,13 @@ impl ContextMenu {
 
                     row = row.child(menu_tree::icon_slot(icon.clone(), fg, env));
                     row = row
-                        .child(div().flex_1().child(menu_tree::label_element(label, true)))
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .child(menu_tree::label_element(label, true)),
+                        )
                         .child(menu_tree::submenu_chevron(fg, env));
                     if !disabled {
                         let anchor = self
@@ -1271,6 +1296,36 @@ mod tests {
         long_menu(at, 3)
             .submenu("More", children)
             .action("Last", |_, _, _| {})
+    }
+
+    #[gpui::test]
+    fn long_item_label_is_truncated_to_one_line_within_max_width(cx: &mut TestAppContext) {
+        let (_menu, cx) = open_fluent_test_window(cx, |_, _| {
+            ContextMenu::build(point(px(40.), px(20.)))
+                .item(
+                    ContextMenuItem::action(
+                    "A very long menu item label that would otherwise stretch the menu far past any sensible width and wrap",
+                    |_, _, _| {},
+                )
+                .shortcut("Ctrl+X"),
+                )
+        });
+        cx.simulate_resize(gpui::size(px(1200.), px(600.)));
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+
+        let max = cx.update(|_, app| app.theme().components.menu_max_width);
+        let row_h = cx.update(|_, app| app.theme().components.list_item_height);
+        let panel = bounds_of(cx, "ctx-panel-[]");
+        let row = bounds_of(cx, "ctx-item-row-[0]");
+        let shortcut = bounds_of(cx, "menu-shortcut-Ctrl+X");
+        assert!(f32::from(panel.size.width) <= max + 0.5, "{panel:?}");
+        assert_eq!(f32::from(row.size.height), row_h, "row wrapped: {row:?}");
+        assert!(shortcut.right() <= row.right(), "{shortcut:?} vs {row:?}");
+        assert!(
+            f32::from(shortcut.size.width) >= 30.0,
+            "shortcut shrank: {shortcut:?}"
+        );
     }
 
     #[gpui::test]
