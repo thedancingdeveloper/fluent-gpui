@@ -121,7 +121,7 @@ impl RenderOnce for Switch {
             .aria_toggled(if on { Toggled::True } else { Toggled::False })
             .when_some(label, |d, name| d.aria_label(name))
             .w(px(40.0))
-            .h(px(20.0))
+            .h(px(theme.components.toggle_box))
             .group("fluent-switch")
             .rounded(px(theme.radii.pill))
             .bg(track_bg)
@@ -151,6 +151,7 @@ impl RenderOnce for Switch {
         let el = el.child(
             div()
                 .id("switch-knob")
+                .debug_selector(|| "switch-knob".into())
                 .absolute()
                 .size(px(12.0))
                 .when(!disabled, |d| {
@@ -273,5 +274,34 @@ mod tests {
                 &[if on { "toggled=True" } else { "toggled=False" }],
             );
         }
+    }
+
+    /// The knob's distance from the track's inner edge is the same on both sides, off and on.
+    #[gpui::test]
+    fn switch_knob_is_inset_matches_off_and_on(cx: &mut TestAppContext) {
+        let mut insets = Vec::new();
+        for on in [false, true] {
+            let (_, cx) = open_fluent_test_window(cx, move |_, _| {
+                A11yHost(Box::new(move || {
+                    Switch::new("sw").on(on).into_any_element()
+                }))
+            });
+            // Let the slide animation run to its end position.
+            cx.executor()
+                .advance_clock(std::time::Duration::from_millis(600));
+            cx.run_until_parked();
+            cx.update(|window, app| window.draw(app).clear(app));
+            let track = cx.selector_bounds("sw").expect("track painted");
+            let knob = cx.selector_bounds("switch-knob").expect("knob painted");
+            let left = f32::from(knob.left() - track.left());
+            let right = f32::from(track.right() - knob.right());
+            // The knob rests against the left edge when off and the right edge when on.
+            insets.push(if on { right } else { left });
+            assert_eq!(f32::from(track.size.height), 20.0);
+            let token = cx.update(|_, app| app.theme().components.toggle_box);
+            assert_eq!(f32::from(track.size.height), token);
+        }
+        assert_eq!(insets[0], insets[1], "off/on insets differ: {insets:?}");
+        assert_eq!(insets[0], 4.0, "Fluent 2 knob inset is 4px");
     }
 }
