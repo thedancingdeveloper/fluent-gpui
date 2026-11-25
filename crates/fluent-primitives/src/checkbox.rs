@@ -20,6 +20,10 @@ pub enum CheckboxState {
 /// A Fluent 2-styled checkbox.
 ///
 /// The caller owns the state and passes it in on each render.
+///
+/// The checkbox draws only the box (`ComponentTokens::toggle_box`, 20px). Beside a text label,
+/// put both in a row with `items_center()` and the body `line_height`, as `RadioGroup` does, so
+/// the box and the label share a vertical centre.
 #[allow(clippy::type_complexity)]
 #[derive(IntoElement)]
 pub struct Checkbox {
@@ -150,7 +154,7 @@ impl RenderOnce for Checkbox {
                 CheckboxState::Indeterminate => Toggled::Mixed,
             })
             .when_some(label, |d, name| d.aria_label(name))
-            .size(px(20.0))
+            .size(px(theme.components.toggle_box))
             .rounded(px(radii.md))
             .bg(box_bg)
             .border_1()
@@ -326,6 +330,24 @@ mod tests {
                     )
                 ]
             );
+        }
+    }
+
+    #[gpui::test]
+    fn checkbox_box_matches_the_toggle_token(cx: &mut TestAppContext) {
+        for state in [
+            CheckboxState::Unchecked,
+            CheckboxState::Checked,
+            CheckboxState::Indeterminate,
+        ] {
+            let (_, cx) = open_fluent_test_window(cx, move |_, _| Host {
+                state,
+                disabled: false,
+            });
+            let token = cx.update(|_, app| app.theme().components.toggle_box);
+            let bounds = cx.selector_bounds("checkbox").expect("checkbox painted");
+            assert_eq!(f32::from(bounds.size.width), token, "{state:?}");
+            assert_eq!(f32::from(bounds.size.height), token, "{state:?}");
         }
     }
 }

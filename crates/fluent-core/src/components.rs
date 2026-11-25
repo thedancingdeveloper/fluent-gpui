@@ -104,6 +104,9 @@ pub struct ComponentTokens {
     pub title_bar_glyph_size: f32,
     /// Size of the title bar app icon.
     pub title_bar_icon_size: f32,
+    /// Edge of the checkbox box, the radio circle and the switch track height (Fluent 2: 20px),
+    /// so the three toggles in one form share a size and a vertical centre.
+    pub toggle_box: f32,
     /// Maximum height of the command palette result list.
     pub command_palette_max_height: f32,
     /// Maximum height of an inline image in the document viewer.
@@ -162,6 +165,7 @@ impl Default for ComponentTokens {
             title_bar_button_width: 46.0,
             title_bar_glyph_size: 10.0,
             title_bar_icon_size: 16.0,
+            toggle_box: 20.0,
             command_palette_max_height: 360.0,
             document_viewer_image_max_height: 480.0,
         }
