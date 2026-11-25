@@ -4,9 +4,9 @@ use fluent_core::gpui::{div, prelude::*, App, ClickEvent, Context, IntoElement, 
 use fluent_layout::{
     DockPanel, DockPosition, MenuBar, MenuItemDef, ModalStack, Pane, TabItem, TabStrip, Workspace,
 };
-use fluent_primitives::{InputCapture, TerminalCell, TerminalGrid, TerminalView, VideoSurface};
 use fluent_ribbon::RibbonBar;
 mod families;
+mod pages;
 
 // ---------------------------------------------------------------------------
 // Root gallery view — wires the full shell together
@@ -30,57 +30,7 @@ fn noop(_: &ClickEvent, _: &mut Window, _: &mut App) {}
 
 fn main() {
     FluentApp::new("FluentGUI Gallery").dark_theme().run(|cx| {
-        let video = cx.new(VideoSurface::new);
-        video.update(cx, |surface, cx| {
-            let mut pixels = Vec::with_capacity(160 * 90 * 4);
-            for y in 0..90u32 {
-                for x in 0..160u32 {
-                    pixels.extend([((x * 255) / 159) as u8, ((y * 255) / 89) as u8, 180, 255]);
-                }
-            }
-            let _ = surface.submit_frame(160, 90, pixels, cx);
-        });
-        let video_page = cx.new(|_| families::VideoPage { surface: video });
-
-        let grid = cx.new(|_| TerminalGrid::new(64, 12));
-        grid.update(cx, |grid, _| {
-            for (row, line) in [
-                "Fluent terminal demo",
-                "$ cargo run --example gallery",
-                "[  OK  ] compositor connected",
-                "[  OK  ] synthetic output ready",
-                "Type, scroll, and select this terminal surface.",
-            ]
-            .iter()
-            .enumerate()
-            {
-                grid.write_str(row, 0, line, TerminalCell::new(' '));
-            }
-        });
-        let terminal = cx.new(|cx| TerminalView::new(grid, cx).label("Scripted terminal"));
-        let terminal_page = cx.new(|_| families::TerminalPage { terminal });
-
-        let capture_log = cx.new(|_| families::EventLog);
-        let capture = cx.new(|cx| InputCapture::new(cx).content(capture_log.clone().into()));
-        let input_page = cx.new(|_| families::InputPage { capture });
-
-        let expander_page = cx.new(|_| families::ExpanderPage);
-        let drag_drop_page = cx.new(families::DragDropPage::new);
-        let grouped_list_page = cx.new(|_| families::GroupedListPage);
-        let scrollbar_page = cx.new(|_| families::ScrollbarPage::new());
-        let family_host = cx.new(|_| {
-            FamilyHost::new(DemoViews {
-                status: Vec::new(),
-                data: vec![
-                    drag_drop_page.into(),
-                    grouped_list_page.into(),
-                    scrollbar_page.into(),
-                ],
-                date_input: Vec::new(),
-                media: vec![video_page.clone().into(), terminal_page.clone().into()],
-                theme: vec![input_page.clone().into(), expander_page.clone().into()],
-            })
-        });
+        let family_host = cx.new(|cx| FamilyHost::new(DemoViews::build(cx)));
         // Title bar
         let title_bar = cx.new(|cx| TitleBar::new(cx, "FluentGUI Gallery"));
 
@@ -90,7 +40,8 @@ fn main() {
                 .menu(
                     "&File",
                     vec![
-                        MenuItemDef::action("New", noop),
+                        MenuItemDef::action_with_shortcut("New", "Ctrl+N", noop),
+                        MenuItemDef::action_with_shortcut("Open...", "Ctrl+O", noop),
                         MenuItemDef::submenu(
                             "Open Recent",
                             vec![
@@ -108,7 +59,15 @@ fn main() {
                             ],
                         ),
                         MenuItemDef::separator(),
-                        MenuItemDef::action("Exit", noop),
+                        MenuItemDef::action_with_shortcut("Exit", "Alt+F4", noop),
+                    ],
+                )
+                .menu(
+                    "&Edit",
+                    vec![
+                        MenuItemDef::action_with_shortcut("Cut", "Ctrl+X", noop),
+                        MenuItemDef::action_with_shortcut("Copy", "Ctrl+C", noop),
+                        MenuItemDef::action_with_shortcut("Paste", "Ctrl+V", noop),
                     ],
                 )
                 .menu(
@@ -121,7 +80,14 @@ fn main() {
                                 MenuItemDef::action("Zoom Out", noop),
                             ],
                         ),
-                        MenuItemDef::action("Full Screen", noop),
+                        MenuItemDef::separator(),
+                        MenuItemDef::checkbox("Status Bar", true, |_, _, _, _| {}),
+                        MenuItemDef::checkbox("Line Numbers", false, |_, _, _, _| {}),
+                        MenuItemDef::separator(),
+                        MenuItemDef::radio("Compact", false, noop),
+                        MenuItemDef::radio("Comfortable", true, noop),
+                        MenuItemDef::separator(),
+                        MenuItemDef::action_with_shortcut("Full Screen", "F11", noop),
                     ],
                 )
                 .menu(
@@ -219,4 +185,60 @@ fn main() {
 
         cx.new(|_| GalleryRoot { workspace })
     });
+}
+
+#[cfg(test)]
+mod tests {
+    //! In-process smoke tests: no window system and no GPU, so they check that
+    //! each page renders without panic and that the theme controls act, not
+    //! that anything looks right.
+
+    use super::families::{DemoViews, Family, FamilyHost};
+    use fluent_core::gpui::TestAppContext;
+    use fluent_core::Theme;
+    use fluent_layout::{MenuBar, MenuItemDef};
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+
+    fn is_dark(cx: &mut fluent_test_utils::VisualTestContext) -> bool {
+        cx.update(|_, cx| cx.global::<Theme>().is_dark())
+    }
+
+    #[test]
+    fn every_family_page_renders() {
+        let mut app = TestAppContext::single();
+        let (host, cx) =
+            open_fluent_test_window(&mut app, |_, cx| FamilyHost::new(DemoViews::build(cx)));
+        for family in Family::ALL {
+            host.update(cx, |h, cx| h.set_active(family, cx));
+            let snapshot = cx.accessibility_snapshot();
+            assert!(!snapshot.is_empty(), "{family:?} rendered no nodes");
+        }
+    }
+
+    #[test]
+    fn variant_buttons_switch_the_theme() {
+        let mut app = TestAppContext::single();
+        let (_host, cx) =
+            open_fluent_test_window(&mut app, |_, cx| FamilyHost::new(DemoViews::build(cx)));
+        cx.click_selector("v-light");
+        assert!(!is_dark(cx), "Light button left the dark theme active");
+        cx.click_selector("v-dark");
+        assert!(is_dark(cx), "Dark button left the light theme active");
+    }
+
+    #[test]
+    fn menu_bar_with_checkbox_radio_and_shortcut_items_renders() {
+        let mut app = TestAppContext::single();
+        let (_bar, cx) = open_fluent_test_window(&mut app, |_, cx| {
+            MenuBar::new(cx).menu(
+                "&View",
+                vec![
+                    MenuItemDef::checkbox("Status Bar", true, |_, _, _, _| {}),
+                    MenuItemDef::radio("Compact", true, |_, _, _| {}),
+                    MenuItemDef::action_with_shortcut("Full Screen", "F11", |_, _, _| {}),
+                ],
+            )
+        });
+        assert!(!cx.accessibility_snapshot().is_empty());
+    }
 }
