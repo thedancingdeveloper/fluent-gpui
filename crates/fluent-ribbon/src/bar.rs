@@ -16,7 +16,35 @@ use fluent_primitives::{focus_ring, is_keyboard_focused, FluentFocus as _};
 use std::collections::HashMap;
 
 /// Identifies one command button: (in the overflow menu, group, item).
-type ItemKey = (bool, usize, usize);
+type ItemKey = (bool, usize, ItemPos);
+
+/// Position of a command within a group: a top-level item, or one control of a
+/// `Stack` at that item index. A struct (not arithmetic on the index) so a
+/// stacked control can never share a key, id or focus handle with a plain item.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+struct ItemPos {
+    item: usize,
+    sub: Option<usize>,
+}
+
+impl ItemPos {
+    fn top(item: usize) -> Self {
+        Self { item, sub: None }
+    }
+
+    /// Unique element-id number within a group (`item` and `sub` stay in
+    /// separate digit ranges).
+    fn uid(self, gidx: usize) -> u64 {
+        (gidx * 1_000_000 + self.item * 1_000 + self.sub.map_or(0, |s| s + 1)) as u64
+    }
+
+    fn selector(self, gidx: usize) -> String {
+        match self.sub {
+            None => format!("ribbon-item-{gidx}-{}", self.item),
+            Some(s) => format!("ribbon-item-{gidx}-{}-{s}", self.item),
+        }
+    }
+}
 
 struct RibbonRenderTokens<'a> {
     colors: &'a ColorScheme,
@@ -211,7 +239,7 @@ impl RibbonBar {
         item: &RibbonItemDef,
         overflow: bool,
         gidx: usize,
-        iidx: usize,
+        pos: ItemPos,
         tokens: &RibbonRenderTokens<'_>,
     ) -> gpui::AnyElement {
         let colors = tokens.colors;
@@ -236,11 +264,11 @@ impl RibbonBar {
                 let cb = on_click.clone();
                 let (bar, label_c) = (tokens.bar.clone(), label.clone());
                 div()
-                    .id(("rli", (gidx * 100 + iidx) as u64))
-                    .debug_selector(move || format!("ribbon-item-{gidx}-{iidx}"))
+                    .id(("rli", pos.uid(gidx)))
+                    .debug_selector(move || pos.selector(gidx))
                     .role(Role::Button)
                     .aria_label(label.clone())
-                    .map(|el| Self::focusable(el, tokens, (overflow, gidx, iidx)))
+                    .map(|el| Self::focusable(el, tokens, (overflow, gidx, pos)))
                     .h_full()
                     .min_w(px(48.0))
                     .flex()
@@ -280,10 +308,10 @@ impl RibbonBar {
                 let (bar, label_c) = (tokens.bar.clone(), label.clone());
                 let icon_empty = icon.is_empty();
                 div()
-                    .id(("rbi", (gidx * 100 + iidx) as u64))
+                    .id(("rbi", pos.uid(gidx)))
                     .role(Role::Button)
                     .aria_label(label.clone())
-                    .map(|el| Self::focusable(el, tokens, (overflow, gidx, iidx)))
+                    .map(|el| Self::focusable(el, tokens, (overflow, gidx, pos)))
                     .flex()
                     .flex_row()
                     .items_center()
@@ -323,10 +351,10 @@ impl RibbonBar {
                 let cb = on_click.clone();
                 let (bar, label_c) = (tokens.bar.clone(), tooltip.clone());
                 div()
-                    .id(("rib", (gidx * 100 + iidx) as u64))
+                    .id(("rib", pos.uid(gidx)))
                     .role(Role::Button)
                     .aria_label(tooltip.clone())
-                    .map(|el| Self::focusable(el, tokens, (overflow, gidx, iidx)))
+                    .map(|el| Self::focusable(el, tokens, (overflow, gidx, pos)))
                     .size(px(components.ribbon_small_icon_size + spacing.md))
                     .flex()
                     .items_center()
@@ -359,7 +387,7 @@ impl RibbonBar {
                 let cb: RibbonToggleCallback = on_click.clone();
                 let (bar, label_c) = (tokens.bar.clone(), label.clone());
                 div()
-                    .id(("rtb", (gidx * 100 + iidx) as u64))
+                    .id(("rtb", pos.uid(gidx)))
                     .role(Role::Button)
                     .aria_label(label.clone())
                     .aria_toggled(if is_sel {
@@ -367,7 +395,7 @@ impl RibbonBar {
                     } else {
                         Toggled::False
                     })
-                    .map(|el| Self::focusable(el, tokens, (overflow, gidx, iidx)))
+                    .map(|el| Self::focusable(el, tokens, (overflow, gidx, pos)))
                     .flex()
                     .flex_row()
                     .items_center()
@@ -414,7 +442,10 @@ impl RibbonBar {
                             sub_item,
                             overflow,
                             gidx,
-                            iidx * 10 + sub_idx,
+                            ItemPos {
+                                item: pos.item,
+                                sub: Some(sub_idx),
+                            },
                             tokens,
                         );
                         column = column.child(el);
@@ -453,7 +484,7 @@ impl RibbonBar {
             .flex_row()
             .h(px(components.ribbon_content_button_height));
         for (iidx, item) in group.items.iter().enumerate() {
-            let el = Self::render_item(item, overflow, gidx, iidx, tokens);
+            let el = Self::render_item(item, overflow, gidx, ItemPos::top(iidx), tokens);
             btn_row = btn_row.child(el);
         }
 
@@ -562,10 +593,15 @@ impl Render for RibbonBar {
         for overflow in [false, true] {
             for (g, group) in active_groups.iter().enumerate() {
                 for (i, item) in group.items.iter().enumerate() {
-                    // Stacked items are keyed `iidx * 10 + position`, as rendered.
-                    let keys = match item {
-                        RibbonItemDef::Stack(subs) => (0..subs.len()).map(|n| i * 10 + n).collect(),
-                        _ => vec![i],
+                    // Stacked controls are keyed `(item, Some(position))`, as rendered.
+                    let keys: Vec<ItemPos> = match item {
+                        RibbonItemDef::Stack(subs) => (0..subs.len())
+                            .map(|n| ItemPos {
+                                item: i,
+                                sub: Some(n),
+                            })
+                            .collect(),
+                        _ => vec![ItemPos::top(i)],
                     };
                     for key in keys {
                         self.item_handles
@@ -1134,6 +1170,53 @@ mod tests {
         vcx.click_selector("ribbon-item-0-0");
         vcx.update(|window, app| window.draw(app).clear(app));
         assert_eq!(outer_ring_quads(vcx), base, "mouse focus draws no ring");
+    }
+
+    #[gpui::test]
+    fn stacked_controls_and_plain_buttons_are_separate_tab_stops(cx: &mut TestAppContext) {
+        let ran: Rc<std::cell::RefCell<Vec<&'static str>>> = Rc::default();
+        let (_bar, vcx) = open_fluent_test_window(cx, {
+            let ran = ran.clone();
+            move |_, cx| {
+                let cmd = |name: &'static str| {
+                    let ran = ran.clone();
+                    move |_: &ClickEvent, _: &mut Window, _: &mut App| ran.borrow_mut().push(name)
+                };
+                RibbonBar::new(cx).tab("Home", |t| {
+                    t.group("G", |g| {
+                        g.stack(|s| {
+                            s.button("A1", "", cmd("A1"))
+                                .button("A2", "", cmd("A2"))
+                                .button("A3", "", cmd("A3"))
+                        })
+                        .button("B", "", cmd("B"))
+                        .button("C", "", cmd("C"))
+                        .stack(|s| s.button("D1", "", cmd("D1")).button("D2", "", cmd("D2")))
+                    })
+                })
+            }
+        });
+        vcx.update(|_, app| fluent_primitives::install_focus_keybindings(app));
+        vcx.update(|window, app| window.draw(app).clear(app));
+        let base = outer_ring_quads(vcx);
+        vcx.update(|window, app| window.focus_next(app)); // tab strip
+        press(vcx, "tab"); // collapse button
+        for expected in ["A1", "A2", "A3", "B", "C", "D1", "D2"] {
+            press(vcx, "tab");
+            assert_eq!(
+                outer_ring_quads(vcx),
+                base + 1,
+                "exactly one ring while {expected} has focus"
+            );
+            press(vcx, "enter");
+            assert_eq!(
+                ran.borrow().last().copied(),
+                Some(expected),
+                "Tab reached {expected} as its own stop; ran: {:?}",
+                ran.borrow()
+            );
+        }
+        assert_eq!(ran.borrow().len(), 7, "each control ran exactly once");
     }
 
     fn build(cx: &mut Context<RibbonBar>, hits: Rc<Cell<usize>>) -> RibbonBar {
