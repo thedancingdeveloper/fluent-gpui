@@ -1,6 +1,6 @@
 use fluent_core::TextRampExt;
 use fluent_primitives::{
-    focus_ring, is_keyboard_focused, ButtonAppearance, ButtonSize, FluentFocus as _, IconButton,
+    is_keyboard_focused, ButtonAppearance, ButtonSize, FluentFocus as _, IconButton,
 };
 use std::sync::Arc;
 
@@ -109,6 +109,32 @@ impl TabStrip {
         self.on_close = Some(Arc::new(f));
         self
     }
+}
+
+/// Two-tone focus ring drawn inside `el`'s own bounds (2px outer, 1px inner),
+/// unlike `focus_ring`, which sits 2px outside. The tabs fill the strip's full
+/// height and the strip is `overflow_hidden`, so an outside ring would be
+/// clipped; insetting keeps the strip's layout unchanged.
+fn inset_focus_ring<E>(el: E, keyboard_focused: bool, colors: &fluent_core::ColorScheme) -> E
+where
+    E: Styled + ParentElement,
+{
+    if !keyboard_focused {
+        return el;
+    }
+    el.relative().child(
+        div()
+            .absolute()
+            .inset_0()
+            .border_2()
+            .border_color(colors.stroke_focus_outer)
+            .child(
+                div()
+                    .size_full()
+                    .border_1()
+                    .border_color(colors.stroke_focus_inner),
+            ),
+    )
 }
 
 impl Render for TabStrip {
@@ -273,7 +299,7 @@ impl Render for TabStrip {
                 );
             }
 
-            strip = strip.child(focus_ring(tab_el, tab_ring, &ring_colors, px(0.0)));
+            strip = strip.child(inset_focus_ring(tab_el, tab_ring, &ring_colors));
         }
 
         strip
@@ -284,7 +310,7 @@ impl Render for TabStrip {
 mod tests {
     use std::{cell::RefCell, rc::Rc};
 
-    use crate::roving::test_support::{outer_ring_quads, press, tab};
+    use crate::roving::test_support::{clipped_ring_quads, outer_ring_quads, press, tab};
     use fluent_primitives::Button;
     use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
     use gpui::TestAppContext;
@@ -385,6 +411,22 @@ mod tests {
         assert_eq!(outer_ring_quads(cx), 0, "mouse focus must not draw a ring");
         cx.type_keys("right");
         assert_eq!(outer_ring_quads(cx), 1, "keyboard focus draws one ring");
+    }
+
+    #[gpui::test]
+    fn ring_is_not_clipped_by_the_strip(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (_, cx) = host(cx, log);
+        // Last tab (right edge), then wrap to the first tab (left edge): the
+        // strip's `overflow_hidden` clips to its own bounds, so the ring must
+        // lie inside them.
+        cx.click_selector("tab-1");
+        for key in ["right", "right", "left"] {
+            cx.type_keys(key);
+            assert_eq!(outer_ring_quads(cx), 1, "one ring after {key}");
+            let clipped = clipped_ring_quads(cx);
+            assert!(clipped.is_empty(), "ring clipped by the strip: {clipped:?}");
+        }
     }
 
     fn strip(cx: &mut TestAppContext) -> (gpui::Entity<TabStrip>, &mut gpui::VisualTestContext) {

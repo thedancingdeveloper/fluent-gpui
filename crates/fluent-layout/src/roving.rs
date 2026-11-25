@@ -129,6 +129,38 @@ pub(crate) mod test_support {
         cx.update(|window, app| window.draw(app).clear(app));
     }
 
+    /// Outer focus-ring quads (as `"bounds vs clip"` text) that an
+    /// `overflow_hidden` ancestor cuts off. gpui splits a hollow bordered quad
+    /// into edge strips, each with its own content mask, so a ring's clip is the
+    /// bounding box of the masks of the quads that share its bounds; the ring is
+    /// whole when that box covers its bounds. Empty when every ring is whole.
+    pub(crate) fn clipped_ring_quads(cx: &mut VisualTestContext) -> Vec<String> {
+        cx.update(|window, app| window.draw(app).clear(app));
+        cx.update(|window, app| {
+            let outer = app.theme().colors.stroke_focus_outer;
+            let quads = window.painted_quads();
+            let rings: Vec<_> = quads.iter().filter(|q| q.border_color == outer).collect();
+            let mut clipped = Vec::new();
+            for ring in &rings {
+                let (mut l, mut t, mut r, mut b) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+                for q in rings.iter().filter(|q| q.bounds == ring.bounds) {
+                    let m = q.content_mask.bounds;
+                    l = l.min(m.origin.x.0);
+                    t = t.min(m.origin.y.0);
+                    r = r.max(m.right().0);
+                    b = b.max(m.bottom().0);
+                }
+                let bb = ring.bounds;
+                if bb.origin.x.0 < l || bb.origin.y.0 < t || bb.right().0 > r || bb.bottom().0 > b {
+                    clipped.push(format!("{:?} vs clip ({l},{t})-({r},{b})", bb));
+                }
+            }
+            clipped.sort();
+            clipped.dedup();
+            clipped
+        })
+    }
+
     /// Number of distinct painted rings in the Fluent 2 outer focus-ring colour.
     pub(crate) fn outer_ring_quads(cx: &mut VisualTestContext) -> usize {
         cx.update(|window, app| window.draw(app).clear(app));
