@@ -2,6 +2,7 @@ use fluent_core::TextRampExt;
 use std::{rc::Rc, sync::Arc};
 
 use fluent_core::ThemeProvider as _;
+use fluent_primitives::FluentFocus as _;
 use gpui::{
     div, prelude::*, px, svg, App, ClickEvent, ElementId, FontWeight, IntoElement, KeyDownEvent,
     MouseButton, MouseDownEvent, RenderOnce, Role, SharedString, Window,
@@ -314,7 +315,9 @@ impl SelectableList {
 }
 
 impl RenderOnce for SelectableList {
-    fn render(mut self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(mut self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let focus = crate::roving::container_handle(window, cx, &self.id);
+        let ring = fluent_primitives::is_keyboard_focused(&focus, window);
         let theme = cx.theme();
         let colors = theme.colors.clone();
         let typography = theme.typography;
@@ -336,11 +339,12 @@ impl RenderOnce for SelectableList {
         let on_activate = self.on_activate.clone();
         let key_item_at = item_at.clone();
 
-        let mut root = div()
+        let root = div()
             .id(self.id.clone())
             .role(Role::List)
             .aria_size_of_set(count)
-            .tab_index(0)
+            .track_focus(&focus)
+            .fluent_tab_stop(0)
             .key_context("SelectableList")
             .on_key_down(
                 move |ev: &KeyDownEvent, window, app| match ev.keystroke.key.as_str() {
@@ -355,7 +359,7 @@ impl RenderOnce for SelectableList {
                             handler(key_item_at(ix).id, window, app);
                         }
                     }
-                    "return" | "space" => {
+                    "enter" | "return" | "space" => {
                         if count == 0 {
                             return;
                         }
@@ -373,6 +377,7 @@ impl RenderOnce for SelectableList {
             .flex_col()
             .w_full()
             .min_h_0();
+        let mut root = fluent_primitives::focus_ring(root, ring, &colors, px(0.0));
 
         match &self.state {
             SelectableListState::Loading(message)
@@ -776,5 +781,117 @@ mod tests {
             Some("Row 0"),
             &["selected=true", "position_in_set=1", "size_of_set=100000"],
         );
+    }
+}
+
+#[cfg(test)]
+mod focus_tests {
+    use std::{cell::RefCell, rc::Rc};
+
+    use crate::roving::test_support::{outer_ring_quads, press, tab};
+    use fluent_primitives::Button;
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Context, Render, TestAppContext, Window};
+
+    use super::*;
+
+    type Log = Rc<RefCell<Vec<String>>>;
+
+    /// A list (A, disabled B, C) followed by a button.
+    struct Host {
+        selected: usize,
+        log: Log,
+    }
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let view = cx.entity();
+            let (activate_log, button_log) = (self.log.clone(), self.log.clone());
+            div()
+                .w(px(300.0))
+                .h(px(300.0))
+                .flex()
+                .flex_col()
+                .child(
+                    SelectableList::new("focus-list")
+                        .items([
+                            SelectableListItem::new("a", "A"),
+                            SelectableListItem::new("b", "B").disabled(true),
+                            SelectableListItem::new("c", "C"),
+                        ])
+                        .selected_index(self.selected)
+                        .max_body_height(200.0)
+                        .on_select(move |id, _, cx| {
+                            let ix = ["a", "b", "c"].iter().position(|i| *i == id.as_ref());
+                            view.update(cx, |h, cx| {
+                                h.selected = ix.unwrap_or(0);
+                                cx.notify();
+                            });
+                        })
+                        .on_activate(move |id, _, _, _| {
+                            activate_log.borrow_mut().push(format!("activate {id}"))
+                        }),
+                )
+                .child(Button::new("after").on_click(move |_, _, _| {
+                    button_log.borrow_mut().push("after".into());
+                }))
+        }
+    }
+
+    fn host(cx: &mut TestAppContext) -> (gpui::Entity<Host>, Log, &mut gpui::VisualTestContext) {
+        let log: Log = Rc::new(RefCell::new(vec![]));
+        let (host, cx) = open_fluent_test_window(cx, {
+            let log = log.clone();
+            move |_, _| Host { selected: 0, log }
+        });
+        (host, log, cx)
+    }
+
+    #[gpui::test]
+    fn tab_reaches_the_list_once(cx: &mut TestAppContext) {
+        let (_, log, cx) = host(cx);
+        tab(cx, 2);
+        press(cx, "enter");
+        assert_eq!(*log.borrow(), vec!["after".to_string()]);
+    }
+
+    #[gpui::test]
+    fn arrows_move_the_selection_and_skip_disabled_rows(cx: &mut TestAppContext) {
+        let (host, _, cx) = host(cx);
+        tab(cx, 1);
+        cx.type_keys("down");
+        assert_eq!(host.read_with(cx, |h, _| h.selected), 2);
+        cx.type_keys("up");
+        assert_eq!(host.read_with(cx, |h, _| h.selected), 0);
+    }
+
+    #[gpui::test]
+    fn enter_and_space_activate_the_selection(cx: &mut TestAppContext) {
+        let (_, log, cx) = host(cx);
+        tab(cx, 1);
+        cx.type_keys("enter");
+        cx.type_keys("space");
+        assert_eq!(
+            *log.borrow(),
+            vec!["activate a".to_string(), "activate a".to_string()]
+        );
+    }
+
+    #[gpui::test]
+    fn ring_only_for_keyboard_focus(cx: &mut TestAppContext) {
+        let (_, _, cx) = host(cx);
+        assert_eq!(
+            outer_ring_quads(cx),
+            0,
+            "no ring before anything is focused"
+        );
+        cx.click_at(
+            gpui::point(px(20.0), px(10.0)),
+            MouseButton::Left,
+            gpui::Modifiers::default(),
+        );
+        assert_eq!(outer_ring_quads(cx), 0, "mouse focus must not draw a ring");
+        cx.type_keys("down");
+        assert_eq!(outer_ring_quads(cx), 1, "keyboard focus draws one ring");
     }
 }
