@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::focus::FluentFocus as _;
+use crate::focus::{control_focus_handle, focus_ring, is_keyboard_focused, FluentFocus as _};
 use crate::slider::snap;
 use fluent_core::ThemeProvider as _;
 use gpui::{
@@ -133,7 +133,9 @@ impl SpinButton {
 }
 
 impl RenderOnce for SpinButton {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let focus =
+            (!self.disabled).then(|| control_focus_handle(&self.id, self.tab_index, window, cx));
         let colors = &cx.theme().colors;
         let (min, max, step) = (self.min, self.max, self.step);
         let value = snap(self.value, min, max, 0.0);
@@ -197,9 +199,9 @@ impl RenderOnce for SpinButton {
 
         if !disabled {
             el = el
-                .focusable()
-                .tab_stop(true)
-                .fluent_focus(self.tab_index, colors.focus_ring);
+                .track_focus(focus.as_ref().expect("enabled field has a focus handle"))
+                .key_context("SpinButton")
+                .fluent_tab_stop(self.tab_index.unwrap_or(0));
             if let Some(handler) = key_handler {
                 el = el.on_key_down(move |ev: &KeyDownEvent, win, app| {
                     if let Some(next) = key_target(ev.keystroke.key.as_str(), value, min, max, step)
@@ -215,14 +217,19 @@ impl RenderOnce for SpinButton {
 
         // Buttons step from the snapped value by `step` (grid-aligned).
         let (up, down) = (button("up", "▲", step), button("down", "▼", -step));
-        el.child(div().flex_1().child(text)).child(
+        let ring = focus
+            .as_ref()
+            .is_some_and(|h| is_keyboard_focused(h, window));
+        let radius = px(cx.theme().radii.md);
+        let el = el.child(div().flex_1().child(text)).child(
             div()
                 .flex()
                 .flex_col()
                 .justify_center()
                 .child(up)
                 .child(down),
-        )
+        );
+        focus_ring(el, ring, colors, radius)
     }
 }
 

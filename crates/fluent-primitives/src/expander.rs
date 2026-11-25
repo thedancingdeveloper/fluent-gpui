@@ -1,3 +1,4 @@
+use crate::focus::{control_focus_handle, focus_ring, is_keyboard_focused, FluentFocus as _};
 use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
 use gpui::{
@@ -104,7 +105,15 @@ fn header_base(id: ElementId, title: SharedString, expanded: bool) -> Stateful<D
 }
 
 impl RenderOnce for Expander {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        // An Accordion hands in its roving handle; a standalone Expander keeps
+        // its own. A disabled header gets none, so it is never a Tab stop.
+        // A tracked handle carries its own tab settings, so the Accordion's
+        // roving stop is configured on the handle, not on the element.
+        let focus = (!self.disabled).then(|| match self.focus_handle.clone() {
+            Some(handle) => handle.tab_index(0).tab_stop(self.tab_stop.unwrap_or(true)),
+            None => control_focus_handle(&self.id, None, window, cx),
+        });
         let theme = cx.theme();
         let colors = &theme.colors;
         let radii = &theme.radii;
@@ -116,8 +125,6 @@ impl RenderOnce for Expander {
         let expanded = self.expanded;
         let next_state = !expanded;
         let on_toggle = self.on_toggle;
-        let focus_handle = self.focus_handle;
-        let tab_stop = self.tab_stop;
         let on_key_down = self.on_key_down;
 
         let fg = if disabled {
@@ -131,9 +138,10 @@ impl RenderOnce for Expander {
             "icons/chevron_right.svg"
         };
         let hover_bg = colors.subtle_hover;
-        let focus_border = colors.focus_ring;
 
+        let debug_id = self.id.to_string();
         let mut header = header_base(self.id, self.title.clone(), expanded)
+            .debug_selector(move || debug_id)
             .flex()
             .flex_row()
             .items_center()
@@ -160,13 +168,13 @@ impl RenderOnce for Expander {
             );
 
         if !disabled {
+            let handle = focus.as_ref().expect("enabled header has a focus handle");
             header = header
-                .focusable()
-                .when_some(focus_handle, |header, handle| header.track_focus(&handle))
-                .tab_stop(tab_stop.unwrap_or(true))
+                .track_focus(handle)
+                .key_context("Expander")
+                .fluent_tab_stop(0)
                 .cursor_pointer()
-                .hover(move |s| s.bg(hover_bg))
-                .focus_visible(move |s| s.border_color(focus_border));
+                .hover(move |s| s.bg(hover_bg));
             if let Some(handler) = on_toggle {
                 header = header.on_click(move |ev, win, app| handler(next_state, ev, win, app));
             }
@@ -175,7 +183,14 @@ impl RenderOnce for Expander {
             }
         }
 
-        let mut root = div().flex().flex_col().child(header);
+        let ring = focus
+            .as_ref()
+            .is_some_and(|h| is_keyboard_focused(h, window));
+        let mut root =
+            div()
+                .flex()
+                .flex_col()
+                .child(focus_ring(header, ring, colors, px(radii.md)));
         if expanded {
             if let Some(content) = self.content {
                 root = root.child(

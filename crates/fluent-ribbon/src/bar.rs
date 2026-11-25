@@ -12,7 +12,11 @@ use crate::defs::{
     ContextualTabDef, RibbonGroupDef, RibbonItemDef, RibbonTabBuilder, RibbonTabDef,
     RibbonToggleCallback,
 };
-use fluent_primitives::FluentFocus as _;
+use fluent_primitives::{focus_ring, is_keyboard_focused, FluentFocus as _};
+use std::collections::HashMap;
+
+/// Identifies one command button: (in the overflow menu, group, item).
+type ItemKey = (bool, usize, usize);
 
 struct RibbonRenderTokens<'a> {
     colors: &'a ColorScheme,
@@ -21,6 +25,10 @@ struct RibbonRenderTokens<'a> {
     typography: TypographyTokens,
     components: ComponentTokens,
     bar: WeakEntity<RibbonBar>,
+    /// A persistent focus handle per command button.
+    handles: &'a HashMap<ItemKey, FocusHandle>,
+    /// The command button holding keyboard focus, if any (drives the ring).
+    keyboard_focused: Option<ItemKey>,
 }
 
 /// Run a ribbon command and record it as the bar's last invoked command.
@@ -37,11 +45,6 @@ fn invoke(
         cx.notify();
     })
     .ok();
-}
-
-/// True for the keys that activate a focused button.
-fn is_activation_key(key: &str) -> bool {
-    matches!(key, "enter" | "space")
 }
 
 /// The tab index a navigation key moves to, or `None` for any other key.
@@ -88,6 +91,10 @@ pub struct RibbonBar {
     /// Label of the most recently invoked command; shown as status feedback.
     last_command: Option<SharedString>,
     tab_handles: Vec<FocusHandle>,
+    /// Focus handles of the command buttons, by position.
+    item_handles: HashMap<ItemKey, FocusHandle>,
+    collapse_focus: FocusHandle,
+    overflow_focus: FocusHandle,
 }
 
 impl RibbonBar {
@@ -101,6 +108,9 @@ impl RibbonBar {
             overflow_open: false,
             last_command: None,
             tab_handles: vec![],
+            item_handles: HashMap::new(),
+            collapse_focus: cx.focus_handle(),
+            overflow_focus: cx.focus_handle(),
         }
     }
 
@@ -176,8 +186,30 @@ impl RibbonBar {
     // Rendering helpers (free functions to avoid self-borrow issues)
     // -----------------------------------------------------------------------
 
+    /// Makes a command button a Tab stop with a tracked handle and the
+    /// keyboard-only two-tone focus ring. Enter/Space arrive as gpui's
+    /// keyboard click on key-up, so the button needs no key handler.
+    fn focusable(
+        el: gpui::Stateful<gpui::Div>,
+        tokens: &RibbonRenderTokens<'_>,
+        key: ItemKey,
+    ) -> gpui::Stateful<gpui::Div> {
+        let handle = tokens.handles[&key].clone().tab_index(0).tab_stop(true);
+        let el = el
+            .track_focus(&handle)
+            .key_context("RibbonButton")
+            .fluent_tab_stop(0);
+        focus_ring(
+            el,
+            tokens.keyboard_focused == Some(key),
+            tokens.colors,
+            px(tokens.radii.sm),
+        )
+    }
+
     fn render_item(
         item: &RibbonItemDef,
+        overflow: bool,
         gidx: usize,
         iidx: usize,
         tokens: &RibbonRenderTokens<'_>,
@@ -201,26 +233,14 @@ impl RibbonBar {
                 icon,
                 on_click,
             } => {
-                let (cb, key_cb) = (on_click.clone(), on_click.clone());
-                let (bar, key_bar, label_c, key_label) = (
-                    tokens.bar.clone(),
-                    tokens.bar.clone(),
-                    label.clone(),
-                    label.clone(),
-                );
+                let cb = on_click.clone();
+                let (bar, label_c) = (tokens.bar.clone(), label.clone());
                 div()
                     .id(("rli", (gidx * 100 + iidx) as u64))
                     .debug_selector(move || format!("ribbon-item-{gidx}-{iidx}"))
                     .role(Role::Button)
                     .aria_label(label.clone())
-                    .fluent_focus(Some(0), colors.focus_ring)
-                    .on_key_down(move |ev, win, app| {
-                        if is_activation_key(ev.keystroke.key.as_str()) {
-                            invoke(&key_bar, &key_label, app, |app| {
-                                key_cb(&ClickEvent::default(), win, app)
-                            });
-                        }
-                    })
+                    .map(|el| Self::focusable(el, tokens, (overflow, gidx, iidx)))
                     .h_full()
                     .min_w(px(48.0))
                     .flex()
@@ -256,26 +276,14 @@ impl RibbonBar {
                 icon,
                 on_click,
             } => {
-                let (cb, key_cb) = (on_click.clone(), on_click.clone());
-                let (bar, key_bar, label_c, key_label) = (
-                    tokens.bar.clone(),
-                    tokens.bar.clone(),
-                    label.clone(),
-                    label.clone(),
-                );
+                let cb = on_click.clone();
+                let (bar, label_c) = (tokens.bar.clone(), label.clone());
                 let icon_empty = icon.is_empty();
                 div()
                     .id(("rbi", (gidx * 100 + iidx) as u64))
                     .role(Role::Button)
                     .aria_label(label.clone())
-                    .fluent_focus(Some(0), colors.focus_ring)
-                    .on_key_down(move |ev, win, app| {
-                        if is_activation_key(ev.keystroke.key.as_str()) {
-                            invoke(&key_bar, &key_label, app, |app| {
-                                key_cb(&ClickEvent::default(), win, app)
-                            });
-                        }
-                    })
+                    .map(|el| Self::focusable(el, tokens, (overflow, gidx, iidx)))
                     .flex()
                     .flex_row()
                     .items_center()
@@ -312,25 +320,13 @@ impl RibbonBar {
                 tooltip,
                 on_click,
             } => {
-                let (cb, key_cb) = (on_click.clone(), on_click.clone());
-                let (bar, key_bar, label_c, key_label) = (
-                    tokens.bar.clone(),
-                    tokens.bar.clone(),
-                    tooltip.clone(),
-                    tooltip.clone(),
-                );
+                let cb = on_click.clone();
+                let (bar, label_c) = (tokens.bar.clone(), tooltip.clone());
                 div()
                     .id(("rib", (gidx * 100 + iidx) as u64))
                     .role(Role::Button)
                     .aria_label(tooltip.clone())
-                    .fluent_focus(Some(0), colors.focus_ring)
-                    .on_key_down(move |ev, win, app| {
-                        if is_activation_key(ev.keystroke.key.as_str()) {
-                            invoke(&key_bar, &key_label, app, |app| {
-                                key_cb(&ClickEvent::default(), win, app)
-                            });
-                        }
-                    })
+                    .map(|el| Self::focusable(el, tokens, (overflow, gidx, iidx)))
                     .size(px(components.ribbon_small_icon_size + spacing.md))
                     .flex()
                     .items_center()
@@ -360,14 +356,8 @@ impl RibbonBar {
                 let is_sel = *selected;
                 let new_state = !is_sel;
                 let bg = if is_sel { selected_bg } else { colors.subtle };
-                let (cb, key_cb): (RibbonToggleCallback, RibbonToggleCallback) =
-                    (on_click.clone(), on_click.clone());
-                let (bar, key_bar, label_c, key_label) = (
-                    tokens.bar.clone(),
-                    tokens.bar.clone(),
-                    label.clone(),
-                    label.clone(),
-                );
+                let cb: RibbonToggleCallback = on_click.clone();
+                let (bar, label_c) = (tokens.bar.clone(), label.clone());
                 div()
                     .id(("rtb", (gidx * 100 + iidx) as u64))
                     .role(Role::Button)
@@ -377,14 +367,7 @@ impl RibbonBar {
                     } else {
                         Toggled::False
                     })
-                    .fluent_focus(Some(0), colors.focus_ring)
-                    .on_key_down(move |ev, win, app| {
-                        if is_activation_key(ev.keystroke.key.as_str()) {
-                            invoke(&key_bar, &key_label, app, |app| {
-                                key_cb(new_state, &ClickEvent::default(), win, app)
-                            });
-                        }
-                    })
+                    .map(|el| Self::focusable(el, tokens, (overflow, gidx, iidx)))
                     .flex()
                     .flex_row()
                     .items_center()
@@ -427,7 +410,13 @@ impl RibbonBar {
                     let mut column = div().flex().flex_col().justify_around().h_full();
                     for (row_idx, sub_item) in column_items.iter().enumerate() {
                         let sub_idx = col_idx * MAX_STACK_ROWS + row_idx;
-                        let el = Self::render_item(sub_item, gidx, iidx * 10 + sub_idx, tokens);
+                        let el = Self::render_item(
+                            sub_item,
+                            overflow,
+                            gidx,
+                            iidx * 10 + sub_idx,
+                            tokens,
+                        );
                         column = column.child(el);
                     }
                     stack = stack.child(column);
@@ -446,6 +435,7 @@ impl RibbonBar {
 
     fn render_group(
         group: &RibbonGroupDef,
+        overflow: bool,
         gidx: usize,
         tokens: &RibbonRenderTokens<'_>,
     ) -> gpui::AnyElement {
@@ -463,7 +453,7 @@ impl RibbonBar {
             .flex_row()
             .h(px(components.ribbon_content_button_height));
         for (iidx, item) in group.items.iter().enumerate() {
-            let el = Self::render_item(item, gidx, iidx, tokens);
+            let el = Self::render_item(item, overflow, gidx, iidx, tokens);
             btn_row = btn_row.child(el);
         }
 
@@ -536,14 +526,6 @@ impl Render for RibbonBar {
         let radii = theme.radii;
         let typography = theme.typography;
         let components = theme.components;
-        let render_tokens = RibbonRenderTokens {
-            colors: &colors,
-            spacing,
-            radii,
-            typography,
-            components,
-            bar: cx.entity().downgrade(),
-        };
 
         let active = self.active_tab;
         let collapsed = self.collapsed;
@@ -572,6 +554,45 @@ impl Render for RibbonBar {
                 .and_then(|(_, orig_idx)| self.contextual_tabs.get(*orig_idx))
                 .map(|ct| ct.tab.groups.clone())
                 .unwrap_or_default()
+        };
+
+        // ---- Command-button focus ----
+        // One persistent handle per button position (visible row and overflow
+        // menu); each button is its own Tab stop.
+        for overflow in [false, true] {
+            for (g, group) in active_groups.iter().enumerate() {
+                for (i, item) in group.items.iter().enumerate() {
+                    // Stacked items are keyed `iidx * 10 + position`, as rendered.
+                    let keys = match item {
+                        RibbonItemDef::Stack(subs) => (0..subs.len()).map(|n| i * 10 + n).collect(),
+                        _ => vec![i],
+                    };
+                    for key in keys {
+                        self.item_handles
+                            .entry((overflow, g, key))
+                            .or_insert_with(|| cx.focus_handle());
+                    }
+                }
+            }
+        }
+        let keyboard_focused = window
+            .last_input_was_keyboard()
+            .then(|| {
+                self.item_handles
+                    .iter()
+                    .find(|(_, h)| h.is_focused(window))
+                    .map(|(k, _)| *k)
+            })
+            .flatten();
+        let render_tokens = RibbonRenderTokens {
+            colors: &colors,
+            spacing,
+            radii,
+            typography,
+            components,
+            bar: cx.entity().downgrade(),
+            handles: &self.item_handles,
+            keyboard_focused,
         };
 
         // ---- Tab strip ----
@@ -658,10 +679,16 @@ impl Render for RibbonBar {
                     .aria_selected(is_active)
                     .aria_position_in_set(i + 1)
                     .aria_size_of_set(tab_count)
-                    .track_focus(&tab_handles[i])
-                    .fluent_focus(Some(0), colors.focus_ring)
-                    .tab_stop(is_active)
+                    // A tracked handle carries its own tab settings: the active
+                    // tab is the strip's one Tab stop.
+                    .track_focus(&tab_handles[i].clone().tab_index(0).tab_stop(is_active))
+                    .key_context("RibbonTab")
+                    .fluent_tab_stop(0)
                     .on_key_down(tab_keys(i))
+                    .map(|el| {
+                        let ring = is_keyboard_focused(&tab_handles[i], window);
+                        focus_ring(el, ring, &colors, px(0.0))
+                    })
                     .relative()
                     .px(px(spacing.lg))
                     .py(px(spacing.sm))
@@ -734,10 +761,19 @@ impl Render for RibbonBar {
                         .aria_selected(is_active)
                         .aria_position_in_set(global_idx + 1)
                         .aria_size_of_set(tab_count)
-                        .track_focus(&tab_handles[global_idx])
-                        .fluent_focus(Some(0), colors.focus_ring)
-                        .tab_stop(is_active)
+                        .track_focus(
+                            &tab_handles[global_idx]
+                                .clone()
+                                .tab_index(0)
+                                .tab_stop(is_active),
+                        )
+                        .key_context("RibbonTab")
+                        .fluent_tab_stop(0)
                         .on_key_down(tab_keys(global_idx))
+                        .map(|el| {
+                            let ring = is_keyboard_focused(&tab_handles[global_idx], window);
+                            focus_ring(el, ring, &colors, px(0.0))
+                        })
                         .relative()
                         .px(px(spacing.lg))
                         .py(px(spacing.sm))
@@ -769,6 +805,10 @@ impl Render for RibbonBar {
         }
 
         // Collapse toggle (∧/∨) at the right edge of the tab strip
+        let collapse_focus = self.collapse_focus.clone().tab_index(0).tab_stop(true);
+        let collapse_ring = is_keyboard_focused(&collapse_focus, window);
+        let overflow_focus = self.overflow_focus.clone().tab_index(0).tab_stop(true);
+        let overflow_ring = is_keyboard_focused(&overflow_focus, window);
         let collapse_handler = cx.listener(|bar: &mut RibbonBar, _: &ClickEvent, _, cx| {
             bar.collapsed = !bar.collapsed;
             bar.overflow_open = false;
@@ -805,20 +845,10 @@ impl Render for RibbonBar {
                         "Collapse the ribbon"
                     })
                     .aria_expanded(!collapsed)
-                    .fluent_focus(Some(0), colors.focus_ring)
-                    .on_key_down({
-                        let bar = cx.entity().downgrade();
-                        move |ev, _, app| {
-                            if is_activation_key(ev.keystroke.key.as_str()) {
-                                bar.update(app, |bar, cx| {
-                                    bar.collapsed = !bar.collapsed;
-                                    bar.overflow_open = false;
-                                    cx.notify();
-                                })
-                                .ok();
-                            }
-                        }
-                    })
+                    .track_focus(&collapse_focus)
+                    .key_context("RibbonButton")
+                    .fluent_tab_stop(0)
+                    .map(|el| focus_ring(el, collapse_ring, &colors, px(0.0)))
                     .size(px(components.ribbon_tab_height))
                     .flex()
                     .items_center()
@@ -876,7 +906,7 @@ impl Render for RibbonBar {
                         content_row.child(div().w(px(1.0)).bg(group_sep_color).my(px(spacing.sm)));
                 }
 
-                let el = Self::render_group(group, gidx, &render_tokens);
+                let el = Self::render_group(group, false, gidx, &render_tokens);
                 content_row = content_row.child(el);
             }
 
@@ -894,17 +924,14 @@ impl Render for RibbonBar {
                         .role(Role::Button)
                         .aria_label("More commands")
                         .aria_expanded(self.overflow_open)
-                        .fluent_focus(Some(0), colors.focus_ring)
+                        .track_focus(&overflow_focus)
+                        .key_context("RibbonButton")
+                        .fluent_tab_stop(0)
+                        // Enter/Space arrive as gpui's keyboard click on key-up.
                         .on_key_down({
                             let bar = cx.entity().downgrade();
                             move |ev, _, app| {
-                                if is_activation_key(ev.keystroke.key.as_str()) {
-                                    bar.update(app, |bar, cx| {
-                                        bar.overflow_open = !bar.overflow_open;
-                                        cx.notify();
-                                    })
-                                    .ok();
-                                } else if ev.keystroke.key == "escape" {
+                                if ev.keystroke.key == "escape" {
                                     bar.update(app, |bar, cx| {
                                         bar.overflow_open = false;
                                         cx.notify();
@@ -913,6 +940,7 @@ impl Render for RibbonBar {
                                 }
                             }
                         })
+                        .map(|el| focus_ring(el, overflow_ring, &colors, px(radii.sm)))
                         .h(px(components.ribbon_content_button_height))
                         .min_w(px(overflow_button_width))
                         .flex()
@@ -977,8 +1005,12 @@ impl Render for RibbonBar {
                                     .bg(colors.stroke_neutral_subtle),
                             );
                         }
-                        overflow_menu =
-                            overflow_menu.child(Self::render_group(group, idx, &render_tokens));
+                        overflow_menu = overflow_menu.child(Self::render_group(
+                            group,
+                            true,
+                            idx,
+                            &render_tokens,
+                        ));
                     }
                     content_row = content_row.child(overflow_menu);
                 }
@@ -1017,6 +1049,91 @@ mod tests {
         assert_eq!(tab_nav_target("end", 0, 3), Some(2));
         assert_eq!(tab_nav_target("a", 0, 3), None);
         assert_eq!(tab_nav_target("right", 0, 0), None);
+    }
+
+    /// Presses and releases `key`: buttons activate on key-up.
+    fn press(cx: &mut gpui::VisualTestContext, key: &'static str) {
+        use gpui::InputEvent as _;
+        cx.type_keys(key);
+        let keystroke = gpui::Keystroke::parse(key).expect("valid test keystroke");
+        cx.update(|window, app| {
+            window.dispatch_event(
+                gpui::KeyUpEvent {
+                    keystroke,
+                    scan_code: None,
+                }
+                .to_platform_input(),
+                app,
+            );
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+    }
+
+    fn outer_ring_quads(cx: &mut gpui::VisualTestContext) -> usize {
+        cx.update(|window, app| window.draw(app).clear(app));
+        cx.update(|window, app| {
+            let outer = app.theme().colors.stroke_focus_outer;
+            let mut rings: Vec<String> = window
+                .painted_quads()
+                .iter()
+                .filter(|q| q.border_color == outer)
+                .map(|q| format!("{:?}", q.bounds))
+                .collect();
+            rings.sort();
+            rings.dedup();
+            rings.len()
+        })
+    }
+
+    fn open_ready(
+        cx: &mut TestAppContext,
+        hits: Rc<Cell<usize>>,
+    ) -> (gpui::Entity<RibbonBar>, &mut gpui::VisualTestContext) {
+        let (bar, vcx) = open_fluent_test_window(cx, move |_, cx| build(cx, hits));
+        vcx.update(|_, app| fluent_primitives::install_focus_keybindings(app));
+        vcx.update(|window, app| window.draw(app).clear(app));
+        (bar, vcx)
+    }
+
+    #[gpui::test]
+    fn tab_walks_tab_strip_then_collapse_then_each_command(cx: &mut TestAppContext) {
+        let hits = Rc::new(Cell::new(0));
+        let (bar, vcx) = open_ready(cx, hits.clone());
+        // The strip is one stop (the active tab), reached first.
+        vcx.update(|window, app| window.focus_next(app));
+        press(vcx, "right"); // arrows move between tabs within the strip
+        assert_eq!(bar.read_with(vcx, |b, _| b.active_tab), 1);
+        press(vcx, "left");
+        assert_eq!(bar.read_with(vcx, |b, _| b.active_tab), 0);
+        press(vcx, "tab"); // collapse button
+        press(vcx, "tab"); // "Run"
+        press(vcx, "enter");
+        assert_eq!(hits.get(), 1, "Tab reached Run; Enter ran it exactly once");
+        press(vcx, "tab"); // "Wrap" (toggle)
+        press(vcx, "shift-tab");
+        press(vcx, "shift-tab"); // back to collapse
+        press(vcx, "enter");
+        assert!(
+            bar.read_with(vcx, |b, _| b.collapsed),
+            "the collapse button is a Tab stop"
+        );
+    }
+
+    #[gpui::test]
+    fn ribbon_ring_for_keyboard_focus_only(cx: &mut TestAppContext) {
+        let (_bar, vcx) = open_ready(cx, Rc::default());
+        let base = outer_ring_quads(vcx);
+        vcx.update(|window, app| window.focus_next(app));
+        press(vcx, "right");
+        press(vcx, "left");
+        assert_eq!(outer_ring_quads(vcx), base + 1, "tab ring");
+        press(vcx, "tab");
+        press(vcx, "tab");
+        assert_eq!(outer_ring_quads(vcx), base + 1, "command button ring");
+        vcx.click_selector("ribbon-item-0-0");
+        vcx.update(|window, app| window.draw(app).clear(app));
+        assert_eq!(outer_ring_quads(vcx), base, "mouse focus draws no ring");
     }
 
     fn build(cx: &mut Context<RibbonBar>, hits: Rc<Cell<usize>>) -> RibbonBar {
@@ -1079,8 +1196,9 @@ mod tests {
         let (bar, vcx) = open_fluent_test_window(cx, |_, cx| build(cx, hits.clone()));
         vcx.click_selector("ribbon-item-0-0"); // click focuses the button
         assert_eq!(hits.get(), 1);
-        vcx.type_keys("space enter");
-        assert_eq!(hits.get(), 3);
+        press(vcx, "space");
+        press(vcx, "enter");
+        assert_eq!(hits.get(), 3, "Space and Enter activate exactly once each");
         assert_eq!(
             bar.read_with(vcx, |b, _| b.last_command().cloned()),
             Some("Run".into())
