@@ -1,7 +1,7 @@
 use fluent_core::ColorScheme;
 use gpui::{
-    actions, div, px, App, FocusHandle, KeyBinding, KeyDownEvent, ParentElement, Pixels, Styled,
-    Window,
+    actions, div, px, App, ElementId, FocusHandle, KeyBinding, KeyDownEvent, ParentElement, Pixels,
+    Styled, Window,
 };
 
 actions!(fluent_primitives, [FocusNextControl, FocusPreviousControl]);
@@ -43,6 +43,21 @@ pub(crate) fn handle_tab_navigation(ev: &KeyDownEvent, window: &mut Window, cx: 
 /// mouse-move switches it back, so no separate global flag is needed.
 pub fn is_keyboard_focused(handle: &FocusHandle, window: &Window) -> bool {
     handle.is_focused(window) && window.last_input_was_keyboard()
+}
+
+/// The `FocusHandle` of a stateless (`RenderOnce`) control, kept across frames
+/// under `id` and configured as a Tab stop at `tab_index` (`0` when `None`).
+/// Pair it with `track_focus` and [`FluentFocus::fluent_tab_stop`]; a disabled
+/// control must not call it, so it never enters the Tab order.
+pub(crate) fn control_focus_handle(
+    id: &ElementId,
+    tab_index: Option<isize>,
+    window: &mut Window,
+    cx: &mut App,
+) -> FocusHandle {
+    let state = window.use_keyed_state((id.clone(), "fluent-focus"), cx, |_, cx| cx.focus_handle());
+    let handle = state.read(cx).clone();
+    handle.tab_index(tab_index.unwrap_or(0)).tab_stop(true)
 }
 
 /// Draws the Fluent 2 focus indicator on `el` when `keyboard_focused`: a 2px
@@ -247,5 +262,190 @@ mod tests {
         press(cx, "shift-tab");
         press(cx, "enter");
         assert_eq!(*log.borrow(), ["switch", "button"]);
+    }
+}
+
+/// Keyboard-focus behaviour shared by the button family (`Button`,
+/// `IconButton`, `ToggleButton`): Tab stop, Space/Enter activation, two-tone
+/// ring for keyboard focus only, and disabled controls skipped.
+#[cfg(test)]
+mod button_family_tests {
+    use std::{cell::Cell, rc::Rc};
+
+    use fluent_core::ThemeProvider as _;
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{
+        div, Context, InputEvent as _, IntoElement, KeyUpEvent, Keystroke, ParentElement as _,
+        Render, TestAppContext, VisualTestContext, Window,
+    };
+
+    use crate::{Button, IconButton, ToggleButton};
+
+    #[derive(Clone, Copy, Debug)]
+    enum Kind {
+        Button,
+        Icon,
+        Toggle,
+    }
+
+    /// `[first (maybe disabled)] [second]`; only `second` is always enabled.
+    struct Host {
+        kind: Kind,
+        first_disabled: bool,
+        first: Rc<Cell<usize>>,
+        second: Rc<Cell<usize>>,
+    }
+
+    impl Host {
+        fn control(
+            &self,
+            id: &'static str,
+            disabled: bool,
+            hits: Rc<Cell<usize>>,
+        ) -> gpui::AnyElement {
+            match self.kind {
+                Kind::Button => Button::new(id)
+                    .label("Go")
+                    .disabled(disabled)
+                    .on_click(move |_, _, _| hits.set(hits.get() + 1))
+                    .into_any_element(),
+                Kind::Icon => IconButton::new(id, "icons/checkmark.svg")
+                    .disabled(disabled)
+                    .on_click(move |_, _, _| hits.set(hits.get() + 1))
+                    .into_any_element(),
+                Kind::Toggle => ToggleButton::new(id)
+                    .label("Go")
+                    .disabled(disabled)
+                    .on_click(move |_, _, _, _| hits.set(hits.get() + 1))
+                    .into_any_element(),
+            }
+        }
+    }
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div()
+                .child(self.control("first", self.first_disabled, self.first.clone()))
+                .child(self.control("second", false, self.second.clone()))
+        }
+    }
+
+    fn open(
+        cx: &mut TestAppContext,
+        kind: Kind,
+        first_disabled: bool,
+    ) -> (Rc<Cell<usize>>, Rc<Cell<usize>>, &mut VisualTestContext) {
+        let (first, second) = (Rc::new(Cell::new(0)), Rc::new(Cell::new(0)));
+        let host = (first.clone(), second.clone());
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| Host {
+            kind,
+            first_disabled,
+            first: host.0,
+            second: host.1,
+        });
+        cx.update(|_, app| super::install_focus_keybindings(app));
+        cx.update(|window, app| window.draw(app).clear(app));
+        (first, second, cx)
+    }
+
+    fn press(cx: &mut VisualTestContext, key: &'static str) {
+        cx.type_keys(key);
+        let keystroke = Keystroke::parse(key).expect("valid test keystroke");
+        cx.update(|window, app| {
+            window.dispatch_event(
+                KeyUpEvent {
+                    keystroke,
+                    scan_code: None,
+                }
+                .to_platform_input(),
+                app,
+            );
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+    }
+
+    /// Enter the first Tab stop the way the window does before any key press.
+    fn focus_first(cx: &mut VisualTestContext) {
+        cx.update(|window, app| window.focus_next(app));
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+    }
+
+    fn outer_ring_quads(cx: &mut VisualTestContext) -> usize {
+        cx.update(|window, app| window.draw(app).clear(app));
+        cx.update(|window, app| {
+            let outer = app.theme().colors.stroke_focus_outer;
+            let mut rings: Vec<String> = window
+                .painted_quads()
+                .iter()
+                .filter(|q| q.border_color == outer)
+                .map(|q| format!("{:?}", q.bounds))
+                .collect();
+            rings.sort();
+            rings.dedup();
+            rings.len()
+        })
+    }
+
+    const KINDS: [Kind; 3] = [Kind::Button, Kind::Icon, Kind::Toggle];
+
+    #[gpui::test]
+    fn tab_reaches_each_button_in_order(cx: &mut TestAppContext) {
+        for kind in KINDS {
+            let (first, second, cx) = open(cx, kind, false);
+            focus_first(cx);
+            press(cx, "space");
+            assert_eq!((first.get(), second.get()), (1, 0), "{kind:?}: first stop");
+            press(cx, "tab");
+            press(cx, "enter");
+            assert_eq!((first.get(), second.get()), (1, 1), "{kind:?}: second stop");
+        }
+    }
+
+    #[gpui::test]
+    fn space_and_enter_activate_the_focused_button(cx: &mut TestAppContext) {
+        for kind in KINDS {
+            let (first, _, cx) = open(cx, kind, false);
+            focus_first(cx);
+            press(cx, "enter");
+            press(cx, "space");
+            assert_eq!(first.get(), 2, "{kind:?}");
+        }
+    }
+
+    #[gpui::test]
+    fn ring_shows_for_keyboard_focus_only(cx: &mut TestAppContext) {
+        for kind in KINDS {
+            let (_, _, cx) = open(cx, kind, false);
+            assert_eq!(outer_ring_quads(cx), 0, "{kind:?}: nothing focused");
+            focus_first(cx);
+            press(cx, "tab");
+            assert_eq!(outer_ring_quads(cx), 1, "{kind:?}: keyboard focus");
+            cx.click_selector("first");
+            cx.update(|window, app| window.draw(app).clear(app));
+            assert!(cx.update(|window, app| window.focused(app).is_some()));
+            assert_eq!(
+                outer_ring_quads(cx),
+                0,
+                "{kind:?}: mouse focus draws no ring"
+            );
+        }
+    }
+
+    #[gpui::test]
+    fn disabled_button_is_skipped_and_never_activates(cx: &mut TestAppContext) {
+        for kind in KINDS {
+            let (first, second, cx) = open(cx, kind, true);
+            focus_first(cx);
+            press(cx, "enter");
+            press(cx, "space");
+            assert_eq!(first.get(), 0, "{kind:?}: disabled must not activate");
+            assert_eq!(
+                second.get(),
+                2,
+                "{kind:?}: focus skipped to the enabled button"
+            );
+        }
     }
 }
