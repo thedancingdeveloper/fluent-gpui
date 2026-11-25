@@ -2,6 +2,7 @@ use fluent_core::TextRampExt;
 use std::sync::Arc;
 
 use fluent_core::ThemeProvider as _;
+use fluent_primitives::{focus_ring, is_keyboard_focused, FluentFocus as _};
 use gpui::{
     div, prelude::*, px, svg, App, ClickEvent, ElementId, FocusHandle, IntoElement, KeyDownEvent,
     RenderOnce, Role, SharedString, Toggled, Window,
@@ -15,6 +16,8 @@ type ToolbarToggleClick = Arc<dyn Fn(bool, &ClickEvent, &mut Window, &mut App) +
 struct Roving {
     handle: FocusHandle,
     tab_stop: bool,
+    /// Draw the keyboard focus ring (keyboard focus only).
+    ring: bool,
     on_key: KeyNav,
 }
 
@@ -207,16 +210,26 @@ impl Toolbar {
     fn with_roving(
         el: gpui::Stateful<gpui::Div>,
         nav: Option<Roving>,
+        colors: &fluent_core::ColorScheme,
+        radius: gpui::Pixels,
     ) -> gpui::Stateful<gpui::Div> {
         match nav {
             Some(Roving {
                 handle,
                 tab_stop,
+                ring,
                 on_key,
-            }) => el
-                .track_focus(&handle)
-                .tab_stop(tab_stop)
-                .on_key_down(move |ev, win, app| on_key(ev, win, app)),
+            }) => {
+                // A tracked handle carries its own tab settings; the toolbar is
+                // one Tab stop, held by the roving item.
+                let handle = handle.tab_index(0).tab_stop(tab_stop);
+                let el = el
+                    .track_focus(&handle)
+                    .key_context("Toolbar")
+                    .fluent_tab_stop(0)
+                    .on_key_down(move |ev, win, app| on_key(ev, win, app));
+                focus_ring(el, ring, colors, radius)
+            }
             None => el,
         }
     }
@@ -277,7 +290,6 @@ impl Toolbar {
                     })
                     .child(label);
                 if !disabled {
-                    let key_click = on_click.clone();
                     el = el
                         .cursor_pointer()
                         .hover({
@@ -288,13 +300,9 @@ impl Toolbar {
                             let pressed = colors.subtle_selected;
                             move |s| s.bg(pressed)
                         })
-                        .on_key_down(move |ev, win, app| {
-                            if matches!(ev.keystroke.key.as_str(), "enter" | "space") {
-                                key_click(&ClickEvent::default(), win, app);
-                            }
-                        })
+                        // Enter/Space arrive as gpui's keyboard click on key-up.
                         .on_click(move |ev, win, app| on_click(ev, win, app));
-                    el = Self::with_roving(el, nav);
+                    el = Self::with_roving(el, nav, &colors, px(radii.sm));
                 }
                 let _ = id;
                 el.into_any_element()
@@ -357,16 +365,9 @@ impl Toolbar {
                             let pressed = colors.neutral_selected;
                             move |s| s.bg(pressed)
                         })
-                        .on_key_down({
-                            let key_click = on_click.clone();
-                            move |ev, win, app| {
-                                if matches!(ev.keystroke.key.as_str(), "enter" | "space") {
-                                    key_click(!selected, &ClickEvent::default(), win, app);
-                                }
-                            }
-                        })
+                        // Enter/Space arrive as gpui's keyboard click on key-up.
                         .on_click(move |ev, win, app| on_click(!selected, ev, win, app));
-                    el = Self::with_roving(el, nav);
+                    el = Self::with_roving(el, nav, &colors, px(radii.sm));
                 }
                 let _ = id;
                 el.into_any_element()
@@ -427,6 +428,7 @@ impl RenderOnce for Toolbar {
                 Roving {
                     handle: handles[idx].clone(),
                     tab_stop: stop == Some(idx),
+                    ring: enabled[idx] && is_keyboard_focused(&handles[idx], window),
                     on_key: Arc::new(move |ev, win, app| {
                         if let Some(next) =
                             crate::roving::target(ev.keystroke.key.as_str(), idx, &nav_enabled)
@@ -506,6 +508,7 @@ mod tests {
     use gpui::{Context, Render, TestAppContext};
 
     use super::*;
+    use crate::roving::test_support::{outer_ring_quads, press, tab};
 
     struct Host(Rc<Cell<usize>>);
 
@@ -527,11 +530,14 @@ mod tests {
         let hits = Rc::new(Cell::new(0));
         let (_host, cx) = open_fluent_test_window(cx, |_, _| Host(hits.clone()));
         cx.click_selector("toolbar-item-0");
-        cx.type_keys("right enter"); // skips the separator and disabled item
+        cx.type_keys("right"); // skips the separator and disabled item
+        press(cx, "enter");
         assert_eq!(hits.get(), 1);
-        cx.type_keys("home right enter");
+        cx.type_keys("home right");
+        press(cx, "enter");
         assert_eq!(hits.get(), 2);
-        cx.type_keys("end enter");
+        cx.type_keys("end");
+        press(cx, "enter");
         assert_eq!(hits.get(), 3);
     }
 
@@ -592,5 +598,77 @@ mod tests {
         assert!(joined.contains("Button \"A\""), "{joined}");
         assert!(joined.contains("Button \"T\""), "{joined}");
         assert!(joined.contains("Button \"D\""), "{joined}");
+    }
+
+    /// `[toolbar: A, T(toggle), D(disabled)] [checkbox "after"]`.
+    struct Form {
+        action: Rc<Cell<usize>>,
+        toggle: Rc<Cell<usize>>,
+        after: Rc<Cell<usize>>,
+    }
+
+    impl Render for Form {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let (a, t, after) = (self.action.clone(), self.toggle.clone(), self.after.clone());
+            div()
+                .child(
+                    Toolbar::new()
+                        .item(ToolbarItem::action("a", "A", move |_, _, _| {
+                            a.set(a.get() + 1)
+                        }))
+                        .item(ToolbarItem::toggle("t", "T", false, move |_, _, _, _| {
+                            t.set(t.get() + 1)
+                        }))
+                        .item(ToolbarItem::action("d", "D", |_, _, _| {}).disabled(true)),
+                )
+                .child(
+                    fluent_primitives::Checkbox::new("after")
+                        .on_click(move |_, _, _, _| after.set(after.get() + 1)),
+                )
+        }
+    }
+
+    fn open_form(cx: &mut TestAppContext) -> ([Rc<Cell<usize>>; 3], &mut gpui::VisualTestContext) {
+        let counters: [Rc<Cell<usize>>; 3] = Default::default();
+        let c = counters.clone();
+        let (_host, cx) = open_fluent_test_window(cx, move |_, _| {
+            let [action, toggle, after] = c;
+            Form {
+                action,
+                toggle,
+                after,
+            }
+        });
+        (counters, cx)
+    }
+
+    #[gpui::test]
+    fn toolbar_is_one_tab_stop_and_enter_activates_once(cx: &mut TestAppContext) {
+        let ([action, toggle, after], cx) = open_form(cx);
+        tab(cx, 1);
+        press(cx, "enter");
+        assert_eq!(action.get(), 1, "Enter activates exactly once");
+        press(cx, "space");
+        assert_eq!(action.get(), 2, "Space activates");
+        press(cx, "right");
+        press(cx, "space");
+        assert_eq!(toggle.get(), 1, "arrow moves to the toggle");
+        // One Tab leaves the whole toolbar (the disabled item is no stop).
+        cx.type_keys("tab");
+        press(cx, "space");
+        assert_eq!(after.get(), 1, "Tab left the toolbar for the checkbox");
+        assert_eq!(toggle.get(), 1);
+    }
+
+    #[gpui::test]
+    fn toolbar_ring_only_for_keyboard_focus(cx: &mut TestAppContext) {
+        let (_, cx) = open_form(cx);
+        assert_eq!(outer_ring_quads(cx), 0, "nothing focused");
+        tab(cx, 1);
+        cx.type_keys("right"); // a key press switches to keyboard modality
+        assert_eq!(outer_ring_quads(cx), 1, "keyboard focus draws the ring");
+        cx.click_selector("toolbar-item-1");
+        cx.update(|window, app| window.draw(app).clear(app));
+        assert_eq!(outer_ring_quads(cx), 0, "mouse focus draws no ring");
     }
 }

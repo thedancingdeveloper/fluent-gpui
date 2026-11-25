@@ -1,3 +1,5 @@
+use crate::focus::{focus_ring, is_keyboard_focused, FluentFocus as _};
+use crate::roving;
 use fluent_core::ThemeProvider as _;
 
 type ColorChange = std::rc::Rc<dyn Fn(Color, &mut App)>;
@@ -47,6 +49,8 @@ pub struct ColorPicker {
     swatches: Vec<Color>,
     label: SharedString,
     on_change: Option<ColorChange>,
+    /// One focus handle per swatch, created on first render.
+    swatch_focus: Vec<gpui::FocusHandle>,
 }
 impl ColorPicker {
     /// Creates a new instance for use in a Fluent interface.
@@ -74,6 +78,7 @@ impl ColorPicker {
             ],
             label: "Color".into(),
             on_change: None,
+            swatch_focus: Vec::new(),
         }
     }
     /// Returns the current value.
@@ -131,7 +136,17 @@ impl ColorPicker {
     }
 }
 impl Render for ColorPicker {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        while self.swatch_focus.len() < self.swatches.len() {
+            self.swatch_focus.push(cx.focus_handle());
+        }
+        self.swatch_focus.truncate(self.swatches.len());
+        let handles = self.swatch_focus.clone();
+        let enabled = vec![true; handles.len()];
+        // The swatches are one Tab stop (roving): the focused swatch, else the
+        // selected one, else the first. Arrows move focus within the group.
+        let default = self.swatches.iter().position(|c| *c == self.color);
+        let stop = roving::stop_index(window, &handles, &enabled, default);
         let theme = cx.theme();
         let colors = theme.colors.clone();
         let selected = self.color;
@@ -139,25 +154,40 @@ impl Render for ColorPicker {
         let mut sw = div().flex().gap_1();
         for (i, color) in self.swatches.iter().copied().enumerate() {
             let h = handler.clone();
-            sw = sw.child(
-                div()
-                    .id(("color-swatch", i as u64))
-                    .size(px(28.))
-                    .rounded(px(4.))
-                    .bg(gpui::rgb(
-                        (u32::from(color.red) << 16)
-                            | (u32::from(color.green) << 8)
-                            | u32::from(color.blue),
-                    ))
-                    .when(color == selected, |d| {
-                        d.border_2().border_color(colors.focus_ring)
-                    })
-                    .on_click(move |_, _, app| {
-                        if let Some(f) = &h {
-                            f(color, app)
-                        }
-                    }),
-            );
+            let handle = handles[i].clone().tab_index(0).tab_stop(stop == Some(i));
+            let ring = is_keyboard_focused(&handle, window);
+            let nav_handles = handles.clone();
+            let nav_enabled = enabled.clone();
+            let swatch = div()
+                .id(("color-swatch", i as u64))
+                .debug_selector(move || format!("color-swatch-{i}"))
+                .size(px(28.))
+                .rounded(px(4.))
+                .bg(gpui::rgb(
+                    (u32::from(color.red) << 16)
+                        | (u32::from(color.green) << 8)
+                        | u32::from(color.blue),
+                ))
+                .when(color == selected, |d| {
+                    d.border_2().border_color(colors.accent)
+                })
+                .track_focus(&handle)
+                .key_context("ColorPicker")
+                .fluent_tab_stop(0)
+                .cursor_pointer()
+                .on_key_down(move |ev: &KeyDownEvent, win, app| {
+                    if let Some(next) = roving::target(ev.keystroke.key.as_str(), i, &nav_enabled) {
+                        nav_handles[next].focus(win, app);
+                        app.stop_propagation();
+                    }
+                })
+                // Enter/Space arrive as gpui's keyboard click on key-up.
+                .on_click(move |_, _, app| {
+                    if let Some(f) = &h {
+                        f(color, app)
+                    }
+                });
+            sw = sw.child(focus_ring(swatch, ring, &colors, px(4.)));
         }
         div()
             .id(self.id.clone())

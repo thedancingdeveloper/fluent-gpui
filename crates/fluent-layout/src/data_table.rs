@@ -6,6 +6,7 @@ use crate::{
     virtual_list::VirtualList,
 };
 use fluent_core::{ThemeProvider as _, TruncateExt as _};
+use fluent_primitives::FluentFocus as _;
 use gpui::{
     div, prelude::*, px, App, ClickEvent, IntoElement, KeyDownEvent, RenderOnce, Role,
     SharedString, Window,
@@ -381,6 +382,9 @@ impl RenderOnce for DataTable {
                 .collect::<Vec<f32>>()
         });
         let current_widths = widths.read(cx).clone();
+        // The grid is one Tab stop; the active row is tracked by the selection.
+        let focus = crate::roving::container_handle(window, cx, &"data-table".into());
+        let ring = fluent_primitives::is_keyboard_focused(&focus, window);
         let theme = cx.theme();
         let colors = theme.colors.clone();
         let spacing = theme.spacing;
@@ -442,7 +446,8 @@ impl RenderOnce for DataTable {
             .role(Role::Grid)
             .aria_row_count(rows.len() + 1)
             .aria_column_count(self.columns.len())
-            .tab_index(0)
+            .track_focus(&focus)
+            .fluent_tab_stop(0)
             .key_context("DataTable")
             .on_key_down(move |ev: &KeyDownEvent, window, app| {
                 if key_row_ids.is_empty() {
@@ -495,6 +500,7 @@ impl RenderOnce for DataTable {
             .flex()
             .flex_col()
             .w_full()
+            .h_full()
             .border_1()
             .border_color(colors.stroke_neutral_subtle)
             .rounded(px(theme.radii.md))
@@ -694,7 +700,17 @@ impl RenderOnce for DataTable {
                 .row_height(components.list_item_height)
                 .reveal(selected_index),
         );
-        root.child(body)
+        // The ring goes on an unclipped wrapper: the table itself is
+        // `overflow_hidden`, which would cut off a ring drawn on it.
+        fluent_primitives::focus_ring(
+            div()
+                .id("data-table-frame")
+                .w_full()
+                .child(root.child(body)),
+            ring,
+            &colors,
+            px(theme.radii.md),
+        )
     }
 }
 
@@ -774,6 +790,29 @@ mod tests {
         assert_eq!(selected(&log).as_deref(), Some("r0"));
         cx.type_keys("enter");
         assert_eq!(log.borrow().activated, vec![SharedString::from("r0")]);
+    }
+
+    #[gpui::test]
+    fn tab_reaches_the_grid_and_keys_work_without_a_click(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(Log::default()));
+        let (_host, cx) = open_fluent_test_window(cx, |_, _| Host(log.clone()));
+        crate::roving::test_support::tab(cx, 1);
+        cx.type_keys("down");
+        assert_eq!(selected(&log).as_deref(), Some("r0"));
+    }
+
+    #[gpui::test]
+    fn grid_ring_for_keyboard_focus_only(cx: &mut TestAppContext) {
+        use crate::roving::test_support::{outer_ring_quads, tab};
+        let log = Rc::new(RefCell::new(Log::default()));
+        let (_host, cx) = open_fluent_test_window(cx, |_, _| Host(log.clone()));
+        assert_eq!(outer_ring_quads(cx), 0, "nothing focused");
+        tab(cx, 1);
+        cx.type_keys("down"); // a key press switches to keyboard modality
+        assert_eq!(outer_ring_quads(cx), 1, "keyboard focus draws the ring");
+        cx.click_selector("data-table");
+        cx.update(|window, app| window.draw(app).clear(app));
+        assert_eq!(outer_ring_quads(cx), 0, "mouse focus draws no ring");
     }
 
     /// Host that sorts through `on_sort` and keeps a keyed multi-selection fed by click modifiers.

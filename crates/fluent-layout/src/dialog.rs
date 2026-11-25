@@ -1,6 +1,6 @@
 use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
-use fluent_primitives::{ButtonAppearance, ButtonSize, IconButton};
+use fluent_primitives::{Button, ButtonAppearance, ButtonSize, IconButton};
 use gpui::{
     div, prelude::*, px, AnyElement, App, ClickEvent, IntoElement, RenderOnce, SharedString, Window,
 };
@@ -104,54 +104,26 @@ impl RenderOnce for Dialog {
         let colors = theme.colors.clone();
         let spacing = theme.spacing;
         let typography = theme.typography;
-        let radii = theme.radii;
-        let components = theme.components;
 
         let mut actions = div().flex().flex_row().justify_end().gap(px(spacing.sm));
 
         for (idx, action) in self.actions.into_iter().enumerate() {
-            let bg = if action.primary {
-                colors.accent
-            } else {
-                colors.neutral
-            };
-            let hover = if action.primary {
-                colors.accent_hover
-            } else {
-                colors.neutral_hover
-            };
-            let pressed = if action.primary {
-                colors.accent_selected
-            } else {
-                colors.neutral_selected
-            };
-            let fg = if action.primary {
-                colors.on_accent
-            } else {
-                colors.on_neutral
-            };
             let handler = action.on_click;
+            // The shared `Button` is a Tab stop with the keyboard focus ring and
+            // Enter/Space activation; the wrapper keeps the test selector.
             actions = actions.child(
                 div()
-                    .id(("dialog-action", idx as u64))
-                    .debug_selector(|| format!("dialog-action-{idx}"))
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .justify_center()
-                    .h(px(components.button_medium_height))
-                    .px(px(components.button_medium_padding_x))
-                    .rounded(px(radii.md))
-                    .bg(bg)
-                    .border_1()
-                    .border_color(colors.stroke_neutral)
-                    .text_ramp(&typography.body)
-                    .text_color(fg)
-                    .cursor_pointer()
-                    .hover(move |s| s.bg(hover))
-                    .active(move |s| s.bg(pressed))
-                    .on_click(move |ev, win, app| handler(ev, win, app))
-                    .child(action.label),
+                    .debug_selector(move || format!("dialog-action-{idx}"))
+                    .child(
+                        Button::new(("dialog-action", idx as u64))
+                            .label(action.label)
+                            .appearance(if action.primary {
+                                ButtonAppearance::Primary
+                            } else {
+                                ButtonAppearance::Secondary
+                            })
+                            .on_click(move |ev, win, app| handler(ev, win, app)),
+                    ),
             );
         }
 
@@ -193,5 +165,88 @@ impl RenderOnce for Dialog {
 
         let motion = cx.theme().motion();
         fluent_core::popup_motion_surface("dialog-motion", false, motion, root.child(actions))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{cell::Cell, rc::Rc};
+
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Context, Render, TestAppContext};
+
+    use super::*;
+    use crate::roving::test_support::{outer_ring_quads, press, tab};
+    use crate::ModalHost;
+
+    struct Root(gpui::Entity<ModalHost>);
+
+    impl Render for Root {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div().relative().size_full().child(self.0.clone())
+        }
+    }
+
+    /// Opens a dialog with a close button and two actions.
+    fn open(
+        cx: &mut TestAppContext,
+        dismissible: bool,
+    ) -> (Rc<Cell<usize>>, &mut gpui::VisualTestContext) {
+        let (_, cx) = open_fluent_test_window(cx, |_, cx| {
+            ModalStack::init(cx);
+            Root(cx.new(ModalHost::new))
+        });
+        let fired = Rc::new(Cell::new(0));
+        let f = fired.clone();
+        cx.update(|_, cx| {
+            Dialog::new("D")
+                .dismissible(dismissible)
+                .action(DialogAction::new("Go", move |_, _, _| f.set(f.get() + 1)).primary(true))
+                .action(DialogAction::new("Other", |_, _, _| {}))
+                .show(ModalSize::Fit, cx);
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+        (fired, cx)
+    }
+
+    fn is_open(cx: &mut gpui::VisualTestContext) -> bool {
+        cx.update(|_, cx| !ModalStack::is_empty(cx))
+    }
+
+    #[gpui::test]
+    fn close_button_is_a_tab_stop_that_enter_activates(cx: &mut TestAppContext) {
+        let (_, cx) = open(cx, true);
+        // The close button comes first in Tab order.
+        tab(cx, 1);
+        press(cx, "enter");
+        assert!(!is_open(cx), "Enter on the focused close button dismisses");
+    }
+
+    #[gpui::test]
+    fn actions_are_tab_stops_that_activate_once(cx: &mut TestAppContext) {
+        let (fired, cx) = open(cx, true);
+        tab(cx, 2); // close button, then the first action
+        press(cx, "enter");
+        assert_eq!(fired.get(), 1, "Enter activates exactly once");
+        press(cx, "space");
+        assert_eq!(fired.get(), 2, "Space activates");
+        assert!(is_open(cx), "an action does not dismiss");
+    }
+
+    #[gpui::test]
+    fn mouse_focus_draws_no_ring_on_dialog_controls(cx: &mut TestAppContext) {
+        let (_, cx) = open(cx, true);
+        cx.click_selector("dialog-action-1");
+        cx.update(|window, app| window.draw(app).clear(app));
+        assert_eq!(outer_ring_quads(cx), 0);
+    }
+
+    #[gpui::test]
+    fn undismissible_dialog_has_no_close_stop(cx: &mut TestAppContext) {
+        let (fired, cx) = open(cx, false);
+        tab(cx, 1); // straight to the first action
+        press(cx, "enter");
+        assert_eq!(fired.get(), 1);
     }
 }

@@ -1,11 +1,11 @@
 use fluent_core::{LayoutDirection, TextRampExt as _, Theme, ThemeProvider as _, TruncateExt as _};
 use gpui::{
-    div, prelude::*, px, svg, ClickEvent, Context, IntoElement, MouseButton, MouseDownEvent,
-    Render, Role, SharedString, Window,
+    div, prelude::*, px, svg, ClickEvent, Context, FocusHandle, IntoElement, MouseButton,
+    MouseDownEvent, Render, Role, SharedString, Window,
 };
 
 use crate::window_title::WindowTitle;
-use fluent_primitives::FluentFocus as _;
+use fluent_primitives::{focus_ring, is_keyboard_focused, FluentFocus as _};
 
 /// Pixel threshold below which two left-button presses on the title bar are
 /// treated as a double-click that maximizes / restores the window.
@@ -25,6 +25,8 @@ pub struct TitleBar {
     pub show_controls: bool,
     follow_window_title: bool,
     last_press_ms: u64,
+    /// Focus handles of the minimize, maximize and close buttons, in that order.
+    caption_focus: [FocusHandle; 3],
 }
 
 impl TitleBar {
@@ -41,6 +43,7 @@ impl TitleBar {
             show_controls: true,
             follow_window_title: false,
             last_press_ms: 0,
+            caption_focus: [cx.focus_handle(), cx.focus_handle(), cx.focus_handle()],
         }
     }
 
@@ -82,7 +85,7 @@ impl TitleBar {
 }
 
 impl Render for TitleBar {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
         let colors = theme.colors.clone();
         let spacing = theme.spacing;
@@ -137,9 +140,16 @@ impl Render for TitleBar {
                 window.remove_window();
             });
 
-        let min_key = caption_key(|window| window.minimize_window());
-        let max_key = caption_key(|window| window.zoom_window());
-        let close_key = caption_key(|window| window.remove_window());
+        // Each caption button is its own Tab stop. A tracked handle carries its
+        // own tab settings; Enter/Space arrive as gpui's keyboard click.
+        let [min_focus, max_focus, close_focus] = self
+            .caption_focus
+            .clone()
+            .map(|handle| handle.tab_index(0).tab_stop(true));
+        let ring = |handle: &FocusHandle| is_keyboard_focused(handle, window);
+        let (min_ring, max_ring, close_ring) =
+            (ring(&min_focus), ring(&max_focus), ring(&close_focus));
+        let ring_radius = px(0.0);
 
         // The drag area is only the title text, NOT the window control buttons.
         // Putting on_mouse_down on the full bar would intercept clicks on min/max/close.
@@ -192,13 +202,15 @@ impl Render for TitleBar {
                 .flex()
                 .flex_row()
                 .h_full()
-                .child(
+                .child(focus_ring(
                     div()
                         .id("titlebar-min")
+                        .debug_selector(|| "titlebar-min".into())
                         .role(Role::Button)
                         .aria_label("Minimize")
-                        .fluent_focus(Some(0), colors.focus_ring)
-                        .on_key_down(min_key)
+                        .track_focus(&min_focus)
+                        .key_context("CaptionButton")
+                        .fluent_tab_stop(0)
                         .w(px(components.title_bar_button_width))
                         .h_full()
                         .flex()
@@ -214,14 +226,19 @@ impl Render for TitleBar {
                                 .size(px(components.title_bar_glyph_size))
                                 .text_color(fg),
                         ),
-                )
-                .child(
+                    min_ring,
+                    &colors,
+                    ring_radius,
+                ))
+                .child(focus_ring(
                     div()
                         .id("titlebar-max")
+                        .debug_selector(|| "titlebar-max".into())
                         .role(Role::Button)
                         .aria_label("Maximize")
-                        .fluent_focus(Some(0), colors.focus_ring)
-                        .on_key_down(max_key)
+                        .track_focus(&max_focus)
+                        .key_context("CaptionButton")
+                        .fluent_tab_stop(0)
                         .w(px(components.title_bar_button_width))
                         .h_full()
                         .flex()
@@ -237,14 +254,19 @@ impl Render for TitleBar {
                                 .size(px(components.title_bar_glyph_size))
                                 .text_color(fg),
                         ),
-                )
-                .child(
+                    max_ring,
+                    &colors,
+                    ring_radius,
+                ))
+                .child(focus_ring(
                     div()
                         .id("titlebar-close")
+                        .debug_selector(|| "titlebar-close".into())
                         .role(Role::Button)
                         .aria_label("Close")
-                        .fluent_focus(Some(0), colors.focus_ring)
-                        .on_key_down(close_key)
+                        .track_focus(&close_focus)
+                        .key_context("CaptionButton")
+                        .fluent_tab_stop(0)
                         .w(px(components.title_bar_button_width))
                         .h_full()
                         .flex()
@@ -260,19 +282,11 @@ impl Render for TitleBar {
                                 .size(px(components.title_bar_glyph_size))
                                 .text_color(fg),
                         ),
-                ),
+                    close_ring,
+                    &colors,
+                    ring_radius,
+                )),
         )
-    }
-}
-
-/// Key handler for a caption button: Enter and Space activate it.
-fn caption_key(
-    act: impl Fn(&mut Window) + 'static,
-) -> impl Fn(&gpui::KeyDownEvent, &mut Window, &mut gpui::App) + 'static {
-    move |ev, window, _| {
-        if matches!(ev.keystroke.key.as_str(), "enter" | "space") {
-            act(window);
-        }
     }
 }
 
@@ -302,5 +316,71 @@ mod tests {
             seen[0] != seen[1] && seen[1] != seen[2] && seen[0] != seen[2],
             "Tab must visit three distinct caption buttons: {seen:?}"
         );
+    }
+
+    fn press(cx: &mut gpui::VisualTestContext, key: &'static str) {
+        use gpui::InputEvent as _;
+        cx.type_keys(key);
+        let keystroke = gpui::Keystroke::parse(key).expect("valid test keystroke");
+        cx.update(|window, app| {
+            window.dispatch_event(
+                gpui::KeyUpEvent {
+                    keystroke,
+                    scan_code: None,
+                }
+                .to_platform_input(),
+                app,
+            );
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+    }
+
+    fn outer_ring_quads(cx: &mut gpui::VisualTestContext) -> usize {
+        cx.update(|window, app| window.draw(app).clear(app));
+        cx.update(|window, app| {
+            let outer = app.theme().colors.stroke_focus_outer;
+            let mut rings: Vec<String> = window
+                .painted_quads()
+                .iter()
+                .filter(|q| q.border_color == outer)
+                .map(|q| format!("{:?}", q.bounds))
+                .collect();
+            rings.sort();
+            rings.dedup();
+            rings.len()
+        })
+    }
+
+    #[gpui::test]
+    fn caption_button_ring_for_keyboard_focus_only(cx: &mut TestAppContext) {
+        let (_bar, vcx) = open_fluent_test_window(cx, |_, cx| TitleBar::new(cx, "App"));
+        vcx.update(|_, app| fluent_primitives::install_focus_keybindings(app));
+        vcx.update(|window, app| window.draw(app).clear(app));
+        assert_eq!(outer_ring_quads(vcx), 0, "nothing focused");
+        vcx.update(|window, app| window.focus_next(app));
+        press(vcx, "tab");
+        assert_eq!(outer_ring_quads(vcx), 1, "keyboard focus draws the ring");
+        // Mouse-down focuses the button without activating it (no mouse-up).
+        let centre = vcx
+            .debug_bounds("titlebar-min")
+            .expect("min button")
+            .center();
+        vcx.simulate_mouse_down(centre, gpui::MouseButton::Left, gpui::Modifiers::none());
+        vcx.update(|window, app| window.draw(app).clear(app));
+        assert!(vcx.update(|window, app| window.focused(app).is_some()));
+        assert_eq!(outer_ring_quads(vcx), 0, "mouse focus draws no ring");
+    }
+
+    /// The test platform's `minimize` is `unimplemented!()`, so reaching it
+    /// proves Enter activated the focused minimize button.
+    #[gpui::test]
+    #[should_panic(expected = "not implemented")]
+    fn enter_on_the_focused_minimize_button_activates_it(cx: &mut TestAppContext) {
+        let (_bar, vcx) = open_fluent_test_window(cx, |_, cx| TitleBar::new(cx, "App"));
+        vcx.update(|_, app| fluent_primitives::install_focus_keybindings(app));
+        vcx.update(|window, app| window.draw(app).clear(app));
+        vcx.update(|window, app| window.focus_next(app)); // minimize
+        press(vcx, "enter");
     }
 }
