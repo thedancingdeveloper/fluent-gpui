@@ -83,11 +83,15 @@ pub enum ButtonIconPosition {
 
 /// A Fluent 2-styled push button with optional icon.
 ///
-/// ```ignore
-/// Button::new("connect")
+/// ```no_run
+/// use fluent_primitives::{Button, ButtonAppearance};
+///
+/// let connect = Button::new("connect")
 ///     .label("Connect")
 ///     .appearance(ButtonAppearance::Accent)
-///     .on_click(|_, _, cx| cx.dispatch_action(Connect))
+///     .on_click(|_event, _window, _cx| {
+///         // Start the connection here.
+///     });
 /// ```
 #[allow(clippy::type_complexity)]
 #[derive(IntoElement)]

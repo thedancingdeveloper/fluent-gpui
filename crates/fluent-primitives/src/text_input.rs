@@ -12,6 +12,21 @@ use gpui::{
 use unicode_segmentation::UnicodeSegmentation as _;
 
 /// A single-line editable text input with focus, selection, clipboard, and IME support.
+///
+/// Build it, then wrap it in an entity with `cx.new(|_| input)` so it can hold focus.
+///
+/// ```no_run
+/// use fluent_primitives::TextInput;
+///
+/// let input = TextInput::new()
+///     .accessible_name("Host name")
+///     .placeholder("example.com")
+///     .on_change(|text, _cx| println!("typing: {text}"))
+///     .on_submit(|text, _cx| {
+///         println!("submitted: {text}");
+///         true
+///     });
+/// ```
 #[allow(clippy::type_complexity)]
 pub struct TextInput {
     value: String,

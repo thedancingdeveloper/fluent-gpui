@@ -194,6 +194,19 @@ impl DataRow {
 }
 
 /// A simple Fluent-style data table for dense business-app lists.
+///
+/// ```no_run
+/// use fluent_layout::{DataColumn, DataRow, DataTable};
+///
+/// let table = DataTable::new()
+///     .column(DataColumn::new("name", "Name").width(200.0).sortable(true))
+///     .column(DataColumn::new("host", "Host"))
+///     .row(DataRow::new("1", ["Build server", "10.0.0.5"]))
+///     .row(DataRow::new("2", ["Gateway", "10.0.0.1"]))
+///     .selected("1")
+///     .empty_message("No connections")
+///     .on_row_select(|id, _window, _cx| println!("selected row {id}"));
+/// ```
 #[allow(clippy::type_complexity)]
 #[derive(IntoElement)]
 pub struct DataTable {

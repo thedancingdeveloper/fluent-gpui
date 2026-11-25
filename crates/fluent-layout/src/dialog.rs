@@ -9,6 +9,19 @@ use std::rc::Rc;
 use crate::{ModalSize, ModalStack};
 
 /// Fluent dialog content with title/body/actions layout.
+///
+/// ```no_run
+/// use fluent_layout::{Dialog, DialogAction, ModalSize};
+/// use gpui::{div, prelude::*, App};
+///
+/// fn confirm_delete(cx: &mut App) {
+///     Dialog::new("Delete connection?")
+///         .body(div().child("This cannot be undone."))
+///         .action(DialogAction::new("Cancel", |_event, _window, _cx| {}))
+///         .action(DialogAction::new("Delete", |_event, _window, _cx| {}).primary(true))
+///         .show(ModalSize::Fixed(420.0, 180.0), cx);
+/// }
+/// ```
 #[derive(IntoElement)]
 pub struct Dialog {
     title: SharedString,
