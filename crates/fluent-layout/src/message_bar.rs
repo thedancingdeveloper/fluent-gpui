@@ -1,6 +1,7 @@
 use fluent_core::{TextRampExt as _, ThemeProvider as _, TruncateExt as _};
 use gpui::{
-    div, prelude::*, px, svg, App, ClickEvent, IntoElement, RenderOnce, Role, SharedString, Window,
+    div, prelude::*, px, svg, App, ClickEvent, ElementId, IntoElement, RenderOnce, Role,
+    SharedString, Window,
 };
 
 type DismissHandler = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
@@ -22,6 +23,7 @@ pub enum MessageIntent {
 /// Inline status message surface.
 #[derive(IntoElement)]
 pub struct MessageBar {
+    id: ElementId,
     intent: MessageIntent,
     title: Option<SharedString>,
     message: SharedString,
@@ -33,12 +35,21 @@ impl MessageBar {
     /// Public API item.
     pub fn new(message: impl Into<SharedString>) -> Self {
         Self {
+            id: "message-bar".into(),
             intent: MessageIntent::Info,
             title: None,
             message: message.into(),
             on_dismiss: None,
             action: None,
         }
+    }
+
+    /// Sets the element id, which is also the id of the bar's accessibility node.
+    /// Give each message bar that shares a parent its own id; two with the same
+    /// id collide in the accessibility tree. Defaults to `"message-bar"`.
+    pub fn id(mut self, id: impl Into<ElementId>) -> Self {
+        self.id = id.into();
+        self
     }
 
     /// Public API item.
@@ -120,7 +131,7 @@ impl RenderOnce for MessageBar {
             _ => Role::Status,
         };
         let mut root = div()
-            .id("message-bar")
+            .id(self.id)
             .role(role)
             .flex()
             .flex_row()
@@ -186,5 +197,33 @@ impl RenderOnce for MessageBar {
         }
 
         root
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{div, Context, Render, TestAppContext};
+
+    struct TwoHost;
+
+    impl Render for TwoHost {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div()
+                .flex()
+                .flex_col()
+                .child(MessageBar::new("One").id("bar-a"))
+                .child(MessageBar::new("Two").id("bar-b").on_dismiss(|_, _, _| {}))
+        }
+    }
+
+    /// Two instances in one window used to trip the duplicate accessibility
+    /// node id assertion (debug builds); in-process, no real window or GPU.
+    #[gpui::test]
+    fn two_message_bars_with_distinct_ids_render_in_one_window(cx: &mut TestAppContext) {
+        let (_, cx) = open_fluent_test_window(cx, |_, _| TwoHost);
+        let snapshot = cx.accessibility_snapshot();
+        assert!(!snapshot.is_empty());
     }
 }

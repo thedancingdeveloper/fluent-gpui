@@ -45,6 +45,14 @@ impl ProgressBar {
         }
     }
 
+    /// Sets the element id, which is also the id of the bar's accessibility node.
+    /// Defaults to the caller's source location, so two bars built at the same
+    /// call site (in a loop) need distinct ids.
+    pub fn id(mut self, id: impl Into<ElementId>) -> Self {
+        self.id = id.into();
+        self
+    }
+
     /// Animate a segment across the track instead of showing a fixed value.
     pub fn indeterminate(mut self) -> Self {
         self.indeterminate = true;
@@ -178,6 +186,32 @@ impl RenderOnce for ProgressBar {
 
 #[cfg(test)]
 mod tests {
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{div, Context, Render, TestAppContext};
+
+    struct TwoHost;
+
+    impl Render for TwoHost {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            // Both bars come from one call site, so the default caller-location
+            // id would be identical.
+            let mut column = div().flex().flex_col();
+            for n in 0..2_usize {
+                column = column.child(ProgressBar::new(0.5).id(("progress", n)));
+            }
+            column
+        }
+    }
+
+    /// Two instances in one window used to trip the duplicate accessibility
+    /// node id assertion (debug builds); in-process, no real window or GPU.
+    #[gpui::test]
+    fn two_progress_bars_with_distinct_ids_render_in_one_window(cx: &mut TestAppContext) {
+        let (_, cx) = open_fluent_test_window(cx, |_, _| TwoHost);
+        let snapshot = cx.accessibility_snapshot();
+        assert!(!snapshot.is_empty());
+    }
+
     use super::*;
 
     #[test]
