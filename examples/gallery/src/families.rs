@@ -6,14 +6,16 @@
 //! family can be checked in every variant without leaving the page.
 
 use crate::pages::{InputsPage, LayoutPage, StatusPage};
+use crate::pages_more::{DataDisplayPage, MenusPage, OverlaysPage};
+use fluent_core::gpui::SharedString;
 use fluent_core::gpui::{
     div, prelude::*, px, AnyElement, AnyView, App, Context, Entity, FocusHandle, IntoElement,
     Render, ScrollHandle, Window,
 };
 use fluent_core::{LayoutDirection, Theme, ThemeProvider as _};
 use fluent_layout::{
-    drag_source, drop_target, DragOperation, DropPolicy, GroupedVirtualList, VirtualList,
-    VirtualListGroup,
+    drag_source, drop_target, DragOperation, DropPolicy, GroupedVirtualList, SettingsNav,
+    SettingsNavItem, SettingsNavSection, VirtualList, VirtualListGroup,
 };
 use fluent_primitives::{
     Button, ButtonAppearance, ButtonIconPosition, ButtonShape, ButtonSize, Checkbox, CheckboxState,
@@ -257,24 +259,134 @@ pub enum Family {
     Text,
     StatusAndFeedback,
     DataAndLists,
+    DataDisplay,
     DateAndInput,
     Layout,
+    Overlays,
+    Menus,
     Media,
     ThemeAndDirection,
 }
 
 impl Family {
-    pub const ALL: [Family; 9] = [
+    pub const ALL: [Family; 12] = [
         Family::ButtonsAndLinks,
         Family::Selection,
         Family::Text,
         Family::StatusAndFeedback,
         Family::DataAndLists,
+        Family::DataDisplay,
         Family::DateAndInput,
         Family::Layout,
+        Family::Overlays,
+        Family::Menus,
         Family::Media,
         Family::ThemeAndDirection,
     ];
+
+    /// The navigation id of this family: its variant name.
+    pub fn id(self) -> String {
+        format!("{self:?}")
+    }
+
+    /// The family whose navigation id is `id`.
+    pub fn from_id(id: &str) -> Option<Family> {
+        Family::ALL.into_iter().find(|f| f.id() == id)
+    }
+
+    /// Where this family's item sits in the sidebar: (section index, item index).
+    #[cfg(test)]
+    pub fn nav_position(self) -> (usize, usize) {
+        let mut sections: Vec<(&'static str, usize)> = Vec::new();
+        let mut position = (0, 0);
+        for family in Family::ALL {
+            let si = match sections.iter().position(|(t, _)| *t == family.section()) {
+                Some(si) => si,
+                None => {
+                    sections.push((family.section(), 0));
+                    sections.len() - 1
+                }
+            };
+            if family == self {
+                position = (si, sections[si].1);
+            }
+            sections[si].1 += 1;
+        }
+        position
+    }
+
+    /// The sidebar section this family sits in.
+    pub fn section(self) -> &'static str {
+        match self {
+            Family::ButtonsAndLinks
+            | Family::Selection
+            | Family::Text
+            | Family::DateAndInput
+            | Family::StatusAndFeedback => "Primitives",
+            Family::Layout | Family::DataAndLists | Family::DataDisplay => "Layout and data",
+            Family::Overlays | Family::Menus => "Overlays and menus",
+            Family::Media | Family::ThemeAndDirection => "Other",
+        }
+    }
+
+    /// The `scripts/screenshots.sh` component names that capture this family.
+    ///
+    /// The shell chrome (title bar, tab strip, ribbon) is live around every
+    /// page, and the sidebar is the settings nav, so those are listed under
+    /// Layout. A test keeps these in step with the screenshot script and the
+    /// screenshots binary.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub fn screenshots(self) -> &'static [&'static str] {
+        match self {
+            Family::ButtonsAndLinks => &["button", "icon-button", "toggle-button"],
+            Family::Selection => &["checkbox", "switch", "radio-group", "chip"],
+            Family::Text => &["label", "badge", "divider", "card", "section-header"],
+            Family::StatusAndFeedback => &[
+                "progress-bar",
+                "spinner",
+                "skeleton",
+                "connection-badge",
+                "message-bar",
+                "states",
+            ],
+            Family::DataAndLists => &[],
+            Family::DataDisplay => &["data-table", "selectable-list", "document-viewer"],
+            Family::DateAndInput => &[
+                "text-input",
+                "textarea",
+                "searchbox",
+                "dropdown",
+                "combobox",
+                "field",
+                "token-input",
+                "date-time-picker",
+            ],
+            Family::Layout => &[
+                "toolbar",
+                "tree",
+                "tab-strip",
+                "title-bar",
+                "ribbon",
+                "settings-nav",
+            ],
+            Family::Overlays => &[
+                "toast",
+                "dialog",
+                "flyout",
+                "popover",
+                "tooltip",
+                "suggestion-popover",
+            ],
+            Family::Menus => &[
+                "context-menu",
+                "command-palette",
+                "menu-bar-open",
+                "submenu-open",
+            ],
+            Family::Media => &["avatar", "app-dot"],
+            Family::ThemeAndDirection => &[],
+        }
+    }
 
     pub fn title(self) -> &'static str {
         match self {
@@ -283,8 +395,11 @@ impl Family {
             Family::Text => "Text and labels",
             Family::StatusAndFeedback => "Status and feedback",
             Family::DataAndLists => "Data and lists",
+            Family::DataDisplay => "Data display",
             Family::DateAndInput => "Inputs",
             Family::Layout => "Layout components",
+            Family::Overlays => "Overlays",
+            Family::Menus => "Menus and commands",
             Family::Media => "Terminal and video",
             Family::ThemeAndDirection => "Theme and direction",
         }
@@ -297,6 +412,9 @@ pub struct DemoViews {
     pub data: Vec<AnyView>,
     pub date_input: Vec<AnyView>,
     pub layout: Vec<AnyView>,
+    pub data_display: Vec<AnyView>,
+    pub overlays: Vec<AnyView>,
+    pub menus: Vec<AnyView>,
     pub media: Vec<AnyView>,
     pub theme: Vec<AnyView>,
 }
@@ -345,6 +463,9 @@ impl DemoViews {
         let inputs_page = cx.new(InputsPage::new);
         let status_page = cx.new(|_| StatusPage);
         let layout_page = cx.new(|_| LayoutPage);
+        let data_display_page = cx.new(DataDisplayPage::new);
+        let overlays_page = cx.new(OverlaysPage::new);
+        let menus_page = cx.new(MenusPage::new);
         Self {
             status: vec![status_page.into()],
             data: vec![
@@ -354,6 +475,9 @@ impl DemoViews {
             ],
             date_input: vec![inputs_page.into()],
             layout: vec![layout_page.into()],
+            data_display: vec![data_display_page.into()],
+            overlays: vec![overlays_page.into()],
+            menus: vec![menus_page.into()],
             media: vec![video_page.into(), terminal_page.into()],
             theme: vec![input_page.into(), expander_page.into()],
         }
@@ -370,6 +494,23 @@ impl FamilyHost {
     pub fn set_active(&mut self, family: Family, cx: &mut Context<Self>) {
         self.active = family;
         cx.notify();
+    }
+
+    /// The first page view of `family`, for tests that drive a page directly.
+    #[cfg(test)]
+    pub fn page_view(&self, family: Family) -> Option<AnyView> {
+        let views = match family {
+            Family::Overlays => &self.demos.overlays,
+            Family::Menus => &self.demos.menus,
+            _ => return None,
+        };
+        views.first().cloned()
+    }
+
+    /// The family page being shown.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub fn active(&self) -> Family {
+        self.active
     }
 
     pub fn new(demos: DemoViews) -> Self {
@@ -617,6 +758,9 @@ impl Render for FamilyHost {
             Family::DataAndLists => Self::views(&self.demos.data).into_any_element(),
             Family::DateAndInput => Self::pages(&self.demos.date_input).into_any_element(),
             Family::Layout => Self::pages(&self.demos.layout).into_any_element(),
+            Family::DataDisplay => Self::pages(&self.demos.data_display).into_any_element(),
+            Family::Overlays => Self::pages(&self.demos.overlays).into_any_element(),
+            Family::Menus => Self::pages(&self.demos.menus).into_any_element(),
             Family::Media => Self::views(&self.demos.media).into_any_element(),
             Family::ThemeAndDirection => Self::views(&self.demos.theme).into_any_element(),
         };
@@ -664,38 +808,26 @@ impl Render for FamilyHost {
     }
 }
 
-/// Sidebar navigation: one button per family.
-pub struct FamilyNav {
-    host: Entity<FamilyHost>,
-}
-
-impl FamilyNav {
-    pub fn new(host: Entity<FamilyHost>) -> Self {
-        Self { host }
+/// Sidebar navigation: a settings nav with one item per family, grouped in
+/// sections. Selecting an item shows that family's page.
+pub fn gallery_nav(host: Entity<FamilyHost>, cx: &mut Context<SettingsNav>) -> SettingsNav {
+    let mut sections: Vec<SettingsNavSection> = Vec::new();
+    for family in Family::ALL {
+        let item = SettingsNavItem::new(family.id(), family.title());
+        match sections
+            .iter_mut()
+            .find(|s| s.title.as_ref() == family.section())
+        {
+            Some(section) => section.items.push(item),
+            None => sections.push(SettingsNavSection::new(family.section()).item(item)),
+        }
     }
-}
-
-impl Render for FamilyNav {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let colors = cx.theme().colors.clone();
-        let active = self.host.read(cx).active;
-        div()
-            .size_full()
-            .p_2()
-            .flex()
-            .flex_col()
-            .gap_1()
-            .bg(colors.surface)
-            .children(Family::ALL.iter().map(|&family| {
-                let host = self.host.clone();
-                let nav = cx.entity();
-                ToggleButton::new(format!("nav-{family:?}"))
-                    .label(family.title())
-                    .selected(family == active)
-                    .on_click(move |_, _, _, cx| {
-                        host.update(cx, |h, cx| h.set_active(family, cx));
-                        nav.update(cx, |_, cx| cx.notify());
-                    })
-            }))
-    }
+    let nav = sections
+        .into_iter()
+        .fold(SettingsNav::new(cx), |nav, section| nav.section(section));
+    nav.on_select(move |id: SharedString, cx| {
+        if let Some(family) = Family::from_id(&id) {
+            host.update(cx, |h, cx| h.set_active(family, cx));
+        }
+    })
 }
