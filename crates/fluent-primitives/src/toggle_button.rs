@@ -118,24 +118,27 @@ impl RenderOnce for ToggleButton {
 
         let radius = px(radii.md);
         let components = &theme.components;
-        let (height, px_val, gap, ramp) = match self.size {
+        let (height, px_val, gap, ramp, icon_px) = match self.size {
             ButtonSize::Normal => (
                 components.button_medium_height,
                 components.button_medium_padding_x,
                 components.button_medium_gap,
                 typography.body,
+                components.button_medium_icon_size,
             ),
             ButtonSize::Compact => (
                 components.button_small_height,
                 components.button_small_padding_x,
                 components.button_small_gap,
                 typography.caption,
+                components.button_small_icon_size,
             ),
             ButtonSize::Large => (
                 components.button_large_height,
                 components.button_large_padding_x,
                 components.button_medium_gap,
                 typography.subtitle,
+                components.button_large_icon_size,
             ),
         };
 
@@ -147,6 +150,7 @@ impl RenderOnce for ToggleButton {
         let label = self.label;
 
         let debug_id = self.id.to_string();
+        let icon_debug_id = debug_id.clone();
         let mut el = div()
             .id(self.id)
             .debug_selector(move || debug_id)
@@ -187,8 +191,13 @@ impl RenderOnce for ToggleButton {
         }
 
         if let Some(icon_path) = icon {
-            let icon_size = px(16.0);
-            el = el.child(gpui::svg().path(icon_path).size(icon_size).text_color(fg));
+            el = el.child(
+                gpui::svg()
+                    .debug_selector(move || format!("{icon_debug_id}-icon"))
+                    .path(icon_path)
+                    .size(px(icon_px))
+                    .text_color(fg),
+            );
         }
 
         if let Some(text) = label {
@@ -208,6 +217,7 @@ mod tests {
     use gpui::{Context, Entity, InputEvent as _, KeyUpEvent, Keystroke, Render, TestAppContext};
 
     use super::*;
+    use crate::button::Button;
 
     struct Host {
         selected: bool,
@@ -311,6 +321,58 @@ mod tests {
                     )
                 ]
             );
+        }
+    }
+
+    struct Probe;
+
+    impl Render for Probe {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let mut col = div().flex().flex_col().w(px(300.));
+            for (j, size) in [ButtonSize::Compact, ButtonSize::Normal, ButtonSize::Large]
+                .into_iter()
+                .enumerate()
+            {
+                col = col.child(
+                    ToggleButton::new(format!("t-{j}"))
+                        .label("Pin")
+                        .icon("icons/none.svg")
+                        .size(size),
+                );
+                col = col.child(Button::new(format!("b-{j}")).label("Pin").size(size));
+            }
+            col
+        }
+    }
+
+    #[gpui::test]
+    fn height_and_icon_size_follow_tokens_and_match_button(cx: &mut TestAppContext) {
+        let (_, vcx) = open_fluent_test_window(cx, |_, _| Probe);
+        vcx.update(|window, app| window.draw(app).clear(app));
+        let t = vcx.update(|_, app| app.theme().components);
+        let heights = [
+            t.button_small_height,
+            t.button_medium_height,
+            t.button_large_height,
+        ];
+        let icons = [
+            t.button_small_icon_size,
+            t.button_medium_icon_size,
+            t.button_large_icon_size,
+        ];
+        for j in 0..3 {
+            let toggle = vcx
+                .selector_bounds(Box::leak(format!("t-{j}").into_boxed_str()))
+                .unwrap();
+            let button = vcx
+                .selector_bounds(Box::leak(format!("b-{j}").into_boxed_str()))
+                .unwrap();
+            let icon = vcx
+                .selector_bounds(Box::leak(format!("t-{j}-icon").into_boxed_str()))
+                .unwrap();
+            assert_eq!(f32::from(toggle.size.height), heights[j]);
+            assert_eq!(toggle.size.height, button.size.height);
+            assert_eq!(f32::from(icon.size.width), icons[j], "icon size {j}");
         }
     }
 }
