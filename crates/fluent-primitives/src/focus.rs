@@ -1,4 +1,8 @@
-use gpui::{actions, App, KeyBinding, KeyDownEvent, Window};
+use fluent_core::ColorScheme;
+use gpui::{
+    actions, div, px, App, FocusHandle, KeyBinding, KeyDownEvent, ParentElement, Pixels, Styled,
+    Window,
+};
 
 actions!(fluent_primitives, [FocusNextControl, FocusPreviousControl]);
 
@@ -31,15 +35,71 @@ pub(crate) fn handle_tab_navigation(ev: &KeyDownEvent, window: &mut Window, cx: 
     true
 }
 
+/// Whether `handle` has focus *and* the last input was the keyboard, i.e. the
+/// focus indicator should be drawn. Mouse focus must not show a ring.
+///
+/// The vendored gpui tracks the input modality itself: a key-down switches the
+/// window to keyboard modality (Tab navigation included) and a mouse-down or
+/// mouse-move switches it back, so no separate global flag is needed.
+pub fn is_keyboard_focused(handle: &FocusHandle, window: &Window) -> bool {
+    handle.is_focused(window) && window.last_input_was_keyboard()
+}
+
+/// Draws the Fluent 2 focus indicator on `el` when `keyboard_focused`: a 2px
+/// `stroke_focus_outer` ring just outside the control (rounded `radius + 2`)
+/// and a 1px `stroke_focus_inner` ring just inside its edge. The ring is an
+/// absolutely positioned, non-interactive child, so `el` gets `relative()` and
+/// any `overflow_hidden` ancestor needs 2px of headroom around `el`.
+///
+/// Compute `keyboard_focused` with [`is_keyboard_focused`].
+pub fn focus_ring<E>(el: E, keyboard_focused: bool, colors: &ColorScheme, radius: Pixels) -> E
+where
+    E: Styled + ParentElement,
+{
+    if !keyboard_focused {
+        return el;
+    }
+    el.relative().child(
+        div()
+            .absolute()
+            .top(px(-2.0))
+            .right(px(-2.0))
+            .bottom(px(-2.0))
+            .left(px(-2.0))
+            .rounded(radius + px(2.0))
+            .border_2()
+            .border_color(colors.stroke_focus_outer)
+            .child(
+                div()
+                    .size_full()
+                    .rounded(radius)
+                    .border_1()
+                    .border_color(colors.stroke_focus_inner),
+            ),
+    )
+}
+
 /// Shared focus behaviour for focusable primitives: places the element in the
 /// Tab order and draws the Fluent 2 focus stroke for keyboard focus only.
 /// Shared focus behaviour for focusable Fluent controls.
 pub trait FluentFocus: Sized {
     /// Adds the element to the Tab order and draws `ring` when keyboard-focused.
     fn fluent_focus(self, tab_index: Option<isize>, ring: gpui::Hsla) -> Self;
+
+    /// Adds the element to the Tab order and handles Tab / Shift-Tab, without
+    /// drawing anything. Pair it with [`focus_ring`] and a tracked
+    /// `FocusHandle` to draw the two-tone Fluent 2 ring.
+    fn fluent_tab_stop(self, tab_index: isize) -> Self;
 }
 
 impl FluentFocus for gpui::Stateful<gpui::Div> {
+    fn fluent_tab_stop(self, tab_index: isize) -> Self {
+        use gpui::InteractiveElement as _;
+        self.tab_index(tab_index)
+            .on_action(focus_next)
+            .on_action(focus_previous)
+    }
+
     fn fluent_focus(self, tab_index: Option<isize>, ring: gpui::Hsla) -> Self {
         use gpui::{point, px, BoxShadow, InteractiveElement as _, Styled as _};
         let el = match tab_index {
@@ -115,6 +175,49 @@ mod tests {
         });
         cx.run_until_parked();
         cx.update(|window, app| window.draw(app).clear(app));
+    }
+
+    struct Ringed(bool);
+
+    impl Render for Ringed {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            use fluent_core::ThemeProvider as _;
+            use gpui::{px, Styled as _};
+            let colors = cx.theme().colors.clone();
+            super::focus_ring(div().size(px(40.0)), self.0, &colors, px(4.0))
+        }
+    }
+
+    fn ring_quads(cx: &mut gpui::VisualTestContext) -> (usize, usize) {
+        cx.update(|window, app| window.draw(app).clear(app));
+        cx.update(|window, app| {
+            use fluent_core::ThemeProvider as _;
+            let colors = app.theme().colors.clone();
+            let quads = window.painted_quads();
+            // Identical quads from repeated draws count once.
+            let count = |c| {
+                let mut b: Vec<String> = quads
+                    .iter()
+                    .filter(|q| q.border_color == c)
+                    .map(|q| format!("{:?}", q.bounds))
+                    .collect();
+                b.sort();
+                b.dedup();
+                b.len()
+            };
+            (
+                count(colors.stroke_focus_outer),
+                count(colors.stroke_focus_inner),
+            )
+        })
+    }
+
+    #[gpui::test]
+    fn focus_ring_draws_outer_and_inner_only_when_keyboard_focused(cx: &mut TestAppContext) {
+        let (_, cx) = open_fluent_test_window(cx, |_, _| Ringed(false));
+        assert_eq!(ring_quads(cx), (0, 0));
+        let (_, cx) = open_fluent_test_window(cx, |_, _| Ringed(true));
+        assert_eq!(ring_quads(cx), (1, 1));
     }
 
     #[gpui::test]
