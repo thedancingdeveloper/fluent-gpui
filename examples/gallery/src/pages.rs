@@ -135,10 +135,10 @@ impl Render for StatusPage {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         let bar = |intent, title: &'static str| {
             div()
-                .id(format!("gal-mb-{title}"))
                 .w(px(420.0))
                 .child(
                     MessageBar::new("Something happened.")
+                        .id(format!("gal-mb-{title}"))
                         .intent(intent)
                         .title(title)
                         .action("Retry", noop)
@@ -146,18 +146,15 @@ impl Render for StatusPage {
                 )
                 .into_any_element()
         };
-        // Library widgets with a fixed element id (MessageBar, Spinner, ProgressBar)
-        // collide in the a11y tree when repeated, so each instance sits under
-        // its own id scope.
+        // MessageBar, Spinner and ProgressBar each take an `id(..)`; repeated
+        // instances need distinct ids so their a11y nodes do not collide.
         let progress = |n: usize, bar: ProgressBar| {
             div()
-                .id(format!("gal-pg-{n}"))
                 .w(px(220.0))
-                .child(bar)
+                .child(bar.id(format!("gal-pg-{n}")))
                 .into_any_element()
         };
-        let spin =
-            |n: usize, s: Spinner| div().id(format!("gal-sp-{n}")).child(s).into_any_element();
+        let spin = |n: usize, s: Spinner| s.id(format!("gal-sp-{n}")).into_any_element();
         div()
             .flex()
             .flex_col()
