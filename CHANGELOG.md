@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Menu separators (`ContextMenu`, `MenuButton`, `MenuBar`) share one `menu_tree::separator` helper: a `flex_none` row with equal padding above and below the 1px line, so it stays centred between rows at default (32) and compact (28) density and no longer shrinks to 0px when a capped menu scrolls (WI-4741).
 - Docs: compile-tested `no_run` rustdoc examples on `Button`, `TextInput`, `Field`, `Dropdown`, `Checkbox`, `DataTable`, `Tree`, `Dialog`, `TabStrip` and `FluentApp` (WI-2947).
 - Gallery: new Inputs, Status and feedback, and Layout components pages (text/textarea/dropdown/combobox/field states, spinner, progress, skeleton, message bars, toolbar narrow with overflow, tree loading/error), an Edit menu plus checkbox/radio/shortcut menu items, and in-process smoke tests for every page and the theme buttons (WI-3263).
 - Menus (`ContextMenu`, `MenuButton`, `MenuBar`): the submenu chevron mirrors in right-to-left layouts, and `ContextMenuItem::shortcut` now also sets the trailing secondary-text column of checkbox and radio items (new `shortcut` field on those variants) (WI-3041).
