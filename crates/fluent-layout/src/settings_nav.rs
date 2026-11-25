@@ -2,9 +2,10 @@ use fluent_core::TextRampExt;
 use std::sync::Arc;
 
 use fluent_core::{Theme, ThemeProvider as _};
+use fluent_primitives::FluentFocus as _;
 use gpui::{
-    div, prelude::*, px, App, ClickEvent, Context, FontWeight, IntoElement, Render, SharedString,
-    Window,
+    div, prelude::*, px, App, ClickEvent, Context, FontWeight, IntoElement, KeyDownEvent, Render,
+    SharedString, Window,
 };
 
 // ---------------------------------------------------------------------------
@@ -145,6 +146,10 @@ impl SettingsNav {
     }
 }
 
+fn is_activation_key(key: &str) -> bool {
+    matches!(key, "enter" | "space")
+}
+
 impl Render for SettingsNav {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
@@ -169,7 +174,10 @@ impl Render for SettingsNav {
             .bg(colors.panel_bg)
             .border_r_1()
             .border_color(sep)
-            .py(px(spacing.sm));
+            .py(px(spacing.sm))
+            // The focus ring sits 2px outside each row; keep it inside the
+            // `overflow_hidden` clip.
+            .px(px(2.0));
 
         for (si, section) in self.sections.iter().enumerate() {
             let expanded = section.expanded;
@@ -182,6 +190,13 @@ impl Render for SettingsNav {
                     cx.notify();
                 });
 
+            let toggle_key = cx.listener(move |nav: &mut SettingsNav, ev: &KeyDownEvent, _, cx| {
+                if is_activation_key(&ev.keystroke.key) {
+                    nav.sections[si].expanded = !nav.sections[si].expanded;
+                    cx.notify();
+                }
+            });
+
             nav = nav.child(
                 div()
                     .id(("nav-section", si as u64))
@@ -193,6 +208,8 @@ impl Render for SettingsNav {
                     .h(px(components.settings_nav_section_height))
                     .cursor_pointer()
                     .hover(move |s| s.bg(hover_bg))
+                    .fluent_focus(Some(0), colors.focus_ring)
+                    .on_key_down(toggle_key)
                     .on_click(toggle_handler)
                     .child(
                         div()
@@ -225,6 +242,20 @@ impl Render for SettingsNav {
                 let is_active =
                     self.active_id.as_ref().map(|s| s.as_ref()) == Some(item_id.as_ref());
 
+                let select_key = {
+                    let sel_id = item_id.clone();
+                    let cb = self.on_select.clone();
+                    cx.listener(move |nav: &mut SettingsNav, ev: &KeyDownEvent, _, cx| {
+                        if is_activation_key(&ev.keystroke.key) {
+                            nav.active_id = Some(sel_id.clone());
+                            if let Some(f) = &cb {
+                                f(sel_id.clone(), cx);
+                            }
+                            cx.notify();
+                        }
+                    })
+                };
+
                 let select_handler = {
                     let sel_id = item_id.clone();
                     let cb = self.on_select.clone();
@@ -252,6 +283,8 @@ impl Render for SettingsNav {
                         colors.panel_bg
                     })
                     .hover(move |s| s.bg(if is_active { active_bg } else { hover_bg }))
+                    .fluent_focus(Some(0), colors.focus_ring)
+                    .on_key_down(select_key)
                     .on_click(select_handler)
                     // Left accent bar (3px, accent colour when active)
                     .child(
@@ -313,6 +346,23 @@ mod tests {
         let log = Rc::new(RefCell::new(vec![]));
         let (nav, cx) = open_fluent_test_window(cx, |_, cx| nav(cx, log.clone()));
         cx.click_selector("nav-item-0-1");
+        nav.read_with(cx, |n, _| assert_eq!(n.active_id.as_deref(), Some("b")));
+        assert_eq!(*log.borrow(), vec!["b".to_string()]);
+    }
+
+    #[gpui::test]
+    fn tab_then_enter_selects_item(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let (nav, cx) = open_fluent_test_window(cx, |_, cx| nav(cx, log.clone()));
+        cx.update(|_, app| fluent_primitives::install_focus_keybindings(app));
+        cx.update(|window, app| window.draw(app).clear(app));
+        // Section header, item A, item B are the Tab stops.
+        for _ in 0..3 {
+            cx.update(|window, app| window.focus_next(app));
+            cx.run_until_parked();
+            cx.update(|window, app| window.draw(app).clear(app));
+        }
+        cx.type_keys("enter");
         nav.read_with(cx, |n, _| assert_eq!(n.active_id.as_deref(), Some("b")));
         assert_eq!(*log.borrow(), vec!["b".to_string()]);
     }
