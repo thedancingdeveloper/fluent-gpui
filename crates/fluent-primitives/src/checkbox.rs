@@ -24,6 +24,18 @@ pub enum CheckboxState {
 /// The checkbox draws only the box (`ComponentTokens::toggle_box`, 20px). Beside a text label,
 /// put both in a row with `items_center()` and the body `line_height`, as `RadioGroup` does, so
 /// the box and the label share a vertical centre.
+///
+/// ```no_run
+/// use fluent_primitives::{Checkbox, CheckboxState};
+///
+/// let remember = Checkbox::new("remember")
+///     .label("Remember me")
+///     .checked(true)
+///     .on_click(|next: CheckboxState, _event, _window, _cx| {
+///         // `next` is the state the user asked for; store it and re-render.
+///         println!("{next:?}");
+///     });
+/// ```
 #[allow(clippy::type_complexity)]
 #[derive(IntoElement)]
 pub struct Checkbox {

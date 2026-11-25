@@ -24,6 +24,22 @@ impl DropdownOption {
 }
 
 /// A selectable dropdown with an anchored popover and controlled selection callback.
+///
+/// ```no_run
+/// use fluent_primitives::Dropdown;
+/// use gpui::{App, AppContext, Entity};
+///
+/// fn protocol_dropdown(cx: &mut App) -> Entity<Dropdown> {
+///     cx.new(|_| {
+///         Dropdown::new("protocol")
+///             .placeholder("Choose a protocol")
+///             .option("rdp", "RDP")
+///             .option("ssh", "SSH")
+///             .selected("rdp")
+///             .on_select(|value, _cx| println!("selected {value}"))
+///     })
+/// }
+/// ```
 #[allow(clippy::type_complexity)]
 pub struct Dropdown {
     id: ElementId,

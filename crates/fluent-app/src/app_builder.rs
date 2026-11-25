@@ -67,12 +67,23 @@ impl<V: Render + 'static> Render for ThemeRoot<V> {
 
 /// Builder for a FluentGUI application.
 ///
-/// ```ignore
+/// ```no_run
+/// use fluent_app::FluentApp;
+/// use gpui::{div, prelude::*, Context, Window};
+///
+/// struct Workspace;
+///
+/// impl Render for Workspace {
+///     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+///         div().child("Hello")
+///     }
+/// }
+///
 /// FluentApp::new("MyApp")
 ///     .window_size(1440.0, 900.0)
-///     .run(|cx| {
-///         cx.new(|_| Workspace::new()...)
-///     });
+///     .window_min_size(800.0, 600.0)
+///     .dark_theme()
+///     .run(|cx| cx.new(|_| Workspace));
 /// ```
 pub struct FluentApp {
     title: SharedString,

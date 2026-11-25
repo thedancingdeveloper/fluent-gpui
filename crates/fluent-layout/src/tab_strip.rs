@@ -54,6 +54,22 @@ impl TabItem {
 }
 
 /// A horizontal strip of closable, selectable tabs (content area tabs, not ribbon tabs).
+///
+/// ```no_run
+/// use fluent_layout::{TabItem, TabStrip};
+/// use gpui::{App, AppContext, Entity};
+///
+/// fn tabs(cx: &mut App) -> Entity<TabStrip> {
+///     cx.new(|cx| {
+///         let mut strip = TabStrip::new(cx)
+///             .on_select(|index, _strip, _window, _cx| println!("selected tab {index}"))
+///             .on_close(|index, _strip, _window, _cx| println!("close tab {index}"));
+///         strip.add_tab(TabItem::new("a").label("Session A").closable(true));
+///         strip.add_tab(TabItem::new("b").label("Session B"));
+///         strip
+///     })
+/// }
+/// ```
 #[allow(clippy::type_complexity)]
 #[derive(Default)]
 pub struct TabStrip {
