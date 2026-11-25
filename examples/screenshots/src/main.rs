@@ -11,17 +11,33 @@
 // Component names: button icon-button toggle-button checkbox switch label
 //   badge chip divider progress-bar spinner skeleton avatar app-dot
 //   connection-badge text-input textarea searchbox dropdown combobox
-//   radio-group field card section-header states
+//   radio-group field card section-header states message-bar toolbar tree
+//   tab-strip title-bar ribbon settings-nav data-table selectable-list
+//   document-viewer token-input date-time-picker toast dialog flyout popover
+//   tooltip suggestion-popover context-menu command-palette menu-bar-open
+//   submenu-open
+//
+// Open popups are placed at fixed window coordinates (the window is 1000x600).
+// menu-bar-open and submenu-open open the File menu by sending keystrokes
+// (Alt+F, then Down Down Right) after the first frame.
 
 use std::fs;
 
 use fluent_app::FluentAssets;
+use fluent_app::TitleBar;
 use fluent_core::gpui::{
-    div, prelude::*, px, App, Bounds, Context, Entity, IntoElement, Point, SharedString, Size,
-    TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions,
+    div, point, prelude::*, px, size, AnyView, App, Bounds, Context, Entity, IntoElement,
+    Keystroke, Point, SharedString, Size, TitlebarOptions, Window, WindowBounds, WindowDecorations,
+    WindowOptions,
 };
 use fluent_core::{Theme, ThemeProvider as _};
-use fluent_layout::{modal::ModalStack, ToastStack};
+use fluent_layout::{
+    modal::ModalStack, CommandPalette, ContextMenu, ContextMenuItem, DataCellAlign, DataColumn,
+    DataRow, DataStatusKind, DataTable, DataTableState, Dialog, DialogAction, DocumentViewer,
+    Flyout, MenuBar, MenuItemDef, MessageBar, MessageIntent, PaletteEntry, Popover, SelectableList,
+    SelectableListItem, SettingsNav, SettingsNavItem, SettingsNavSection, TabItem, TabStrip, Toast,
+    ToastHost, ToastStack, Toolbar, ToolbarItem, Tree, TreeItem,
+};
 use fluent_primitives::{
     AppDot, Avatar, Badge, Button, ButtonAppearance, ButtonSize, Card, Checkbox, CheckboxState,
     Chip, ConnectionBadge, ConnectionBadgeState, Divider, Dropdown, Field, FieldValidationState,
@@ -29,6 +45,11 @@ use fluent_primitives::{
     Searchbox, SectionHeader, Skeleton, SkeletonRow, Spinner, Switch, TextInput, Textarea,
     ToggleButton,
 };
+use fluent_primitives::{
+    DateTimePicker, DateTimeValue, SuggestionItem, SuggestionPopover, TokenInput,
+    TokenInputSuggestion, TokenInputToken, Tooltip,
+};
+use fluent_ribbon::RibbonBar;
 
 const SENTINEL: &str = "/tmp/.fluent-screenshot-ready";
 
@@ -46,13 +67,19 @@ struct Screenshots {
     searchbox: Entity<Searchbox>,
     dropdown: Entity<Dropdown>,
     combobox: Entity<fluent_primitives::Combobox>,
+    /// The stateful view for the layout and overlay components that need one.
+    view: Option<AnyView>,
 }
 
 impl Screenshots {
     fn new(component: impl Into<SharedString>, cx: &mut App) -> Self {
+        let component = component.into();
+        let view = stateful_view(&component, cx);
         Self {
-            component: component.into(),
-            ready_signaled: false,
+            component,
+            // Tests render in-process and must not touch the sentinel file.
+            ready_signaled: cfg!(test),
+            view,
             text_placeholder: cx.new(|_| TextInput::new().placeholder("Placeholder text")),
             text_filled: cx.new(|_| TextInput::new().value("Hello, FluentGUI")),
             text_error: cx.new(|_| TextInput::new().value("bad@input").error(true)),
@@ -89,7 +116,13 @@ impl Render for Screenshots {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if !self.ready_signaled {
             self.ready_signaled = true;
-            window.on_next_frame(|_, _| {
+            let keys = menu_keys(&self.component);
+            window.on_next_frame(move |window, cx| {
+                for key in keys {
+                    if let Ok(keystroke) = Keystroke::parse(key) {
+                        window.dispatch_keystroke(keystroke, cx);
+                    }
+                }
                 let _ = fs::write(SENTINEL, "1");
             });
         }
@@ -135,6 +168,23 @@ impl Render for Screenshots {
             "card" => ss_cards().into_any_element(),
             "section-header" => ss_section_headers().into_any_element(),
             "states" => ss_states().into_any_element(),
+            "message-bar" => ss_message_bars().into_any_element(),
+            "toolbar" => ss_toolbars().into_any_element(),
+            "tree" => ss_trees().into_any_element(),
+            "data-table" => ss_data_tables().into_any_element(),
+            "selectable-list" => ss_selectable_lists().into_any_element(),
+            "document-viewer" => ss_document_viewers().into_any_element(),
+            "dialog" => ss_dialog().into_any_element(),
+            "flyout" => ss_flyout().into_any_element(),
+            "popover" => ss_popover().into_any_element(),
+            "tooltip" => ss_tooltip().into_any_element(),
+            "suggestion-popover" => ss_suggestion_popover().into_any_element(),
+            "tab-strip" | "title-bar" | "ribbon" | "settings-nav" | "token-input"
+            | "date-time-picker" | "toast" | "context-menu" | "command-palette"
+            | "menu-bar-open" | "submenu-open" => match self.view.clone() {
+                Some(view) => view.into_any_element(),
+                None => div().child(Label::new("Missing view")).into_any_element(),
+            },
             other => div()
                 .p(px(24.0))
                 .child(Label::new(format!("Unknown component: {other}")))
@@ -380,9 +430,9 @@ fn ss_dividers() -> impl IntoElement {
 fn ss_progress() -> impl IntoElement {
     col()
         .w(px(360.0))
-        .child(group("25%", ProgressBar::new(0.25)))
-        .child(group("60%", ProgressBar::new(0.60)))
-        .child(group("100%", ProgressBar::new(1.0)))
+        .child(group("25%", ProgressBar::new(0.25).id("ss-pg-25")))
+        .child(group("60%", ProgressBar::new(0.60).id("ss-pg-60")))
+        .child(group("100%", ProgressBar::new(1.0).id("ss-pg-100")))
 }
 
 // ── Spinner ───────────────────────────────────────────────────────────────
@@ -390,10 +440,10 @@ fn ss_spinners() -> impl IntoElement {
     group(
         "Sizes",
         row()
-            .child(Spinner::new().size(16.0))
-            .child(Spinner::new().size(24.0))
-            .child(Spinner::new().size(32.0))
-            .child(Spinner::new().size(48.0)),
+            .child(Spinner::new().size(16.0).id("ss-sp-16"))
+            .child(Spinner::new().size(24.0).id("ss-sp-24"))
+            .child(Spinner::new().size(32.0).id("ss-sp-32"))
+            .child(Spinner::new().size(48.0).id("ss-sp-48")),
     )
 }
 
@@ -578,6 +628,12 @@ fn ss_states() -> impl IntoElement {
         ))
         .child(group("Spinner", Spinner::new().size(24.0)))
         .child(group(
+            "Disabled controls",
+            row()
+                .child(Button::new("st-btn").label("Disabled").disabled(true))
+                .child(Switch::new("st-sw").label("Off").disabled(true)),
+        ))
+        .child(group(
             "Field validation",
             col()
                 .child(
@@ -591,6 +647,379 @@ fn ss_states() -> impl IntoElement {
                         .validation(FieldValidationState::Warning, "Check this value."),
                 ),
         ))
+}
+
+// ── Layout, data and overlay components ──────────────────────────────────
+
+/// Every component name this binary renders, in the order the script captures
+/// them. `scripts/screenshots.sh` `ALL_COMPONENTS` lists the same names; a
+/// test keeps the two in step.
+#[cfg(test)]
+const COMPONENTS: &[&str] = &[
+    "button",
+    "icon-button",
+    "toggle-button",
+    "checkbox",
+    "switch",
+    "label",
+    "badge",
+    "chip",
+    "divider",
+    "progress-bar",
+    "spinner",
+    "skeleton",
+    "avatar",
+    "app-dot",
+    "connection-badge",
+    "text-input",
+    "textarea",
+    "searchbox",
+    "dropdown",
+    "combobox",
+    "radio-group",
+    "field",
+    "card",
+    "section-header",
+    "states",
+    "message-bar",
+    "toolbar",
+    "tree",
+    "data-table",
+    "selectable-list",
+    "document-viewer",
+    "token-input",
+    "date-time-picker",
+    "tooltip",
+    "suggestion-popover",
+    "tab-strip",
+    "title-bar",
+    "ribbon",
+    "settings-nav",
+    "toast",
+    "dialog",
+    "flyout",
+    "popover",
+    "context-menu",
+    "command-palette",
+    "menu-bar-open",
+    "submenu-open",
+];
+
+fn file_menu_items() -> Vec<ContextMenuItem> {
+    vec![
+        MenuItemDef::action_with_shortcut("New", "Ctrl+N", |_, _, _| {}),
+        MenuItemDef::action_with_shortcut("Open...", "Ctrl+O", |_, _, _| {}),
+        MenuItemDef::submenu(
+            "Open Recent",
+            vec![
+                MenuItemDef::action("Project One", |_, _, _| {}),
+                MenuItemDef::action("Project Two", |_, _, _| {}),
+            ],
+        ),
+        MenuItemDef::separator(),
+        MenuItemDef::action_with_shortcut("Exit", "Alt+F4", |_, _, _| {}),
+    ]
+}
+
+/// Keystrokes that open the menu state a component shows, sent after the first frame.
+fn menu_keys(component: &str) -> &'static [&'static str] {
+    match component {
+        "menu-bar-open" => &["alt-f"],
+        "submenu-open" => &["alt-f", "down", "down", "right"],
+        _ => &[],
+    }
+}
+
+/// Builds the entity for components that hold state; others render from plain functions.
+fn stateful_view(component: &str, cx: &mut App) -> Option<AnyView> {
+    Some(match component {
+        "tab-strip" => cx
+            .new(|cx| {
+                let mut ts = TabStrip::new(cx);
+                ts.add_tab(TabItem::new("one").label("Dashboard").closable(true));
+                ts.add_tab(TabItem::new("two").label("Settings").closable(true));
+                ts
+            })
+            .into(),
+        "title-bar" => cx
+            .new(|cx| TitleBar::new(cx, "FluentGUI Screenshots").show_controls(false))
+            .into(),
+        "ribbon" => cx
+            .new(|cx| {
+                RibbonBar::new(cx).tab("Home", |t| {
+                    t.group("Actions", |g| {
+                        g.large_button("New", "icons/add.svg", |_, _, _| {}).button(
+                            "Copy",
+                            "icons/copy.svg",
+                            |_, _, _| {},
+                        )
+                    })
+                })
+            })
+            .into(),
+        "settings-nav" => cx
+            .new(|cx| {
+                SettingsNav::new(cx)
+                    .section(
+                        SettingsNavSection::new("General")
+                            .item(SettingsNavItem::new("a", "Appearance"))
+                            .item(SettingsNavItem::new("b", "Network")),
+                    )
+                    .section(
+                        SettingsNavSection::new("Advanced")
+                            .item(SettingsNavItem::new("c", "Logging")),
+                    )
+            })
+            .into(),
+        "token-input" => cx
+            .new(|_| {
+                TokenInput::new()
+                    .placeholder("Add recipients")
+                    .tokens([TokenInputToken::new("alex@example.com", "Alex")])
+                    .suggestions([TokenInputSuggestion::new("bianca@example.com", "Bianca")])
+            })
+            .into(),
+        "date-time-picker" => cx
+            .new(|_| DateTimePicker::new().maybe_value(DateTimeValue::new(2026, 5, 25, 9, 30)))
+            .into(),
+        "toast" => {
+            ToastStack::init(cx);
+            // One toast at a time: ToastHost gives every MessageBar the same
+            // element id, so a second one would collide in the a11y tree
+            // (library issue, noted on WI-3263).
+            ToastStack::push(
+                Toast::new("t1", "Something happened.")
+                    .title("Toast")
+                    .intent(MessageIntent::Success)
+                    .persistent(),
+                cx,
+            );
+            cx.new(ToastHost::new).into()
+        }
+        "context-menu" => cx
+            .new(|_| {
+                file_menu_items()
+                    .into_iter()
+                    .fold(ContextMenu::build(point(px(380.0), px(120.0))), |m, i| {
+                        m.item(i)
+                    })
+            })
+            .into(),
+        "command-palette" => cx
+            .new(|cx| {
+                let mut palette = CommandPalette::new(cx).entries(vec![
+                    PaletteEntry::new("open", "Open connection").group("File"),
+                    PaletteEntry::new("theme", "Toggle theme").group("View"),
+                    PaletteEntry::new("quit", "Quit")
+                        .group("File")
+                        .disabled(true),
+                ]);
+                palette.show(cx);
+                palette
+            })
+            .into(),
+        "menu-bar-open" | "submenu-open" => cx
+            .new(|cx| {
+                MenuBar::new(cx)
+                    .menu("&File", file_menu_items())
+                    .menu("&Edit", vec![MenuItemDef::action("Undo", |_, _, _| {})])
+            })
+            .into(),
+        _ => return None,
+    })
+}
+
+fn ss_message_bars() -> impl IntoElement {
+    let bar = |id: &'static str, intent| {
+        div().w(px(420.0)).child(
+            MessageBar::new("Something happened.")
+                .id(id)
+                .intent(intent)
+                .title(id)
+                .action("Retry", |_, _, _| {})
+                .on_dismiss(|_, _, _| {}),
+        )
+    };
+    col()
+        .child(bar("info", MessageIntent::Info))
+        .child(bar("success", MessageIntent::Success))
+        .child(bar("warning", MessageIntent::Warning))
+        .child(bar("error", MessageIntent::Error))
+}
+
+fn ss_toolbars() -> impl IntoElement {
+    let items = || {
+        vec![
+            ToolbarItem::action_with_icon("tb-new", "New", "icons/add.svg", |_, _, _| {}),
+            ToolbarItem::separator(),
+            ToolbarItem::toggle("tb-bold", "Bold", true, |_, _, _, _| {}),
+            ToolbarItem::action("tb-find", "Find", |_, _, _| {}),
+            ToolbarItem::action("tb-dis", "Disabled", |_, _, _| {}).disabled(true),
+        ]
+    };
+    let toolbar = |id: &'static str, width: f32, open: bool| {
+        div().w(px(width)).child(
+            Toolbar::new()
+                .id(id)
+                .items(items())
+                .available_width(px(width))
+                .overflow_open(open),
+        )
+    };
+    col()
+        .child(group("Wide", toolbar("tb-wide", 520.0, false)))
+        .child(group(
+            "Narrow with overflow",
+            toolbar("tb-narrow", 200.0, false),
+        ))
+        .child(group("Overflow open", toolbar("tb-open", 200.0, true)))
+}
+
+fn ss_trees() -> impl IntoElement {
+    let frame = |id: &'static str, tree: Tree| div().id(id).w(px(240.0)).h(px(150.0)).child(tree);
+    row()
+        .items_start()
+        .child(frame(
+            "ss-tree",
+            Tree::new().id("ss-tree-v").item(
+                TreeItem::new("root", "Workspace")
+                    .expanded(true)
+                    .child(TreeItem::new("a", "Alpha"))
+                    .child(TreeItem::new("b", "Beta").disabled(true))
+                    .child(TreeItem::new("lazy", "Lazy").lazy(true).loading(true)),
+            ),
+        ))
+        .child(frame(
+            "ss-tree-load",
+            Tree::new()
+                .id("ss-tree-l")
+                .status(DataStatusKind::Loading, "Loading items"),
+        ))
+        .child(frame(
+            "ss-tree-err",
+            Tree::new()
+                .id("ss-tree-e")
+                .status(DataStatusKind::Error, "Could not load items"),
+        ))
+}
+
+fn ss_data_tables() -> impl IntoElement {
+    let table = |state: Option<DataTableState>| {
+        let base = DataTable::new()
+            .column(DataColumn::new("name", "Name").width(160.0).sortable(true))
+            .column(DataColumn::new("kind", "Kind").width(80.0))
+            .column(DataColumn::new("status", "Status").align(DataCellAlign::End));
+        match state {
+            None => base
+                .row(DataRow::new("prod", vec!["Production", "SSH", "Connected"]))
+                .row(DataRow::new("stage", vec!["Staging", "RDP", "Idle"]))
+                .selected("stage"),
+            Some(state) => base.state(state),
+        }
+    };
+    let frame = |id: &'static str, t: DataTable| div().id(id).w(px(340.0)).h(px(140.0)).child(t);
+    col()
+        .child(frame("ss-dt-ready", table(None)))
+        .child(frame(
+            "ss-dt-load",
+            table(Some(DataTableState::Loading("Loading rows".into()))),
+        ))
+        .child(frame(
+            "ss-dt-err",
+            table(Some(DataTableState::Error("Could not load rows".into()))),
+        ))
+}
+
+fn ss_selectable_lists() -> impl IntoElement {
+    let frame =
+        |id: &'static str, l: SelectableList| div().id(id).w(px(280.0)).h(px(150.0)).child(l);
+    row()
+        .items_start()
+        .child(frame(
+            "ss-sl-ready",
+            SelectableList::new("ss-sl-r")
+                .item(SelectableListItem::new("a", "CPU threshold").subtitle("Production"))
+                .item(
+                    SelectableListItem::new("b", "Gateway failover")
+                        .badge("P1")
+                        .emphasized(true),
+                )
+                .item(SelectableListItem::new("c", "Maintenance").disabled(true))
+                .selected("b"),
+        ))
+        .child(frame(
+            "ss-sl-load",
+            SelectableList::new("ss-sl-l").loading("Loading items"),
+        ))
+        .child(frame(
+            "ss-sl-err",
+            SelectableList::new("ss-sl-e").error_message("Could not load items"),
+        ))
+}
+
+fn ss_document_viewers() -> impl IntoElement {
+    col()
+        .child(
+            div().id("ss-dv").w(px(360.0)).h(px(150.0)).child(
+                DocumentViewer::html_fragment(
+                    "<h2>Status note</h2><p>Renders <strong>safe rich text</strong> and links.</p>",
+                )
+                .max_height(140.0),
+            ),
+        )
+        .child(
+            div()
+                .id("ss-dv-empty")
+                .w(px(360.0))
+                .child(DocumentViewer::plain_text("").empty_message("Nothing to show")),
+        )
+}
+
+fn ss_dialog() -> impl IntoElement {
+    div().w(px(420.0)).child(
+        Dialog::new("Delete connection?")
+            .body(Label::new("This removes the saved connection."))
+            .action(DialogAction::new("Cancel", |_, _, _| {}))
+            .action(DialogAction::new("Delete", |_, _, _| {}).primary(true)),
+    )
+}
+
+fn popup_surface() -> fluent_core::gpui::Div {
+    div().p(px(12.0))
+}
+
+fn ss_flyout() -> impl IntoElement {
+    let trigger = Bounds::new(point(px(120.0), px(120.0)), size(px(80.0), px(32.0)));
+    div()
+        .child(Button::new("fly-trigger").label("Trigger"))
+        .child(Flyout::new(
+            trigger,
+            popup_surface().child(Label::new("Flyout content")),
+        ))
+}
+
+fn ss_popover() -> impl IntoElement {
+    div().child(Label::new("Popover below")).child(Popover::new(
+        point(px(120.0), px(150.0)),
+        popup_surface().child(Label::new("Popover content")),
+    ))
+}
+
+fn ss_tooltip() -> impl IntoElement {
+    // The tooltip shows on hover; the page captures the trigger it belongs to.
+    Tooltip::new("Saves your work to disk").trigger(Button::new("tt-save").label("Save"))
+}
+
+fn ss_suggestion_popover() -> impl IntoElement {
+    div().child(Label::new("Suggestions below")).child(
+        SuggestionPopover::new(point(px(120.0), px(150.0)))
+            .items([
+                SuggestionItem::new("alpha", "Alpha").detail("First"),
+                SuggestionItem::new("beta", "Beta").detail("Second"),
+                SuggestionItem::new("gamma", "Gamma").disabled(true),
+            ])
+            .highlighted(0),
+    )
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────
@@ -640,4 +1069,82 @@ fn main() {
 
             cx.activate(true);
         });
+}
+
+#[cfg(test)]
+mod tests {
+    //! In-process tests: no window system and no GPU, so they check that every
+    //! component renders and that the lists stay in step, not how it looks.
+
+    use super::*;
+    use fluent_core::gpui::TestAppContext;
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+
+    /// The names in `scripts/screenshots.sh` `ALL_COMPONENTS`.
+    fn script_components() -> Vec<String> {
+        let script = include_str!("../../../scripts/screenshots.sh");
+        let start = script
+            .find("ALL_COMPONENTS=(")
+            .map(|i| i + "ALL_COMPONENTS=(".len())
+            .expect("script has an ALL_COMPONENTS array");
+        let end = start + script[start..].find(')').expect("array is closed");
+        script[start..end]
+            .split_whitespace()
+            .map(str::to_owned)
+            .collect()
+    }
+
+    fn snapshot_of(component: &str) -> Vec<String> {
+        let mut app = TestAppContext::single();
+        let name = component.to_owned();
+        let (_view, cx) = open_fluent_test_window(&mut app, move |_, cx| {
+            ModalStack::init(cx);
+            ToastStack::init(cx);
+            Screenshots::new(name.clone(), cx)
+        });
+        cx.accessibility_snapshot()
+    }
+
+    #[test]
+    fn components_match_the_screenshot_script() {
+        let mut script = script_components();
+        let mut known: Vec<String> = COMPONENTS.iter().map(|c| (*c).to_owned()).collect();
+        script.sort();
+        known.sort();
+        assert_eq!(
+            script, known,
+            "scripts/screenshots.sh ALL_COMPONENTS and COMPONENTS differ"
+        );
+    }
+
+    #[test]
+    fn every_component_renders() {
+        for component in COMPONENTS {
+            let snapshot = snapshot_of(component);
+            assert!(
+                !snapshot.iter().any(|n| n.contains("Unknown component")),
+                "{component} has no render arm"
+            );
+            assert!(!snapshot.is_empty(), "{component} rendered no nodes");
+        }
+    }
+
+    #[test]
+    fn menu_components_open_their_menus_from_keystrokes() {
+        for (component, expect) in [
+            ("menu-bar-open", "Open Recent"),
+            ("submenu-open", "Project One"),
+        ] {
+            let mut app = TestAppContext::single();
+            let name = component.to_owned();
+            let (_view, cx) =
+                open_fluent_test_window(&mut app, move |_, cx| Screenshots::new(name.clone(), cx));
+            cx.type_keys(&menu_keys(component).join(" "));
+            let snapshot = cx.accessibility_snapshot();
+            assert!(
+                snapshot.iter().any(|n| n.contains(expect)),
+                "{component}: no {expect:?} in {snapshot:?}"
+            );
+        }
+    }
 }

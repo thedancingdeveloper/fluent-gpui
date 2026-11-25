@@ -4346,6 +4346,8 @@ dependencies = [
  "fluent-core",
  "fluent-layout",
  "fluent-primitives",
+ "fluent-ribbon",
+ "fluent-test-utils",
 ]
 
 [[package]]
