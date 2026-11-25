@@ -79,9 +79,6 @@ pub struct ComponentTokens {
     /// Public API item.
     pub settings_nav_width: f32,
     /// Public API item.
-    /// Public API item.
-    pub settings_nav_item_height: f32,
-    /// Public API item.
     pub settings_nav_accent_width: f32,
     /// Public API item.
     pub settings_nav_item_indent: f32,
@@ -167,7 +164,6 @@ impl Default for ComponentTokens {
             dock_header_height: 28.0,
             dock_action_size: 20.0,
             settings_nav_width: 200.0,
-            settings_nav_item_height: 32.0,
             settings_nav_accent_width: 3.0,
             settings_nav_item_indent: 28.0,
             command_palette_search_height: 44.0,
