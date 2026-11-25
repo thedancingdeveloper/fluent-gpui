@@ -123,10 +123,20 @@ impl RenderOnce for IconButton {
             ),
         };
 
+        let components = &theme.components;
         let (icon_px, hit_px) = match self.size {
-            ButtonSize::Normal => (16.0f32, 32.0f32),
-            ButtonSize::Compact => (12.0f32, 24.0f32),
-            ButtonSize::Large => (20.0f32, 40.0f32),
+            ButtonSize::Normal => (
+                components.button_medium_icon_size,
+                components.button_medium_height,
+            ),
+            ButtonSize::Compact => (
+                components.button_small_icon_size,
+                components.button_small_height,
+            ),
+            ButtonSize::Large => (
+                components.button_large_icon_size,
+                components.button_large_height,
+            ),
         };
 
         let disabled = self.disabled;
@@ -135,6 +145,7 @@ impl RenderOnce for IconButton {
         let name = self.label.unwrap_or_else(|| icon_name(&self.icon));
 
         let debug_id = self.id.to_string();
+        let icon_debug_id = debug_id.clone();
         let mut el = div()
             .id(self.id)
             .debug_selector(move || debug_id)
@@ -165,7 +176,13 @@ impl RenderOnce for IconButton {
             .as_ref()
             .is_some_and(|h| is_keyboard_focused(h, window));
         focus_ring(
-            el.child(gpui::svg().path(self.icon).size(px(icon_px)).text_color(fg)),
+            el.child(
+                gpui::svg()
+                    .debug_selector(move || format!("{icon_debug_id}-icon"))
+                    .path(self.icon)
+                    .size(px(icon_px))
+                    .text_color(fg),
+            ),
             ring,
             colors,
             px(radii.md),
@@ -281,5 +298,49 @@ mod tests {
             snap,
             vec!["Window".to_string(), "Button \"search\"".to_string()]
         );
+    }
+
+    struct Probe;
+
+    impl Render for Probe {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let mut row = div().flex().flex_row();
+            for (j, size) in [ButtonSize::Compact, ButtonSize::Normal, ButtonSize::Large]
+                .into_iter()
+                .enumerate()
+            {
+                row = row.child(IconButton::new(format!("i-{j}"), "icons/none.svg").size(size));
+            }
+            row
+        }
+    }
+
+    #[gpui::test]
+    fn square_size_follows_tokens_and_icon_is_centred(cx: &mut TestAppContext) {
+        let (_, vcx) = open_fluent_test_window(cx, |_, _| Probe);
+        vcx.update(|window, app| window.draw(app).clear(app));
+        let t = vcx.update(|_, app| app.theme().components);
+        let want = [
+            (t.button_small_height, t.button_small_icon_size),
+            (t.button_medium_height, t.button_medium_icon_size),
+            (t.button_large_height, t.button_large_icon_size),
+        ];
+        for (j, (hit, icon_px)) in want.into_iter().enumerate() {
+            let b = vcx
+                .selector_bounds(Box::leak(format!("i-{j}").into_boxed_str()))
+                .unwrap();
+            let i = vcx
+                .selector_bounds(Box::leak(format!("i-{j}-icon").into_boxed_str()))
+                .unwrap();
+            assert_eq!(f32::from(b.size.width), hit);
+            assert_eq!(f32::from(b.size.height), hit);
+            assert_eq!(f32::from(i.size.width), icon_px);
+            let dx = f32::from(i.center().x - b.center().x);
+            let dy = f32::from(i.center().y - b.center().y);
+            assert!(
+                dx.abs() <= 0.5 && dy.abs() <= 0.5,
+                "icon off-centre {dx},{dy}"
+            );
+        }
     }
 }
