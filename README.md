@@ -8,13 +8,14 @@ any later app that wants the same look and controls.
 fluent-gpui is not affiliated with, endorsed by or sponsored by Microsoft.
 "Fluent" refers to the publicly documented Fluent 2 design language.
 
-> **Status: re-fork in progress.** The 3.x line replaces the old vendored
+> **Status: 3.x is released** on the vendored upstream Zed gpui (latest release
+> `v3.2.0+zed.ba63a022c9a2`, 2026-11-05). The 3.x line replaces the old vendored
 > GPUI copy with a filtered snapshot of current Zed `main` under
-> `vendor/zed/crates/*` (Zed `ba63a022c9a2`). The vendoring has landed; the
-> named estate patches are listed in `vendor/zed/PATCHES.md`. Backdrop blur
-> (WI-1349) is re-applied but not yet visually validated (WI-1438), and video frames are not validated at
-> runtime. Sections below describe the 3.x consumer contract; where
-> something does not exist yet, it says so.
+> `vendor/zed/crates/*` (Zed `ba63a022c9a2`). The named estate patches are listed
+> in `vendor/zed/PATCHES.md`. Backdrop blur (WI-1349) is re-applied but not yet
+> visually validated (WI-1438), and video frames are not validated at runtime.
+> Sections below describe the 3.x consumer contract; where something does not
+> exist yet, it says so.
 
 ---
 
@@ -57,23 +58,21 @@ all of them. Never pin a branch.
 
 ```toml
 [dependencies]
-fluent-core       = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
-fluent-primitives = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
-fluent-layout     = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
-fluent-ribbon     = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
-fluent-app        = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
+fluent-core       = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
+fluent-primitives = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
+fluent-layout     = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
+fluent-ribbon     = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
+fluent-app        = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
 # Until fluent-core re-exports GPUI (see §1), the quick start imports gpui directly.
-gpui              = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
+gpui              = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
 
 [dev-dependencies]
-fluent-test-utils = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
+fluent-test-utils = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
 ```
 
-Replace `<short-sha>` with the value in the tag you are adopting (see the
-repository's tags and `CHANGELOG.md`). The first 3.x tag does not exist
-yet; this snippet is written against the integration branch and is
-verified against the real tag by the first-tag work item. Take only the
-crates you use.
+The examples use the latest 3.x release, `v3.2.0+zed.ba63a022c9a2`. To adopt a
+different release, pick its tag from the repository's tags and `CHANGELOG.md`.
+Take only the crates you use.
 
 ### Which crate for which need
 
