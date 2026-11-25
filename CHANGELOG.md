@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- `RibbonBar` keys each command's focus handle by an `(item, Option<sub>)` position instead of `item * 10 + sub`, so the controls of a `Stack` no longer share a handle (one Tab stop, two rings) with the plain buttons after it.
 - `Checkbox` box, `RadioGroup` circle (inner dot half) and the `Switch` track height now read one `ComponentTokens::toggle_box` (20px, Fluent 2), so the three toggles share a size; layout tests assert the sizes and a symmetric switch knob inset in both states (WI-3258).
 - `ToggleButton` and `IconButton` read icon size and square size from the `button_*` component tokens (ToggleButton icons were fixed at 16px at every size) (WI-3257).
 - `Link`, `Slider`, `SpinButton`, `Expander`/`Accordion` headers, `ColorPicker` swatches (one roving Tab stop), `Toolbar` (one roving stop; items no longer activate twice on Enter/Space), `DataTable` (one Tab stop; the ring sits on an unclipped wrapper), ribbon tabs (active tab is the strip's Tab stop), ribbon command buttons, collapse and overflow buttons, the `TitleBar` caption buttons and `Dialog` actions (now `Button`s; the close button was already an `IconButton`) own a tracked `FocusHandle` and draw the two-tone keyboard-only `focus_ring` instead of `fluent_focus`; disabled controls are not Tab stops. The ColorPicker selection outline now uses the accent colour (WI-3261).
