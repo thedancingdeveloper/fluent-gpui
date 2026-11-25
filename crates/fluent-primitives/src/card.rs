@@ -1,3 +1,4 @@
+use crate::focus::{control_focus_handle, focus_ring, is_keyboard_focused, FluentFocus as _};
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, AnyElement, App, ClickEvent, ElementId, IntoElement, RenderOnce, Window,
@@ -109,13 +110,20 @@ impl Default for Card {
 }
 
 impl RenderOnce for Card {
-    fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        // Only a clickable card is a control; a card that is merely
+        // identified stays out of the Tab order.
+        let id = (self.id.is_some() || self.on_click.is_some())
+            .then(|| self.id.clone().unwrap_or_else(|| "card-interactive".into()));
+        let focus = match &id {
+            Some(id) if self.on_click.is_some() => Some(control_focus_handle(id, None, window, cx)),
+            _ => None,
+        };
         let theme = cx.theme();
         let colors = &theme.colors;
         let radii = &theme.radii;
         let hover_bg = colors.neutral_background_3.hover;
         let hover_border = colors.neutral_stroke_1.default;
-        let id = self.id;
         let row = self.row;
         let flex_1 = self.flex_1;
         let items_center = self.items_center;
@@ -130,8 +138,17 @@ impl RenderOnce for Card {
             .flex()
             .gap(px(self.gap));
 
-        if id.is_some() || on_click.is_some() {
-            let mut card = card.id(id.unwrap_or_else(|| "card-interactive".into()));
+        if let Some(id) = id {
+            let ring = focus
+                .as_ref()
+                .is_some_and(|h| is_keyboard_focused(h, window));
+            let mut card = card.id(id);
+            if let Some(focus) = &focus {
+                card = card
+                    .track_focus(focus)
+                    .key_context("Card")
+                    .fluent_tab_stop(0);
+            }
             card = if row {
                 card.flex_row()
             } else {
@@ -154,7 +171,7 @@ impl RenderOnce for Card {
             for c in self.children {
                 card = card.child(c);
             }
-            card.into_any_element()
+            focus_ring(card, ring, colors, px(radii.md)).into_any_element()
         } else {
             let mut card = if row {
                 card.flex_row()

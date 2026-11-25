@@ -1,3 +1,4 @@
+use crate::focus::{control_focus_handle, focus_ring, is_keyboard_focused, FluentFocus as _};
 use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
 use gpui::{
@@ -34,7 +35,12 @@ impl Chip {
 }
 
 impl RenderOnce for Chip {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let dismiss_id = ElementId::NamedChild(std::sync::Arc::new(self.id), "dismiss".into());
+        let focus = self
+            .on_dismiss
+            .is_some()
+            .then(|| control_focus_handle(&dismiss_id, None, window, cx));
         let theme = cx.theme();
         let colors = &theme.colors;
         let radii = &theme.radii;
@@ -60,30 +66,33 @@ impl RenderOnce for Chip {
             .child(self.label);
 
         if has_dismiss {
-            let dismiss_id = ElementId::NamedChild(std::sync::Arc::new(self.id), "dismiss".into());
-            el = el.child(
-                div()
-                    .id(dismiss_id)
-                    .size(px(14.0))
-                    .rounded(px(radii.pill))
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .cursor_pointer()
-                    .hover(move |s| s.bg(colors.neutral_hover))
-                    .active(move |s| s.bg(colors.neutral_selected))
-                    .on_click(move |ev, win, app| {
-                        if let Some(handler) = &on_dismiss {
-                            handler(ev, win, app);
-                        }
-                    })
-                    .child(
-                        gpui::svg()
-                            .path("icons/dismiss.svg")
-                            .size(px(10.0))
-                            .text_color(colors.on_neutral),
-                    ),
-            );
+            let focus = focus.expect("dismissable chip has a focus handle");
+            let ring = is_keyboard_focused(&focus, window);
+            let dismiss = div()
+                .id(dismiss_id)
+                .track_focus(&focus)
+                .key_context("Chip")
+                .fluent_tab_stop(0)
+                .size(px(14.0))
+                .rounded(px(radii.pill))
+                .flex()
+                .items_center()
+                .justify_center()
+                .cursor_pointer()
+                .hover(move |s| s.bg(colors.neutral_hover))
+                .active(move |s| s.bg(colors.neutral_selected))
+                .on_click(move |ev, win, app| {
+                    if let Some(handler) = &on_dismiss {
+                        handler(ev, win, app);
+                    }
+                })
+                .child(
+                    gpui::svg()
+                        .path("icons/dismiss.svg")
+                        .size(px(10.0))
+                        .text_color(colors.on_neutral),
+                );
+            el = el.child(focus_ring(dismiss, ring, colors, px(radii.pill)));
         }
 
         el
