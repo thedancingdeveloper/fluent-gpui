@@ -18,16 +18,19 @@ pub(crate) struct MenuRenderEnv {
     pub(crate) typography: TypographyTokens,
     pub(crate) radii: RadiiTokens,
     pub(crate) components: ComponentTokens,
+    /// Right-to-left layout: directional glyphs such as the submenu chevron mirror.
+    pub(crate) rtl: bool,
 }
 
 impl MenuRenderEnv {
-    pub(crate) fn from_theme(theme: &Theme) -> Self {
+    pub(crate) fn from_theme(theme: &Theme, rtl: bool) -> Self {
         Self {
             colors: theme.colors.clone(),
             spacing: theme.spacing,
             typography: theme.typography,
             radii: theme.radii,
             components: theme.components,
+            rtl,
         }
     }
 }
@@ -639,6 +642,42 @@ pub(crate) fn window_backdrop(
         .into_any_element()
 }
 
+/// The submenu chevron, mirrored in right-to-left layouts.
+pub(crate) fn submenu_chevron(fg: gpui::Hsla, env: &MenuRenderEnv) -> gpui::Svg {
+    let chevron = svg()
+        .path("icons/chevron_right.svg")
+        .size(px(12.0))
+        .text_color(fg);
+    match chevron_x_scale(env.rtl) {
+        scale if scale < 0.0 => {
+            chevron.with_transformation(gpui::Transformation::scale(gpui::size(scale, 1.0)))
+        }
+        _ => chevron,
+    }
+}
+
+/// Horizontal scale of the submenu chevron: `-1.0` mirrors it for right-to-left.
+pub(crate) fn chevron_x_scale(rtl: bool) -> f32 {
+    if rtl {
+        -1.0
+    } else {
+        1.0
+    }
+}
+
+/// The trailing secondary-text column of a row: its keyboard shortcut.
+pub(crate) fn shortcut_column(shortcut: SharedString, env: &MenuRenderEnv) -> AnyElement {
+    let selector = format!("menu-shortcut-{shortcut}");
+    div()
+        .debug_selector(move || selector.clone())
+        .flex_none()
+        .pl(px(env.spacing.xl))
+        .text_ramp(&env.typography.caption)
+        .text_color(env.colors.on_subtle_disabled)
+        .child(shortcut)
+        .into_any_element()
+}
+
 pub(crate) fn icon_slot(
     icon: Option<SharedString>,
     fg: gpui::Hsla,
@@ -661,6 +700,12 @@ mod tests {
     use gpui::ClickEvent;
 
     use super::*;
+
+    #[test]
+    fn submenu_chevron_mirrors_only_in_rtl() {
+        assert_eq!(chevron_x_scale(false), 1.0);
+        assert_eq!(chevron_x_scale(true), -1.0);
+    }
 
     fn item(label: &'static str) -> ContextMenuItem {
         ContextMenuItem::action(label, |_: &ClickEvent, _, _| {})

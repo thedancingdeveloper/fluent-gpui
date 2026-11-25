@@ -627,20 +627,14 @@ impl MenuBar {
                         .child(menu_tree::icon_slot(icon.clone(), fg, env))
                         .child(div().flex_1().child(menu_tree::label_element(label, true)));
                     if let Some(shortcut) = shortcut.clone() {
-                        row = row.child(
-                            div()
-                                .flex_none()
-                                .pl(px(env.spacing.xl))
-                                .text_ramp(&env.typography.caption)
-                                .text_color(env.colors.on_subtle_disabled)
-                                .child(shortcut),
-                        );
+                        row = row.child(menu_tree::shortcut_column(shortcut, env));
                     }
                     menu = menu.child(row);
                 }
                 ContextMenuItem::Checkbox {
                     label,
                     checked,
+                    shortcut,
                     disabled,
                     on_click,
                 } => {
@@ -705,19 +699,23 @@ impl MenuBar {
                             .size(px(env.components.popup_icon_slot))
                             .into_any_element()
                     };
-                    menu = menu.child(
-                        row.child(
+                    row = row
+                        .child(
                             div()
                                 .flex_none()
                                 .size(px(env.components.popup_icon_slot))
                                 .child(check),
                         )
-                        .child(div().flex_1().child(menu_tree::label_element(label, true))),
-                    );
+                        .child(div().flex_1().child(menu_tree::label_element(label, true)));
+                    if let Some(shortcut) = shortcut.clone() {
+                        row = row.child(menu_tree::shortcut_column(shortcut, env));
+                    }
+                    menu = menu.child(row);
                 }
                 ContextMenuItem::Radio {
                     label,
                     selected: checked,
+                    shortcut,
                     disabled,
                     on_click,
                 } => {
@@ -770,8 +768,8 @@ impl MenuBar {
                                 closer.update(cx, |bar, cx| bar.close(cx)).ok();
                             });
                     }
-                    menu = menu.child(
-                        row.child(
+                    row = row
+                        .child(
                             div()
                                 .flex_none()
                                 .size(px(env.components.popup_icon_slot))
@@ -785,8 +783,11 @@ impl MenuBar {
                                         .bg(fg),
                                 ),
                         )
-                        .child(div().flex_1().child(menu_tree::label_element(label, true))),
-                    );
+                        .child(div().flex_1().child(menu_tree::label_element(label, true)));
+                    if let Some(shortcut) = shortcut.clone() {
+                        row = row.child(menu_tree::shortcut_column(shortcut, env));
+                    }
+                    menu = menu.child(row);
                 }
                 ContextMenuItem::Submenu {
                     label,
@@ -832,12 +833,7 @@ impl MenuBar {
                     row = row
                         .child(menu_tree::icon_slot(icon.clone(), fg, env))
                         .child(div().flex_1().child(menu_tree::label_element(label, true)))
-                        .child(
-                            svg()
-                                .path("icons/chevron_right.svg")
-                                .size(px(12.0))
-                                .text_color(fg),
-                        );
+                        .child(menu_tree::submenu_chevron(fg, env));
                     if !disabled && menu_tree::path_starts_with(&self.open_path, &path) {
                         let submenu =
                             self.render_items(items, path.clone(), self_weak.clone(), env, cx);
@@ -889,7 +885,8 @@ impl Render for MenuBar {
         let components = theme.components;
         let motion = theme.motion();
         let bar_height = components.menu_bar_height;
-        let env = MenuRenderEnv::from_theme(theme);
+        let env =
+            MenuRenderEnv::from_theme(theme, fluent_core::LayoutDirection::current(cx).is_rtl());
         let rtl = LayoutDirection::current(cx).is_rtl();
 
         let self_weak = cx.entity().downgrade();
