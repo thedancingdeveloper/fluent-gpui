@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- `MessageBar`, `Spinner` and `ProgressBar` gain an `id(..)` builder that also sets their accessibility node id, so two of one kind in a window no longer panic with a duplicate a11y node id in debug builds (defaults unchanged; the gallery drops its id-scoped wrapper divs) (WI-4743).
 - Menu separators (`ContextMenu`, `MenuButton`, `MenuBar`) share one `menu_tree::separator` helper: a `flex_none` row with equal padding above and below the 1px line, so it stays centred between rows at default (32) and compact (28) density and no longer shrinks to 0px when a capped menu scrolls (WI-4741).
 - `MenuButton` item labels (action, checkbox, radio, submenu) now go through `menu_tree::label_element` like `ContextMenu` and `MenuBar`: a long label truncates to one line with an ellipsis instead of wrapping (WI-3268).
 - Docs: compile-tested `no_run` rustdoc examples on `Button`, `TextInput`, `Field`, `Dropdown`, `Checkbox`, `DataTable`, `Tree`, `Dialog`, `TabStrip` and `FluentApp` (WI-2947).
