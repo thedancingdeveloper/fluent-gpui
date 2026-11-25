@@ -597,6 +597,7 @@ impl Render for WidgetGallery {
                                     .gap(px(8.0))
                                     .child(
                                         Tree::new()
+                                            .id("widget-tree-connections")
                                             .selected("prod")
                                             .item(
                                                 TreeItem::new("connections", "Connections")
@@ -619,6 +620,7 @@ impl Render for WidgetGallery {
                                     )
                                     .child(
                                         Tree::new()
+                                            .id("widget-tree-checks")
                                             .items(self.tree_checks.clone())
                                             .on_check(move |id, checked, _, _, cx| {
                                                 tree_check_entity.update(cx, |this, cx| {
