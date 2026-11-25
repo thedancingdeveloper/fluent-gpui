@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::focus::FluentFocus as _;
+use crate::focus::{control_focus_handle, focus_ring, is_keyboard_focused, FluentFocus as _};
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, relative, App, ElementId, IntoElement, KeyDownEvent, Orientation,
@@ -168,7 +168,9 @@ impl Slider {
 }
 
 impl RenderOnce for Slider {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let focus =
+            (!self.disabled).then(|| control_focus_handle(&self.id, self.tab_index, window, cx));
         let colors = &cx.theme().colors;
         let (min, max, step) = (self.min, self.max, self.step);
         let value = snap(self.value, min, max, step);
@@ -254,9 +256,9 @@ impl RenderOnce for Slider {
 
         if !disabled {
             el = el
-                .focusable()
-                .tab_stop(true)
-                .fluent_focus(self.tab_index, colors.focus_ring)
+                .track_focus(focus.as_ref().expect("enabled slider has a focus handle"))
+                .key_context("Slider")
+                .fluent_tab_stop(self.tab_index.unwrap_or(0))
                 .cursor_pointer();
             if let Some(handler) = on_change {
                 el = el.on_key_down(move |ev: &KeyDownEvent, win, app| {
@@ -271,7 +273,10 @@ impl RenderOnce for Slider {
                 });
             }
         }
-        el.child(track)
+        let ring = focus
+            .as_ref()
+            .is_some_and(|h| is_keyboard_focused(h, window));
+        focus_ring(el.child(track), ring, colors, px(cx.theme().radii.md))
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::focus::FluentFocus as _;
+use crate::focus::{control_focus_handle, focus_ring, is_keyboard_focused, FluentFocus as _};
 use fluent_core::TextRampExt;
 use fluent_core::ThemeProvider as _;
 use gpui::{
@@ -79,7 +79,9 @@ impl Link {
 }
 
 impl RenderOnce for Link {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let focus =
+            (!self.disabled).then(|| control_focus_handle(&self.id, self.tab_index, window, cx));
         let theme = cx.theme();
         let colors = &theme.colors;
         let typography = &theme.typography;
@@ -94,7 +96,6 @@ impl RenderOnce for Link {
 
         let disabled = self.disabled;
         let tab_index = self.tab_index;
-        let focus_ring = colors.focus_ring;
         let on_click = self.on_click;
         let label = self.label;
         let debug_id = self.id.to_string();
@@ -112,9 +113,9 @@ impl RenderOnce for Link {
 
         if !disabled {
             element = element
-                .focusable()
-                .tab_stop(true)
-                .fluent_focus(tab_index, focus_ring)
+                .track_focus(focus.as_ref().expect("enabled link has a focus handle"))
+                .key_context("Link")
+                .fluent_tab_stop(tab_index.unwrap_or(0))
                 .cursor_pointer()
                 .hover(|style| style.underline());
         }
@@ -123,7 +124,10 @@ impl RenderOnce for Link {
             element = element.on_click(move |event, window, app| handler(event, window, app));
         }
 
-        element
+        let ring = focus
+            .as_ref()
+            .is_some_and(|h| is_keyboard_focused(h, window));
+        focus_ring(element, ring, colors, px(theme.radii.sm))
     }
 }
 
