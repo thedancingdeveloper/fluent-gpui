@@ -891,13 +891,7 @@ impl ContextMenu {
                     menu = menu.child(row);
                 }
                 ContextMenuItem::Separator => {
-                    menu = menu.child(
-                        div()
-                            .h(px(env.components.popup_separator_height))
-                            .mx(px(env.spacing.sm))
-                            .my(px(env.spacing.xs))
-                            .bg(env.colors.stroke_neutral_subtle),
-                    );
+                    menu = menu.child(menu_tree::separator(env));
                 }
             }
         }
@@ -1202,6 +1196,65 @@ mod tests {
     ) -> gpui::Bounds<gpui::Pixels> {
         cx.selector_bounds(selector)
             .unwrap_or_else(|| panic!("no bounds for {selector}"))
+    }
+
+    fn assert_separator_centred(compact: bool, cx: &mut TestAppContext) {
+        let (_menu, cx) = open_fluent_test_window(cx, |_, _| {
+            ContextMenu::build(point(px(40.), px(20.)))
+                .action("One", |_, _, _| {})
+                .separator()
+                .action("Two", |_, _, _| {})
+        });
+        if compact {
+            cx.update(|_, app| {
+                let theme = app.global_mut::<fluent_core::Theme>();
+                theme.components = theme
+                    .components
+                    .with_row_density(fluent_core::RowDensity::Compact);
+            });
+        }
+        cx.simulate_resize(gpui::size(px(800.), px(600.)));
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+
+        let first = bounds_of(cx, "ctx-item-row-[0]");
+        let line = bounds_of(cx, "menu-separator-line");
+        let second = bounds_of(cx, "ctx-item-row-[2]");
+        let above = f32::from(line.top() - first.bottom());
+        let below = f32::from(second.top() - line.bottom());
+        assert_eq!(f32::from(line.size.height), 1.0, "{line:?}");
+        assert!(above > 0.0, "no gap above separator: {above}");
+        assert!(
+            (above - below).abs() <= 1.0,
+            "separator off-centre (compact={compact}): {above} above, {below} below"
+        );
+    }
+
+    #[gpui::test]
+    fn separator_is_centred_between_rows_at_default_density(cx: &mut TestAppContext) {
+        assert_separator_centred(false, cx);
+    }
+
+    #[gpui::test]
+    fn separator_is_centred_between_rows_at_compact_density(cx: &mut TestAppContext) {
+        assert_separator_centred(true, cx);
+    }
+
+    #[gpui::test]
+    fn separator_keeps_its_thickness_when_the_panel_overflows(cx: &mut TestAppContext) {
+        let (_menu, cx) = open_fluent_test_window(cx, |_, _| {
+            let mut menu = ContextMenu::build(point(px(40.), px(20.))).action("One", |_, _, _| {});
+            menu = menu.separator();
+            for i in 0..30 {
+                menu = menu.action(format!("Row {i}"), |_, _, _| {});
+            }
+            menu
+        });
+        cx.simulate_resize(gpui::size(px(800.), px(200.)));
+        cx.run_until_parked();
+        cx.accessibility_snapshot();
+        let line = bounds_of(cx, "menu-separator-line");
+        assert_eq!(f32::from(line.size.height), 1.0, "{line:?}");
     }
 
     fn submenu_menu(at: gpui::Point<gpui::Pixels>) -> ContextMenu {
