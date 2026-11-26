@@ -1603,7 +1603,7 @@ mod tests {
         cx.run_until_parked();
         menu.update(cx, |menu, _| menu.selected_path = vec![0]);
 
-        cx.type_keys("enter");
+        crate::roving::test_support::press(cx, "enter");
         assert_eq!(hits.get(), 1);
     }
 }

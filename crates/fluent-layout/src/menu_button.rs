@@ -1098,7 +1098,7 @@ mod tests {
         button.update(cx, |button, cx| button.open_popup(cx));
         cx.run_until_parked();
 
-        cx.simulate_keystrokes("enter");
+        crate::roving::test_support::press(cx, "enter");
         assert_eq!(hits.get(), 1);
     }
 
@@ -1111,7 +1111,7 @@ mod tests {
         let focus = button.update(cx, |button, cx| button.focus_handle(cx));
         cx.update(|window, app| window.focus(&focus, app));
 
-        cx.simulate_keystrokes("enter");
+        crate::roving::test_support::press(cx, "enter");
         button.read_with(cx, |button, _| {
             assert!(button.open);
             assert!(!button.closing);

@@ -1452,7 +1452,7 @@ mod tests {
         cx.type_keys("f10 e");
         bar.read_with(cx, |bar, _| assert_eq!(bar.open_index, Some(1)));
         bar.update(cx, |bar, _| bar.selected_path = vec![0]);
-        cx.type_keys("enter");
+        crate::roving::test_support::press(cx, "enter");
         assert_eq!(*hits.borrow(), vec!["undo"]);
     }
 
@@ -1461,7 +1461,8 @@ mod tests {
         let hits = Default::default();
         let (bar, cx) = keyboard_bar(cx, hits);
 
-        cx.type_keys("f10 enter");
+        cx.type_keys("f10");
+        crate::roving::test_support::press(cx, "enter");
         bar.read_with(cx, |bar, _| assert_eq!(bar.open_index, Some(0)));
     }
 }
