@@ -204,8 +204,35 @@ without a GPU host.
   adapter" step fails with a warning and the merge queue is unaffected. Fix or
   quarantine it the same day; drop `continue-on-error` after a sustained green
   run.
-- By hand: `cargo build -p screenshots && scripts/screenshots-xvfb.sh --out DIR`
-  (`--component NAME`, `--dark`, `--light`).
+- By hand: `cargo build -p screenshots -p gallery && scripts/screenshots-xvfb.sh --out DIR`
+  (`--only NAME` for one component without the gallery, `--dark`, `--light`,
+  `--no-focus`, `--no-gallery`). Needs `xvfb`, `xdotool`, `imagemagick` and a
+  Vulkan driver.
+- **Artifact layout** (WI-4838): `dark/` and `light/` (resting, 1000x600),
+  `focus/dark/` and `focus/light/` (same component after a real Tab key),
+  `gallery/<page>-<theme>.png` (whole gallery at 1280x800, one per SettingsNav
+  page, plus `hero-dark.png` / `hero-light.png` for the default page), and
+  `report.txt`.
+- **Focus captures.** After the first-frame sentinel the script focuses the
+  window itself (`xdotool windowfocus`; Xvfb has no window manager, so nothing
+  else would) and checks `getwindowfocus`, then sends `xdotool key Tab` and
+  captures. If focus cannot be established the component is reported as
+  `n/a (window focus not established ...)` rather than capturing an unfocused
+  frame. Components with a Tab stop are listed in the `STOPS` table in the
+  script (value = Tab presses captured; later stops are `<component>-2.png`).
+- **Ring-visible report.** `compare -metric AE -fuzz 5%` between the resting and
+  focus capture; at least `RING_MIN_PIXELS` (150) differing pixels is
+  `visible`, otherwise `NOT visible`. One `focus ring:` line per component and
+  theme goes to `report.txt` and, as a table, to `$GITHUB_STEP_SUMMARY`. A
+  missing ring is reported, never a failure. This is the Linux counterpart of
+  the Windows finding in WI-4836: a ring here with real key events points at
+  Windows input/focus, none points at the library.
+- **Gallery options** used by the script (defaults unchanged): `--page <id>`
+  or `GALLERY_PAGE`, `--theme dark|light`, `--size WxH`, `--ready-file <path>`;
+  `gallery --list-pages` prints the page ids.
+- **Run it and fetch the result:** Actions > "Screenshots (Xvfb)" > Run
+  workflow (or `gh workflow run screenshots.yml`), then
+  `gh run download <id> -n screenshots-xvfb`.
 - Output is not compared with the checked-in `screenshots/` baselines:
   Xvfb/lavapipe rendering differs from the GNOME/GPU captures.
 
