@@ -201,6 +201,295 @@ primitive gets its states added to the matching family page in
 
 ---
 
+## Screenshots
+
+<table>
+<tr><th>Dark</th><th>Light</th></tr>
+<tr>
+<td><img src="docs/images/gallery/hero-dark.png" width="480" alt="The fluent-gpui gallery, default page (dark theme)"></td>
+<td><img src="docs/images/gallery/hero-light.png" width="480" alt="The fluent-gpui gallery, default page (light theme)"></td>
+</tr>
+</table>
+
+Every image below is a real render of the gallery or of one component, captured headlessly under Xvfb at 1000x600 (components) or 1280x800 (gallery).
+
+### Component gallery
+
+#### Buttons and toggles
+
+<table>
+<tr><th>Dark</th><th>Light</th></tr>
+<tr>
+<td><img src="screenshots/dark/button.png" width="480" alt="Button (dark theme)"></td>
+<td><img src="screenshots/light/button.png" width="480" alt="Button (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/icon-button.png" width="480" alt="Icon button (dark theme)"></td>
+<td><img src="screenshots/light/icon-button.png" width="480" alt="Icon button (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/toggle-button.png" width="480" alt="Toggle button (dark theme)"></td>
+<td><img src="screenshots/light/toggle-button.png" width="480" alt="Toggle button (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/switch.png" width="480" alt="Switch (dark theme)"></td>
+<td><img src="screenshots/light/switch.png" width="480" alt="Switch (light theme)"></td>
+</tr>
+</table>
+
+#### Selection and text input
+
+<table>
+<tr><th>Dark</th><th>Light</th></tr>
+<tr>
+<td><img src="screenshots/dark/checkbox.png" width="480" alt="Checkbox (dark theme)"></td>
+<td><img src="screenshots/light/checkbox.png" width="480" alt="Checkbox (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/radio-group.png" width="480" alt="Radio group (dark theme)"></td>
+<td><img src="screenshots/light/radio-group.png" width="480" alt="Radio group (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/combobox.png" width="480" alt="Combobox (dark theme)"></td>
+<td><img src="screenshots/light/combobox.png" width="480" alt="Combobox (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/dropdown.png" width="480" alt="Dropdown (dark theme)"></td>
+<td><img src="screenshots/light/dropdown.png" width="480" alt="Dropdown (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/text-input.png" width="480" alt="Text input (dark theme)"></td>
+<td><img src="screenshots/light/text-input.png" width="480" alt="Text input (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/textarea.png" width="480" alt="Textarea (dark theme)"></td>
+<td><img src="screenshots/light/textarea.png" width="480" alt="Textarea (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/searchbox.png" width="480" alt="Search box (dark theme)"></td>
+<td><img src="screenshots/light/searchbox.png" width="480" alt="Search box (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/token-input.png" width="480" alt="Token input (dark theme)"></td>
+<td><img src="screenshots/light/token-input.png" width="480" alt="Token input (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/date-time-picker.png" width="480" alt="Date and time picker (dark theme)"></td>
+<td><img src="screenshots/light/date-time-picker.png" width="480" alt="Date and time picker (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/field.png" width="480" alt="Field (dark theme)"></td>
+<td><img src="screenshots/light/field.png" width="480" alt="Field (light theme)"></td>
+</tr>
+</table>
+
+#### Status and feedback
+
+<table>
+<tr><th>Dark</th><th>Light</th></tr>
+<tr>
+<td><img src="screenshots/dark/badge.png" width="480" alt="Badge (dark theme)"></td>
+<td><img src="screenshots/light/badge.png" width="480" alt="Badge (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/message-bar.png" width="480" alt="Message bar (dark theme)"></td>
+<td><img src="screenshots/light/message-bar.png" width="480" alt="Message bar (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/progress-bar.png" width="480" alt="Progress bar (dark theme)"></td>
+<td><img src="screenshots/light/progress-bar.png" width="480" alt="Progress bar (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/spinner.png" width="480" alt="Spinner (dark theme)"></td>
+<td><img src="screenshots/light/spinner.png" width="480" alt="Spinner (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/skeleton.png" width="480" alt="Skeleton (dark theme)"></td>
+<td><img src="screenshots/light/skeleton.png" width="480" alt="Skeleton (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/toast.png" width="480" alt="Toast (dark theme)"></td>
+<td><img src="screenshots/light/toast.png" width="480" alt="Toast (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/tooltip.png" width="480" alt="Tooltip (dark theme)"></td>
+<td><img src="screenshots/light/tooltip.png" width="480" alt="Tooltip (light theme)"></td>
+</tr>
+</table>
+
+#### Layout and navigation
+
+<table>
+<tr><th>Dark</th><th>Light</th></tr>
+<tr>
+<td><img src="screenshots/dark/ribbon.png" width="480" alt="Ribbon (dark theme)"></td>
+<td><img src="screenshots/light/ribbon.png" width="480" alt="Ribbon (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/tab-strip.png" width="480" alt="Tab strip (dark theme)"></td>
+<td><img src="screenshots/light/tab-strip.png" width="480" alt="Tab strip (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/tree.png" width="480" alt="Tree (dark theme)"></td>
+<td><img src="screenshots/light/tree.png" width="480" alt="Tree (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/settings-nav.png" width="480" alt="Settings navigation (dark theme)"></td>
+<td><img src="screenshots/light/settings-nav.png" width="480" alt="Settings navigation (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/toolbar.png" width="480" alt="Toolbar (dark theme)"></td>
+<td><img src="screenshots/light/toolbar.png" width="480" alt="Toolbar (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/title-bar.png" width="480" alt="Title bar (dark theme)"></td>
+<td><img src="screenshots/light/title-bar.png" width="480" alt="Title bar (light theme)"></td>
+</tr>
+</table>
+
+#### Overlays and menus
+
+<table>
+<tr><th>Dark</th><th>Light</th></tr>
+<tr>
+<td><img src="screenshots/dark/dialog.png" width="480" alt="Dialog (dark theme)"></td>
+<td><img src="screenshots/light/dialog.png" width="480" alt="Dialog (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/flyout.png" width="480" alt="Flyout (dark theme)"></td>
+<td><img src="screenshots/light/flyout.png" width="480" alt="Flyout (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/popover.png" width="480" alt="Popover (dark theme)"></td>
+<td><img src="screenshots/light/popover.png" width="480" alt="Popover (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/context-menu.png" width="480" alt="Context menu (dark theme)"></td>
+<td><img src="screenshots/light/context-menu.png" width="480" alt="Context menu (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/command-palette.png" width="480" alt="Command palette (dark theme)"></td>
+<td><img src="screenshots/light/command-palette.png" width="480" alt="Command palette (light theme)"></td>
+</tr>
+</table>
+
+#### Data
+
+<table>
+<tr><th>Dark</th><th>Light</th></tr>
+<tr>
+<td><img src="screenshots/dark/data-table.png" width="480" alt="Data table (dark theme)"></td>
+<td><img src="screenshots/light/data-table.png" width="480" alt="Data table (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/selectable-list.png" width="480" alt="Selectable list (dark theme)"></td>
+<td><img src="screenshots/light/selectable-list.png" width="480" alt="Selectable list (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/card.png" width="480" alt="Card (dark theme)"></td>
+<td><img src="screenshots/light/card.png" width="480" alt="Card (light theme)"></td>
+</tr>
+<tr>
+<td><img src="screenshots/dark/avatar.png" width="480" alt="Avatar (dark theme)"></td>
+<td><img src="screenshots/light/avatar.png" width="480" alt="Avatar (light theme)"></td>
+</tr>
+</table>
+
+#### Whole-gallery pages
+
+The gallery's pages, one per component family, in dark and light.
+
+<details>
+<summary>Show all 12 gallery pages</summary>
+
+<table>
+<tr><th>Dark</th><th>Light</th></tr>
+<tr>
+<td><img src="docs/images/gallery/buttons-and-links-dark.png" width="480" alt="Gallery page: Buttons and links (dark theme)"></td>
+<td><img src="docs/images/gallery/buttons-and-links-light.png" width="480" alt="Gallery page: Buttons and links (light theme)"></td>
+</tr>
+<tr>
+<td><img src="docs/images/gallery/selection-dark.png" width="480" alt="Gallery page: Selection (dark theme)"></td>
+<td><img src="docs/images/gallery/selection-light.png" width="480" alt="Gallery page: Selection (light theme)"></td>
+</tr>
+<tr>
+<td><img src="docs/images/gallery/text-dark.png" width="480" alt="Gallery page: Text (dark theme)"></td>
+<td><img src="docs/images/gallery/text-light.png" width="480" alt="Gallery page: Text (light theme)"></td>
+</tr>
+<tr>
+<td><img src="docs/images/gallery/status-and-feedback-dark.png" width="480" alt="Gallery page: Status and feedback (dark theme)"></td>
+<td><img src="docs/images/gallery/status-and-feedback-light.png" width="480" alt="Gallery page: Status and feedback (light theme)"></td>
+</tr>
+<tr>
+<td><img src="docs/images/gallery/data-and-lists-dark.png" width="480" alt="Gallery page: Data and lists (dark theme)"></td>
+<td><img src="docs/images/gallery/data-and-lists-light.png" width="480" alt="Gallery page: Data and lists (light theme)"></td>
+</tr>
+<tr>
+<td><img src="docs/images/gallery/data-display-dark.png" width="480" alt="Gallery page: Data display (dark theme)"></td>
+<td><img src="docs/images/gallery/data-display-light.png" width="480" alt="Gallery page: Data display (light theme)"></td>
+</tr>
+<tr>
+<td><img src="docs/images/gallery/date-and-input-dark.png" width="480" alt="Gallery page: Date and input (dark theme)"></td>
+<td><img src="docs/images/gallery/date-and-input-light.png" width="480" alt="Gallery page: Date and input (light theme)"></td>
+</tr>
+<tr>
+<td><img src="docs/images/gallery/layout-dark.png" width="480" alt="Gallery page: Layout (dark theme)"></td>
+<td><img src="docs/images/gallery/layout-light.png" width="480" alt="Gallery page: Layout (light theme)"></td>
+</tr>
+<tr>
+<td><img src="docs/images/gallery/media-dark.png" width="480" alt="Gallery page: Media (dark theme)"></td>
+<td><img src="docs/images/gallery/media-light.png" width="480" alt="Gallery page: Media (light theme)"></td>
+</tr>
+<tr>
+<td><img src="docs/images/gallery/menus-dark.png" width="480" alt="Gallery page: Menus (dark theme)"></td>
+<td><img src="docs/images/gallery/menus-light.png" width="480" alt="Gallery page: Menus (light theme)"></td>
+</tr>
+<tr>
+<td><img src="docs/images/gallery/overlays-dark.png" width="480" alt="Gallery page: Overlays (dark theme)"></td>
+<td><img src="docs/images/gallery/overlays-light.png" width="480" alt="Gallery page: Overlays (light theme)"></td>
+</tr>
+<tr>
+<td><img src="docs/images/gallery/theme-and-direction-dark.png" width="480" alt="Gallery page: Theme and direction (dark theme)"></td>
+<td><img src="docs/images/gallery/theme-and-direction-light.png" width="480" alt="Gallery page: Theme and direction (light theme)"></td>
+</tr>
+</table>
+
+</details>
+
+### Keyboard focus
+
+Each image is the component after a real Tab key press, showing its focus ring (dark theme on top, light below).
+
+<table>
+<tr>
+<td><img src="docs/images/focus/dark/button.png" width="230" alt="Button with keyboard focus (dark theme)"></td>
+<td><img src="docs/images/focus/dark/text-input.png" width="230" alt="Text input with keyboard focus (dark theme)"></td>
+<td><img src="docs/images/focus/dark/tab-strip.png" width="230" alt="Tab strip with keyboard focus (dark theme)"></td>
+</tr>
+<tr>
+<td><img src="docs/images/focus/dark/tree.png" width="230" alt="Tree with keyboard focus (dark theme)"></td>
+<td><img src="docs/images/focus/dark/data-table.png" width="230" alt="Data table with keyboard focus (dark theme)"></td>
+<td><img src="docs/images/focus/dark/dropdown.png" width="230" alt="Dropdown with keyboard focus (dark theme)"></td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td><img src="docs/images/focus/light/button.png" width="230" alt="Button with keyboard focus (light theme)"></td>
+<td><img src="docs/images/focus/light/text-input.png" width="230" alt="Text input with keyboard focus (light theme)"></td>
+<td><img src="docs/images/focus/light/tab-strip.png" width="230" alt="Tab strip with keyboard focus (light theme)"></td>
+</tr>
+<tr>
+<td><img src="docs/images/focus/light/tree.png" width="230" alt="Tree with keyboard focus (light theme)"></td>
+<td><img src="docs/images/focus/light/data-table.png" width="230" alt="Data table with keyboard focus (light theme)"></td>
+<td><img src="docs/images/focus/light/dropdown.png" width="230" alt="Dropdown with keyboard focus (light theme)"></td>
+</tr>
+</table>
+
+These images are generated by the manual "Screenshots (Xvfb)" workflow (`.github/workflows/screenshots.yml`, `workflow_dispatch`) or locally with `scripts/screenshots-xvfb.sh`; `scripts/refresh-readme-screenshots.sh <run-id>` copies a run's artifact into place.
+
+---
+
 ## Consumer guides
 
 - [Quick start](docs/quick-start.md) — dependency setup, themed window, form, ribbon, and data table.

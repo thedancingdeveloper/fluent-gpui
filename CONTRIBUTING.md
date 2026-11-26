@@ -233,6 +233,8 @@ without a GPU host.
 - **Run it and fetch the result:** Actions > "Screenshots (Xvfb)" > Run
   workflow (or `gh workflow run screenshots.yml`), then
   `gh run download <id> -n screenshots-xvfb`.
+- **README refresh:** `scripts/refresh-readme-screenshots.sh <run-id>` downloads the artifact and copies
+  `dark/`, `light/`, `gallery/` and the README's focus images into `screenshots/` and `docs/images/`.
 - Output is not compared with the checked-in `screenshots/` baselines:
   Xvfb/lavapipe rendering differs from the GNOME/GPU captures.
 
