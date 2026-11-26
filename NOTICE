@@ -1,0 +1,15 @@
+fluent-gpui
+Copyright the fluent-gpui authors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes software developed by Zed Industries, Inc.
+(https://github.com/zed-industries/zed), licensed under the Apache License,
+Version 2.0: the gpui UI framework and the crates it needs, vendored under
+vendor/zed (upstream revision in vendor/zed/UPSTREAM.md, local patches in
+vendor/zed/PATCHES.md). Copyright 2022 - 2025 Zed Industries, Inc. Each
+vendored crate's licence is listed in docs/maintainers/third-party-licences.md.
+
+fluent-gpui is an independent project. It is not affiliated with, endorsed by
+or sponsored by Microsoft. "Fluent" refers to the publicly documented design
+language; no Microsoft fonts or artwork are included.
