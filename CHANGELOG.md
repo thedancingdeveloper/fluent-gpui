@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- One icon-to-label gap rule: new `ComponentTokens::icon_label_gap` (8px), `icon_label_gap_compact` (4px) and `row_icon_label_gap` (follows `with_row_density`), used by `Toolbar` actions, `TabStrip` tabs, `Tree` rows (8px, 4px in compact rows), ribbon button and toggle buttons, `SelectableList` rows and `CommandPalette` rows, replacing the 2px and 4px gaps; vertical large ribbon buttons and icon-only controls are unchanged (WI-3257).
 - `Tooltip` gains an `id(..)` builder (default `"tooltip-trigger"`) that keys its trigger wrapper's hover and open state, so two tooltips in one view open independently; the gallery and screenshots toast pages no longer push one toast at a time (WI-4756).
 - `DataTable` gains an `id(..)` builder (default `"data-table"`) that keys its wrapper, grid, focus handle and column widths, so two tables in one view no longer panic with a duplicate a11y node id (and share a Tab stop and widths); the WI-4756 audit found `TabStrip`, `Switch`, `DocumentViewer` and the other `Render` views already safe (an id'd div without a role makes no a11y node, `Render` views are scoped per view, nested ids sit under their parent's id), with regression tests for `Switch` and `TabStrip` (WI-4756).
 - `ToastHost` gains an `id(..)` builder (default `"toast-host"`) that sets its root element id; the stack and each toast's message bar derive their ids from it and the toast id, so several toasts in one host no longer panic with a duplicate a11y node id in debug builds (WI-4750).
