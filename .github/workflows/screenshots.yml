@@ -1,0 +1,71 @@
+name: Screenshots (Xvfb)
+
+# Headless render of the gallery and screenshots harness (WI-3263).
+#
+# Merge queue and manual runs only: never on pull_request or push, so the
+# required PR check stays small (.claude/rules/delivery-process.md, "CI").
+# This workflow is NOT a required check: the repository ruleset requires only
+# `ci`, and `ci` does not need this job.
+#
+# Non-blocking until proven stable: the job has `continue-on-error: true`, so
+# a runner whose software Vulkan driver cannot start reports a clearly named
+# step failure and a warning, but never fails the merge queue. A flaky job is
+# fixed or quarantined the same day (delivery process); once it has been green
+# for a sustained run, drop `continue-on-error`. See CONTRIBUTING.md §5,
+# "Headless screenshots in the merge queue".
+#
+# Manual run: Actions > "Screenshots (Xvfb)" > Run workflow, or locally
+# `scripts/screenshots-xvfb.sh` (needs xvfb, imagemagick, a Vulkan driver).
+# The PNGs come back as the `screenshots-xvfb` workflow artifact, so baselines
+# can be regenerated without a GPU host.
+
+on:
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots-xvfb:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Install Linux system libraries and a software GPU
+        # Same GUI libraries as the `test` job, plus Xvfb, ImageMagick (window
+        # capture) and mesa's lavapipe software Vulkan driver for wgpu.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxcb1-dev libx11-xcb-dev libxkbcommon-dev libxkbcommon-x11-dev \
+            libwayland-dev libvulkan-dev libfontconfig-dev libfreetype-dev \
+            xvfb imagemagick x11-utils mesa-vulkan-drivers vulkan-tools
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8
+      - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a
+      - name: Gallery and screenshots smoke tests (in-process)
+        # gpui TestAppContext: pages render, wiring works. No display needed.
+        run: cargo test -p gallery -p screenshots
+      - name: Build screenshots binary
+        run: cargo build -p screenshots
+      - name: Check for a software Vulkan adapter
+        # Report clearly when the runner has no usable GPU stack; the capture
+        # step below then fails too and the job stays non-blocking.
+        run: |
+          if vulkaninfo --summary; then
+            echo "Vulkan adapter found"
+          else
+            echo "::warning title=No Vulkan adapter::lavapipe did not start; the Xvfb screenshots cannot render on this runner (job is non-blocking)."
+            exit 1
+          fi
+      - name: Render screenshots under Xvfb
+        run: scripts/screenshots-xvfb.sh --out screenshots-xvfb
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: screenshots-xvfb
+          path: screenshots-xvfb/
+          if-no-files-found: warn
+          retention-days: 14
