@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Focus-ring report (WI-4841): `NOT visible` only when under 30 px differ (the checkbox's 100-140 px ring was a false negative); chip, card and title-bar are `n/a (no tab stop: ...)` because the harness renders them non-interactive. Comparison factored into `scripts/focus-ring-lib.sh` with `scripts/test-focus-ring.sh`.
 - Fixed the gallery menu bar showing a fifth, highlighted "File" cell (WI-4835): `Workspace::with_file_menu` compared its "File" label with the app's "&File" literally and prepended a second menu holding only Exit (which also made keyboard-opened File show just Exit). `MenuBar` now ignores the `&` mnemonic marker when deciding whether a File menu already exists. Tests count the gallery's triggers.
 
 - Fixed Tab / Shift-Tab doing nothing in real apps (WI-4840, root cause of WI-4836): `install_focus_keybindings` was only ever called from tests. `FluentApp::run` and the screenshots harness now call it, so keyboard focus and the focus ring work; it is idempotent and still public for apps that build their own gpui `Application`. A Tab with nothing focused now enters the first tab stop (and Shift-Tab the last). New regression tests drive a real `tab` through the startup path, and check each text-like control moves focus exactly one stop per press.

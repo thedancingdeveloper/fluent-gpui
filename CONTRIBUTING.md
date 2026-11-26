@@ -221,8 +221,12 @@ without a GPU host.
   frame. Components with a Tab stop are listed in the `STOPS` table in the
   script (value = Tab presses captured; later stops are `<component>-2.png`).
 - **Ring-visible report.** `compare -metric AE -fuzz 5%` between the resting and
-  focus capture; at least `RING_MIN_PIXELS` (150) differing pixels is
-  `visible`, otherwise `NOT visible`. One `focus ring:` line per component and
+  focus capture; fewer than 30 differing pixels (`RING_NONE_MAX`) is
+  `NOT visible`, anything else `visible` (a ring on a small control such as the
+  checkbox changes only 100-140 px). Components whose harness instance has
+  nothing focusable (chip, card, title-bar) say `n/a (no tab stop: reason)`.
+  The comparison lives in `scripts/focus-ring-lib.sh`, tested by
+  `scripts/test-focus-ring.sh`. One `focus ring:` line per component and
   theme goes to `report.txt` and, as a table, to `$GITHUB_STEP_SUMMARY`. A
   missing ring is reported, never a failure. This is the Linux counterpart of
   the Windows finding in WI-4836: a ring here with real key events points at
