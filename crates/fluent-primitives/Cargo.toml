@@ -4,7 +4,10 @@ version = "3.2.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Base widgets for FluentGUI: Button, Input, Label, Icon, Badge, and more"
-repository = "https://github.com/AusAgentSmith-org/fluent-gpui"
+repository = "https://github.com/thedancingdeveloper/fluent-gpui"
+homepage = "https://github.com/thedancingdeveloper/fluent-gpui"
+rust-version = "1.99"
+readme = "README.md"
 keywords = ["gui", "fluent", "gpui", "widgets"]
 categories = ["gui"]
 
