@@ -1,4 +1,4 @@
-# Outstanding Work
+# Project status and known gaps
 
 Last updated: 2026-11-02
 

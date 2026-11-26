@@ -1,19 +1,19 @@
 # Instructions for agents
 
-fluent-gpui is the estate's fork of GPUI (Zed's GPU UI framework) plus a Fluent 2 design
+fluent-gpui is a fork of GPUI (Zed's GPU UI framework) plus a Fluent 2 design
 system on top of it, for native desktop apps on **Windows and Linux only**. Apps depend on the
 `fluent-*` crates; only those crates and the vendored Zed closure touch `gpui`.
-`README.md` is the consumer contract; `CONTRIBUTING.md` is how the repo is maintained.
+`README.md` is the overview; `docs/architecture.md` is the consumer contract; `CONTRIBUTING.md` is the contributor guide; `docs/maintainers/contributing-internal.md` is how the repo is maintained.
 
 | Path | What it is |
 |---|---|
 | `crates/fluent-*` | The library: `fluent-core`, `fluent-primitives`, `fluent-layout`, `fluent-ribbon`, `fluent-app`, `fluent-test-utils` |
-| `vendor/zed/crates/*` | Vendored upstream Zed crate closure (gpui and what it needs), plus named estate patches. The only gpui source; the old `crates/gpui` copy is gone |
+| `vendor/zed/crates/*` | Vendored upstream Zed crate closure (gpui and what it needs), plus named patches. The only gpui source; the old `crates/gpui` copy is gone |
 | `examples/` | Demo, gallery and sample apps |
 | `scripts/` | Dev scripts (screenshots, `vendor-zed.py` for vendoring) |
-| `docs/` | `graft.md` (how changes land), `VISUAL_TARGETS.md` |
+| `docs/` | User docs (`README.md` is the index), `VISUAL_TARGETS.md`; maintainer notes in `docs/maintainers/` (`graft.md`: how changes land) |
 
-Read `CONTRIBUTING.md` §2 and §3 (vendoring and patches) before touching anything under
+Read `CONTRIBUTING.md` ("Rules for code") and `docs/maintainers/contributing-internal.md` §2 and §3 (vendoring and patches) before touching anything under
 `vendor/zed`.
 
 ## How a work item is done
@@ -25,7 +25,7 @@ Read `CONTRIBUTING.md` §2 and §3 (vendoring and patches) before touching anyth
    the worker setup your brief points to. Never create a git branch, never open a PR, never
    push to GitHub.
 3. **Touch only the files the item lists**, plus `CHANGELOG.md` (one line under Unreleased). If
-   you need more, or a design choice the item and `CONTRIBUTING.md` don't settle, stop and ask
+   you need more, or a design choice the item and the contributor docs don't settle, stop and ask
    on the item. Do not guess.
 4. **Run the crate-scoped gates** on the pinned toolchain (`rust-toolchain.toml`), for each crate
    you touched:
@@ -48,11 +48,11 @@ Read `CONTRIBUTING.md` §2 and §3 (vendoring and patches) before touching anyth
   examples and tests included. CI fails it.
 - **Vendored code:** no hand edits inside `vendor/zed` except in files `vendor/zed/PATCHES.md`
   lists for a named patch. The pristine branch `zed-vendor` is written only by
-  `scripts/vendor-zed.py`. Patch procedure: `CONTRIBUTING.md`.
+  `scripts/vendor-zed.py`. Patch procedure: `docs/maintainers/contributing-internal.md`.
 - **No upstream Zed rev change inside a feature land.** The monthly pull is its own item.
 - **No version bumps** in a feature land.
 - **No macOS work:** no Metal paths, no macOS validation claims, no macOS-only fixes. macOS is
-  out of scope (operator, 2026-10-31). Web and wasm are out of scope too.
+  out of scope. Web and wasm are out of scope too.
 - **No `unsafe` and no panics** in `fluent-*` library code without an item that says so.
 - **Assets:** no Microsoft fonts or Office artwork in the repo or binaries; icons only through
   the generated catalogue; every asset has an attribution row.
@@ -74,8 +74,9 @@ then report blocked; 6 (not authorized) report blocked.
 
 ## Pointers
 
-- `CONTRIBUTING.md`: maintenance, upstream pull, patches, licences, releases
-- `README.md`: consumer contract
-- `docs/graft.md`: how changes land
-- `vendor/zed/PATCHES.md`: the estate patch list
+- `CONTRIBUTING.md`: contributor guide
+- `docs/maintainers/contributing-internal.md`: maintenance, upstream pull, patches, licences, releases
+- `README.md`: overview; `docs/architecture.md`: consumer contract
+- `docs/maintainers/graft.md`: how changes land
+- `vendor/zed/PATCHES.md`: the patch list
 - `docs/VISUAL_TARGETS.md`: visual targets

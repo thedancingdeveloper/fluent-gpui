@@ -11,7 +11,7 @@ This document records the visual references that shape FluentGUI. It is not a pi
 Primary references:
 
 - Fluent 2-style remote connection manager screenshots in `ExternalExamples/` when available locally.
-- Downstream rdpapp requirements for connection-manager shells.
+- Requirements of connection-manager style desktop shells.
 - AndroidConnect-style dashboard and device-control requirements that drove the recent v2.3.0 primitive polish.
 
 ---
@@ -148,10 +148,10 @@ Target:
 Current implementation:
 
 - `surface_blur_layer` exists as a theme token.
-- `gpui::backdrop_blur(radius, tint)` is re-applied to the vendored `gpui` (WI-1349, patch `backdrop-blur`).
+- `gpui::backdrop_blur(radius, tint)` is re-applied to the vendored `gpui`.
 - Linux (`gpui_wgpu`) copies the colour target before a blur quad and draws a single-pass cross-pattern blur under the tint. Where the surface does not allow `COPY_SRC`, the quad shows the tint over the last capture (or nothing).
-- Windows (`gpui_windows`, DirectX) has the same kernel, unverified at runtime (WI-1439).
-- Visual and performance validation on `demo_app` and the tooltip is WI-1438.
+- Windows (`gpui_windows`, DirectX) has the same kernel, unverified at runtime.
+- Visual and performance validation on real hardware is still outstanding.
 
 ### Remote display / video surfaces
 
@@ -162,7 +162,7 @@ Target:
 
 Current implementation:
 
-- `Window::alloc_video_texture`, `upload_video_frame`, `paint_video_frame` and `free_video_texture` are applied to the vendored `gpui` for Linux `gpui_wgpu` (WI-1348) and Windows DirectX (WI-1434). Neither is runtime-validated; the Windows path is unverified.
+- `Window::alloc_video_texture`, `upload_video_frame`, `paint_video_frame` and `free_video_texture` are applied to the vendored `gpui` for Linux `gpui_wgpu` and Windows DirectX. Neither is runtime-validated; the Windows path is unverified.
 - The validation example is `vendor/zed/crates/gpui/examples/video_frame.rs`.
 
 ---
@@ -186,8 +186,8 @@ Current implementation:
 | Connection/status pill | `ConnectionBadge` | Implemented |
 | Loading skeletons | `Skeleton`, `SkeletonRow`, `Skeleton::wrap` | Implemented |
 | Tabular numbers | `FluentTextExt::tabular_nums()` | Implemented |
-| Backdrop blur | `gpui::backdrop_blur` | Re-applied (WI-1349); visual check WI-1438, Windows runtime WI-1439 |
-| Video-frame surfaces | `VideoTextureId` APIs | Applied on wgpu and DirectX (WI-1348, WI-1434); not runtime-validated |
+| Backdrop blur | `gpui::backdrop_blur` | Re-applied; visual and Windows runtime checks pending |
+| Video-frame surfaces | `VideoTextureId` APIs | Applied on wgpu and DirectX; not runtime-validated |
 | Web visual parity | Web backend | Future |
 
 ---
@@ -197,8 +197,7 @@ Current implementation:
 `examples/gallery` is organised by Fluent 2 component family. Each family page
 shows its state variants (default, selected, disabled, indeterminate, error) and
 carries a variant row for light, dark, high contrast and RTL. A visual check of
-a change is one pass through the families in each variant. See the README
-section "The gallery as a regression matrix".
+a change is one pass through the families in each variant. See [the gallery guide](gallery.md).
 
 ---
 
