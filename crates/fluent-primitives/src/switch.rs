@@ -276,6 +276,23 @@ mod tests {
         }
     }
 
+    /// The fixed `switch-knob` id is nested under each switch's own id, so two
+    /// switches in one view do not collide (WI-4756 audit).
+    #[gpui::test]
+    fn two_switches_in_one_view_do_not_collide(cx: &mut TestAppContext) {
+        let snap = snapshot(cx, || {
+            gpui::div()
+                .child(Switch::new("one").label("One"))
+                .child(Switch::new("two").label("Two"))
+                .into_any_element()
+        });
+        assert_eq!(
+            snap.iter().filter(|n| n.starts_with("Switch")).count(),
+            2,
+            "{snap:?}"
+        );
+    }
+
     /// The knob's distance from the track's inner edge is the same on both sides, off and on.
     #[gpui::test]
     fn switch_knob_is_inset_matches_off_and_on(cx: &mut TestAppContext) {

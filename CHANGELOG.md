@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- `DataTable` gains an `id(..)` builder (default `"data-table"`) that keys its wrapper, grid, focus handle and column widths, so two tables in one view no longer panic with a duplicate a11y node id (and share a Tab stop and widths); the WI-4756 audit found `Tooltip`, `TabStrip`, `Switch`, `DocumentViewer` and the other `Render` views already safe (an id'd div without a role makes no a11y node, `Render` views are scoped per view, nested ids sit under their parent's id), with regression tests for `Switch` and `TabStrip` (WI-4756).
 - `ToastHost` gains an `id(..)` builder (default `"toast-host"`) that sets its root element id; the stack and each toast's message bar derive their ids from it and the toast id, so several toasts in one host no longer panic with a duplicate a11y node id in debug builds (WI-4750).
 - `MessageBar`, `Spinner` and `ProgressBar` gain an `id(..)` builder that also sets their accessibility node id, so two of one kind in a window no longer panic with a duplicate a11y node id in debug builds (defaults unchanged; the gallery drops its id-scoped wrapper divs) (WI-4743).
 - Menu separators (`ContextMenu`, `MenuButton`, `MenuBar`) share one `menu_tree::separator` helper: a `flex_none` row with equal padding above and below the 1px line, so it stays centred between rows at default (32) and compact (28) density and no longer shrinks to 0px when a capped menu scrolls (WI-4741).

@@ -8,7 +8,7 @@ use crate::{
 use fluent_core::{ThemeProvider as _, TruncateExt as _};
 use fluent_primitives::FluentFocus as _;
 use gpui::{
-    div, prelude::*, px, App, ClickEvent, IntoElement, KeyDownEvent, RenderOnce, Role,
+    div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, KeyDownEvent, RenderOnce, Role,
     SharedString, Window,
 };
 
@@ -210,6 +210,7 @@ impl DataRow {
 #[allow(clippy::type_complexity)]
 #[derive(IntoElement)]
 pub struct DataTable {
+    id: ElementId,
     columns: Vec<DataColumn>,
     rows: Vec<DataRow>,
     state: DataTableState,
@@ -254,6 +255,7 @@ impl DataTable {
     /// Public API item.
     pub fn new() -> Self {
         Self {
+            id: "data-table".into(),
             columns: Vec::new(),
             rows: Vec::new(),
             state: DataTableState::Ready,
@@ -265,6 +267,15 @@ impl DataTable {
             on_row_extend: None,
             on_sort: None,
         }
+    }
+
+    /// Sets the element id. The table's wrapper, grid, header, focus handle and
+    /// column widths are all keyed from it, so give each table that shares a
+    /// parent its own id; two with the same id collide in the accessibility tree
+    /// and share a Tab stop. Defaults to `"data-table"`.
+    pub fn id(mut self, id: impl Into<ElementId>) -> Self {
+        self.id = id.into();
+        self
     }
 
     /// Public API item.
@@ -388,7 +399,7 @@ impl Default for DataTable {
 
 impl RenderOnce for DataTable {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let widths = window.use_keyed_state("data-table-widths", cx, |_, _| {
+        let widths = window.use_keyed_state((self.id.clone(), "widths"), cx, |_, _| {
             self.columns
                 .iter()
                 .map(|column| column.width.unwrap_or(120.0).clamp(48.0, 600.0))
@@ -396,7 +407,7 @@ impl RenderOnce for DataTable {
         });
         let current_widths = widths.read(cx).clone();
         // The grid is one Tab stop; the active row is tracked by the selection.
-        let focus = crate::roving::container_handle(window, cx, &"data-table".into());
+        let focus = crate::roving::container_handle(window, cx, &self.id);
         let ring = fluent_primitives::is_keyboard_focused(&focus, window);
         let theme = cx.theme();
         let colors = theme.colors.clone();
@@ -453,9 +464,10 @@ impl RenderOnce for DataTable {
         let on_row_extend = self.on_row_extend.clone();
         let key_row_ids = row_ids.clone();
 
+        let debug_id = self.id.to_string();
         let mut root = div()
-            .id("data-table")
-            .debug_selector(|| "data-table".to_string())
+            .id((self.id.clone(), "grid"))
+            .debug_selector(move || debug_id)
             .role(Role::Grid)
             .aria_row_count(rows.len() + 1)
             .aria_column_count(self.columns.len())
@@ -717,10 +729,7 @@ impl RenderOnce for DataTable {
         // The ring goes on an unclipped wrapper: the table itself is
         // `overflow_hidden`, which would cut off a ring drawn on it.
         fluent_primitives::focus_ring(
-            div()
-                .id("data-table-frame")
-                .w_full()
-                .child(root.child(body)),
+            div().id(self.id.clone()).w_full().child(root.child(body)),
             ring,
             &colors,
             px(theme.radii.md),
@@ -755,6 +764,34 @@ mod tests {
         selected: Option<SharedString>,
         extended: Vec<SharedString>,
         activated: Vec<SharedString>,
+    }
+
+    struct TwoTables;
+
+    impl Render for TwoTables {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let table = |id: &'static str| {
+                DataTable::new()
+                    .id(id)
+                    .column(DataColumn::new("n", "N"))
+                    .rows((0..2).map(|i| DataRow::new(format!("r{i}"), [format!("{i}")])))
+            };
+            div().child(table("table-a")).child(table("table-b"))
+        }
+    }
+
+    /// Two tables in one view used to share the fixed `data-table` element id
+    /// (a11y node, focus handle, column widths) and trip the duplicate
+    /// accessibility node id assertion (debug builds); in-process, no real window.
+    #[gpui::test]
+    fn two_tables_with_distinct_ids_render_in_one_view(cx: &mut TestAppContext) {
+        let (_, cx) = open_fluent_test_window(cx, |_, _| TwoTables);
+        let snapshot = cx.accessibility_snapshot();
+        assert_eq!(
+            snapshot.iter().filter(|n| n.starts_with("Grid")).count(),
+            2,
+            "{snapshot:?}"
+        );
     }
 
     struct Host(Rc<RefCell<Log>>);
