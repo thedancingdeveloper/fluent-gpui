@@ -340,7 +340,7 @@ impl Toolbar {
         let row_h = if in_menu {
             components.list_item_height
         } else {
-            components.dock_header_height
+            components.chrome_height
         };
         // One icon-to-label rule: menu rows follow the row density, the bar
         // itself has no compact mode.
@@ -359,7 +359,7 @@ impl Toolbar {
                 .into_any_element(),
             ToolbarItem::Separator => div()
                 .w(px(1.0))
-                .h(px(components.dock_header_height - spacing.sm * 2.0))
+                .h(px(components.chrome_height - spacing.sm * 2.0))
                 .mx(px(spacing.xs))
                 .bg(colors.stroke_neutral_subtle)
                 .into_any_element(),
@@ -666,7 +666,7 @@ impl RenderOnce for Toolbar {
             .items_center()
             .relative()
             .gap(px(spacing.xs))
-            .h(px(components.dock_header_height))
+            .h(px(components.chrome_height))
             .px(px(spacing.sm))
             .bg(colors.surface_dim)
             .border_b_1()
@@ -727,7 +727,7 @@ impl RenderOnce for Toolbar {
                 .flex()
                 .items_center()
                 .justify_center()
-                .h(px(components.dock_header_height))
+                .h(px(components.chrome_height))
                 .px(px(spacing.sm))
                 .rounded(px(radii.sm))
                 .text_ramp(&typography.caption)
@@ -761,7 +761,7 @@ impl RenderOnce for Toolbar {
                     .id("toolbar-overflow-menu")
                     .role(Role::Menu)
                     .absolute()
-                    .top(px(components.dock_header_height))
+                    .top(px(components.chrome_height))
                     .right_0()
                     .min_w(px(180.0))
                     .flex()

@@ -58,8 +58,10 @@ pub struct ComponentTokens {
     /// Icon-to-label gap for list-like rows. Follows [`ComponentTokens::with_row_density`]:
     /// `icon_label_gap` by default, `icon_label_gap_compact` for compact rows.
     pub row_icon_label_gap: f32,
-    /// Public API item.
-    pub menu_bar_height: f32,
+    /// Height of the chrome rows: dock header, toolbar bar, ribbon tab strip, menu bar and
+    /// command palette footer (32px, Fluent 2 compact command-surface height). Unaffected by
+    /// [`ComponentTokens::with_row_density`].
+    pub chrome_height: f32,
     /// Row height for every list-like row: menu items, dropdown/combobox options,
     /// tree rows, table rows and settings-nav rows (Fluent 2 list item minimum).
     /// Change it with [`ComponentTokens::with_row_density`].
@@ -83,8 +85,6 @@ pub struct ComponentTokens {
     /// Public API item.
     pub text_input_focus_indicator_height: f32,
     /// Public API item.
-    pub dock_header_height: f32,
-    /// Public API item.
     pub dock_action_size: f32,
     /// Public API item.
     pub settings_nav_width: f32,
@@ -95,8 +95,6 @@ pub struct ComponentTokens {
     /// Public API item.
     pub command_palette_search_height: f32,
     /// Public API item.
-    pub command_palette_footer_height: f32,
-    /// Public API item.
     pub command_palette_icon_slot: f32,
     /// Public API item.
     pub content_tab_strip_height: f32,
@@ -106,8 +104,6 @@ pub struct ComponentTokens {
     pub content_tab_close_size: f32,
     /// Maximum width of a content tab before its label is ellipsised.
     pub content_tab_max_width: f32,
-    /// Public API item.
-    pub ribbon_tab_height: f32,
     /// Public API item.
     pub ribbon_content_button_height: f32,
     /// Public API item.
@@ -168,7 +164,7 @@ impl Default for ComponentTokens {
             icon_label_gap: 8.0,
             icon_label_gap_compact: 4.0,
             row_icon_label_gap: 8.0,
-            menu_bar_height: 28.0,
+            chrome_height: 32.0,
             list_item_height: 32.0,
             menu_min_width: 200.0,
             menu_max_width: 320.0,
@@ -179,19 +175,16 @@ impl Default for ComponentTokens {
             dropdown_max_height: 240.0,
             text_input_height: 32.0,
             text_input_focus_indicator_height: 2.0,
-            dock_header_height: 28.0,
             dock_action_size: 20.0,
             settings_nav_width: 200.0,
             settings_nav_accent_width: 3.0,
             settings_nav_item_indent: 28.0,
             command_palette_search_height: 44.0,
-            command_palette_footer_height: 28.0,
             command_palette_icon_slot: 16.0,
             content_tab_strip_height: 32.0,
             content_tab_icon_size: 14.0,
             content_tab_close_size: 14.0,
             content_tab_max_width: 240.0,
-            ribbon_tab_height: 28.0,
             ribbon_content_button_height: 64.0,
             ribbon_group_label_height: 16.0,
             ribbon_large_icon_size: 28.0,

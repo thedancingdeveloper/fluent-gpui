@@ -689,7 +689,8 @@ impl Render for CommandPalette {
                     .justify_center()
                     .gap(px(spacing.md))
                     .px(px(spacing.md))
-                    .h(px(components.command_palette_footer_height))
+                    .debug_selector(|| "palette-footer".into())
+                    .h(px(components.chrome_height))
                     .border_t_1()
                     .border_color(colors.stroke_neutral_subtle)
                     .child(
@@ -743,7 +744,9 @@ impl Render for CommandPalette {
 
 #[cfg(test)]
 mod tests {
-    use super::{filter_entries, first_enabled_row, match_score, PaletteEntry};
+    use super::{filter_entries, first_enabled_row, match_score, CommandPalette, PaletteEntry};
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::TestAppContext;
 
     #[test]
     fn palette_entry_records_group_hint_disabled_and_action() {
@@ -817,5 +820,17 @@ mod tests {
         let entry = PaletteEntry::new("advanced-search", "Advanced Search");
         assert!(match_score(&entry, "advanced search").is_some());
         assert!(filter_entries(&[entry], "  ADVANCED   SEARCH  ", None).len() == 1);
+    }
+
+    /// The footer hint row is 32px, the chrome height (WI-3259).
+    #[gpui::test]
+    fn palette_footer_is_chrome_height(cx: &mut TestAppContext) {
+        let (palette, cx) = open_fluent_test_window(cx, |_, cx| {
+            CommandPalette::new(cx).entries(vec![PaletteEntry::new("a", "Alpha")])
+        });
+        palette.update(cx, |p, cx| p.show(cx));
+        cx.run_until_parked();
+        let footer = cx.selector_bounds("palette-footer").expect("footer");
+        assert_eq!(f32::from(footer.size.height), 32.0, "palette footer height");
     }
 }

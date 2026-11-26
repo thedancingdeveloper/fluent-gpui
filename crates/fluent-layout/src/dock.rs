@@ -140,8 +140,9 @@ impl Render for DockPanel {
             .when(rtl, |header| header.flex_row_reverse())
             .when(!rtl, |header| header.flex_row())
             .items_center()
+            .debug_selector(|| "dock-header".into())
             .px(px(spacing.sm))
-            .h(px(components.dock_header_height))
+            .h(px(components.chrome_height))
             .bg(panel_bg)
             .border_b_1()
             .border_color(panel_border)
@@ -369,5 +370,15 @@ mod tests {
         let (dock, cx) =
             open_fluent_test_window(cx, |_, cx| DockPanel::new(cx, DockPosition::Right, "R"));
         dock.read_with(cx, |d, _| assert_eq!(d.size, 240.0));
+    }
+
+    /// Chrome rows are 32px (WI-3259).
+    #[gpui::test]
+    fn dock_header_is_chrome_height(cx: &mut TestAppContext) {
+        let (_dock, cx) =
+            open_fluent_test_window(cx, |_, cx| DockPanel::new(cx, DockPosition::Left, "Files"));
+        cx.run_until_parked();
+        let header = cx.selector_bounds("dock-header").expect("dock header");
+        assert_eq!(f32::from(header.size.height), 32.0, "dock header height");
     }
 }

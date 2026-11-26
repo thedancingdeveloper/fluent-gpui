@@ -687,7 +687,7 @@ impl Render for RibbonBar {
             .flex()
             .flex_row()
             .items_end() // align to bottom so underlines sit at the same baseline
-            .h(px(components.ribbon_tab_height))
+            .h(px(components.chrome_height))
             .bg(tab_strip_bg);
 
         // Normal tabs
@@ -733,8 +733,10 @@ impl Render for RibbonBar {
                         focus_ring(el, ring, &colors, px(0.0))
                     })
                     .relative()
+                    .flex()
+                    .items_center()
+                    .h(px(components.chrome_height))
                     .px(px(spacing.lg))
-                    .py(px(spacing.sm))
                     .bg(tab_bg)
                     .cursor_pointer()
                     .hover(move |s| s.bg(tab_hover_bg))
@@ -892,7 +894,7 @@ impl Render for RibbonBar {
                     .key_context("RibbonButton")
                     .fluent_tab_stop(0)
                     .map(|el| focus_ring(el, collapse_ring, &colors, px(0.0)))
-                    .size(px(components.ribbon_tab_height))
+                    .size(px(components.chrome_height))
                     .flex()
                     .items_center()
                     .justify_center()
@@ -1366,5 +1368,18 @@ mod tests {
             let label_b = vcx.selector_bounds(label).expect("label");
             assert_eq!(f32::from(label_b.origin.x - icon_b.right()), 8.0, "{icon}");
         }
+    }
+
+    /// The tab strip and its tabs are 32px, the chrome height (WI-3259).
+    #[gpui::test]
+    fn ribbon_tab_is_chrome_height(cx: &mut TestAppContext) {
+        let (_bar, vcx) = open_fluent_test_window(cx, move |_, cx| {
+            RibbonBar::new(cx).tab("Home", |t| {
+                t.group("G", |g| g.button("Hi", "icons/none.svg", |_, _, _| {}))
+            })
+        });
+        vcx.update(|window, app| window.draw(app).clear(app));
+        let tab = vcx.selector_bounds("ribbon-tab-0").expect("tab");
+        assert_eq!(f32::from(tab.size.height), 32.0, "ribbon tab height");
     }
 }
