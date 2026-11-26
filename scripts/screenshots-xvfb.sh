@@ -31,7 +31,8 @@
 #   scripts/screenshots-xvfb.sh --no-gallery | --gallery
 #
 # Environment: SCREENSHOTS_BIN, GALLERY_BIN (binaries), SETTLE_SECONDS,
-# XVFB_SCREEN, RING_MIN_PIXELS (differing pixels that count as a ring, 150).
+# XVFB_SCREEN, RING_NONE_MAX (below this many differing pixels the ring is
+# reported NOT visible, default 30; see scripts/focus-ring-lib.sh).
 #
 # Exit status: 0 when every capture succeeded, 1 when any failed (a summary
 # line says how many). A missing focus ring is reported, never a failure.
@@ -42,6 +43,8 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT" || exit 2
+# shellcheck source=scripts/focus-ring-lib.sh
+source "$ROOT/scripts/focus-ring-lib.sh"
 
 SENTINEL="/tmp/.fluent-screenshot-ready"
 BINARY="${SCREENSHOTS_BIN:-./target/debug/screenshots}"
@@ -55,7 +58,6 @@ DO_GALLERY=""            # "" = default (on unless --only), true/false = forced
 TIMEOUT_DECISECONDS=300  # software rendering: first frame can take a while
 SETTLE_SECONDS="${SETTLE_SECONDS:-1.5}"
 SCREEN="${XVFB_SCREEN:-1280x800x24}"
-RING_MIN_PIXELS="${RING_MIN_PIXELS:-150}"
 GALLERY_SIZE="1280x800"
 
 while [[ $# -gt 0 ]]; do
@@ -94,13 +96,22 @@ if [[ -n "$FILTER" ]]; then COMPONENTS=("$FILTER"); else COMPONENTS=("${ALL[@]}"
 # (one capture per stop). Everything else gets `focus ring: n/a`.
 declare -A STOPS=(
     [button]=1 [icon-button]=1 [toggle-button]=1 [checkbox]=1 [switch]=1
-    [radio-group]=1 [dropdown]=1 [chip]=1 [card]=1 [tab-strip]=1 [tree]=1
+    [radio-group]=1 [dropdown]=1 [tab-strip]=1 [tree]=1
     [selectable-list]=1 [settings-nav]=1 [toolbar]=1 [data-table]=1
-    [ribbon]=1 [title-bar]=1 [dialog]=1
+    [ribbon]=1 [dialog]=1
     # Text-like controls (WI-4840): text-input shows three enabled inputs and
     # field wraps two; `states` has only disabled controls, so no tab stop.
     [text-input]=3 [textarea]=1 [searchbox]=1 [combobox]=1 [token-input]=1
     [date-time-picker]=1 [field]=2
+)
+
+# Components the harness renders without a tab stop, with the reason (WI-4841).
+# A chip is focusable only with on_dismiss, a card only with on_click, and the
+# title-bar caption buttons only with show_controls(true).
+declare -A NO_STOP_REASON=(
+    [chip]="harness chips have no on_dismiss"
+    [card]="harness cards have no on_click"
+    [title-bar]="harness title bar uses show_controls(false)"
 )
 
 DISPLAY_NUM=99
@@ -179,8 +190,7 @@ focus_window() {
 ring_verdict() {
     local n
     n="$(compare -metric AE -fuzz 5% "$1" "$2" null: 2>&1 >/dev/null | awk '{print int($1)}')"
-    [[ "$n" =~ ^[0-9]+$ ]] || { echo "n/a (compare failed)"; return; }
-    if ((n >= RING_MIN_PIXELS)); then echo "visible ($n px)"; else echo "NOT visible ($n px)"; fi
+    ring_label "$n"
 }
 
 record() {  # record COMPONENT THEME VERDICT
@@ -215,7 +225,7 @@ capture_component() {
     fi
     if $DO_FOCUS; then
         if ((stops == 0)); then
-            record "$component" "$theme" "n/a (no tab stop)"
+            record "$component" "$theme" "n/a (no tab stop${NO_STOP_REASON[$component]:+: ${NO_STOP_REASON[$component]}})"
         elif ! $focused; then
             record "$component" "$theme" "n/a (window focus not established; no focus capture)"
         else
@@ -300,7 +310,7 @@ if $DO_FOCUS && [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
             echo "| $component | ${RING_DARK[$component]:--} | ${RING_LIGHT[$component]:--} |"
         done
         echo
-        echo "A ring counts as visible when the focus capture differs from the resting capture by at least $RING_MIN_PIXELS pixels."
+        echo "A ring counts as visible when the focus capture differs from the resting capture by at least 30 pixels (small controls change only 100-140); fewer is NOT visible, and n/a (no tab stop) means the harness instance has nothing focusable."
     } >>"$GITHUB_STEP_SUMMARY"
 fi
 
