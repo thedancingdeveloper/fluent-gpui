@@ -371,6 +371,38 @@ mod tests {
         (strip, cx)
     }
 
+    struct TwoStrips(gpui::Entity<TabStrip>, gpui::Entity<TabStrip>);
+
+    impl Render for TwoStrips {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div().child(self.0.clone()).child(self.1.clone())
+        }
+    }
+
+    /// Each `TabStrip` is its own view, so its fixed root id is scoped to that
+    /// view: two strips side by side do not collide (WI-4756 audit).
+    #[gpui::test]
+    fn two_tab_strips_in_one_view_do_not_collide(cx: &mut TestAppContext) {
+        let (_, cx) = open_fluent_test_window(cx, |_, cx| {
+            let strip = |cx: &mut Context<TwoStrips>| {
+                cx.new(|cx| {
+                    let mut ts = TabStrip::new(cx);
+                    for id in ["a", "b"] {
+                        ts.add_tab(TabItem::new(id).label(id));
+                    }
+                    ts
+                })
+            };
+            TwoStrips(strip(cx), strip(cx))
+        });
+        let snapshot = cx.accessibility_snapshot();
+        assert_eq!(
+            snapshot.iter().filter(|n| n.starts_with("TabList")).count(),
+            2,
+            "{snapshot:?}"
+        );
+    }
+
     #[gpui::test]
     fn tab_reaches_the_strip_once(cx: &mut TestAppContext) {
         let log = Rc::new(RefCell::new(vec![]));
