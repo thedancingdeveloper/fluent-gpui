@@ -5,7 +5,7 @@ use gpui::{
     Role, SharedString, Toggled, Window,
 };
 
-use crate::button::ButtonSize;
+use crate::button::{ButtonMetrics, ButtonSize};
 
 /// A button that toggles between selected and unselected states.
 ///
@@ -91,7 +91,6 @@ impl RenderOnce for ToggleButton {
         let theme = cx.theme();
         let colors = &theme.colors;
         let radii = &theme.radii;
-        let typography = &theme.typography;
 
         let (bg, bg_hover, bg_pressed, fg) = if self.selected {
             (
@@ -117,30 +116,13 @@ impl RenderOnce for ToggleButton {
         };
 
         let radius = px(radii.md);
-        let components = &theme.components;
-        let (height, px_val, gap, ramp, icon_px) = match self.size {
-            ButtonSize::Normal => (
-                components.button_medium_height,
-                components.button_medium_padding_x,
-                components.button_medium_gap,
-                typography.body,
-                components.button_medium_icon_size,
-            ),
-            ButtonSize::Compact => (
-                components.button_small_height,
-                components.button_small_padding_x,
-                components.button_small_gap,
-                typography.caption,
-                components.button_small_icon_size,
-            ),
-            ButtonSize::Large => (
-                components.button_large_height,
-                components.button_large_padding_x,
-                components.button_medium_gap,
-                typography.subtitle,
-                components.button_large_icon_size,
-            ),
-        };
+        let ButtonMetrics {
+            height,
+            padding_x: px_val,
+            gap,
+            ramp,
+            icon_size: icon_px,
+        } = ButtonMetrics::new(self.size, theme);
 
         let disabled = self.disabled;
         let tab_index = self.tab_index;
@@ -373,6 +355,32 @@ mod tests {
             assert_eq!(f32::from(toggle.size.height), heights[j]);
             assert_eq!(toggle.size.height, button.size.height);
             assert_eq!(f32::from(icon.size.width), icons[j], "icon size {j}");
+        }
+    }
+
+    #[gpui::test]
+    fn padding_and_gap_match_button_tokens(cx: &mut TestAppContext) {
+        let (_, vcx) = open_fluent_test_window(cx, |_, _| Probe);
+        vcx.update(|window, app| window.draw(app).clear(app));
+        let t = vcx.update(|_, app| app.theme().components);
+        let pads = [
+            t.button_small_padding_x,
+            t.button_medium_padding_x,
+            t.button_large_padding_x,
+        ];
+        for (j, pad) in pads.into_iter().enumerate() {
+            // Stretched to 300px: content is centred, so the side margins are equal.
+            let toggle = vcx
+                .selector_bounds(Box::leak(format!("t-{j}").into_boxed_str()))
+                .unwrap();
+            let icon = vcx
+                .selector_bounds(Box::leak(format!("t-{j}-icon").into_boxed_str()))
+                .unwrap();
+            assert_eq!(f32::from(toggle.size.width), 300.0);
+            assert!(
+                f32::from(icon.left() - toggle.left()) >= pad + 1.0,
+                "size {j}"
+            );
         }
     }
 }
