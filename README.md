@@ -1,217 +1,155 @@
 # fluent-gpui
 
-The estate's fork of [GPUI](https://gpui.rs) (Zed's GPU UI framework) and a
-Fluent 2 design system on top of it, for native Windows and Linux desktop
-apps. Its consumers are rdpapp-client, rtbit-gpui, email-desktop-fluent and
-any later app that wants the same look and controls.
+[![CI](https://github.com/thedancingdeveloper/fluent-gpui/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/thedancingdeveloper/fluent-gpui/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/thedancingdeveloper/fluent-gpui)](https://github.com/thedancingdeveloper/fluent-gpui/releases/latest)
+[![Licence: Apache-2.0](https://img.shields.io/badge/licence-Apache--2.0-blue)](LICENSE)
 
-fluent-gpui is not affiliated with, endorsed by or sponsored by Microsoft.
-"Fluent" refers to the publicly documented Fluent 2 design language.
+**A Fluent 2 design system for native Windows and Linux desktop apps, built on [GPUI](https://gpui.rs), the GPU UI framework from Zed.**
 
-> **Status: 3.x is released** on the vendored upstream Zed gpui (latest release
-> `v3.2.0+zed.ba63a022c9a2`, 2026-11-05). The 3.x line replaces the old vendored
-> GPUI copy with a filtered snapshot of current Zed `main` under
-> `vendor/zed/crates/*` (Zed `ba63a022c9a2`). The named estate patches are listed
-> in `vendor/zed/PATCHES.md`. Backdrop blur (WI-1349) is re-applied but not yet
-> visually validated (WI-1438), and video frames are not validated at runtime.
-> Sections below describe the 3.x consumer contract; where something does not
-> exist yet, it says so.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/gallery/hero-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/gallery/hero-light.png">
+  <img src="docs/images/gallery/hero-light.png" width="800" alt="The fluent-gpui component gallery with the Fluent title bar, a navigation sidebar and a page of controls">
+</picture>
 
----
+## What is it
 
-## 1. Layering
+fluent-gpui gives GPUI applications a complete, themed set of desktop controls
+and application chrome in the style of Fluent 2: buttons, inputs, menus,
+dialogs, trees, data tables, a ribbon command bar and a custom title bar. You
+write ordinary GPUI views; the `fluent-*` crates supply the look, the tokens
+and the behaviour. It is aimed at productivity-style desktop apps, not at the
+web.
 
-```text
-  your app (rdpapp-client, rtbit-gpui, email-desktop-fluent, ...)
-        │  depends on fluent-* crates only
-        ▼
-  fluent-app   fluent-layout   fluent-ribbon   fluent-primitives   fluent-core   fluent-test-utils
-        │
-        ▼
-  vendored gpui closure   vendor/zed/crates/*   (gpui + the small set of Zed crates it needs,
-        │                                        plus feature-gated estate patch modules)
-        ▼
-  upstream Zed (github.com/zed-industries/zed), pulled monthly
-```
+## Highlights
 
-**Rule: apps depend on `fluent-*` crates only, never on `gpui` directly.**
-`fluent-core` re-exports the GPUI types apps need (elements, `Context`,
-`Window`, `Render`, styling helpers), so the GPUI version an app builds
-against is always the one the fluent crates were tested with. (The
-re-export is part of the 3.x work; until it lands, the examples still
-import `gpui` from the workspace.)
+- **Fluent 2 look on GPUI.** Light, dark, high-contrast and right-to-left
+  variants of every control, driven by design tokens in `fluent-core`.
+- **Ribbon-centric layout.** A ribbon with tabs, groups, contextual tabs and
+  overflow, plus dock panels, panes and splits, a command palette, context
+  menus, a tree and a data table.
+- **A frameless Fluent window.** `FluentApp` opens a window with the Fluent
+  title bar, resize chrome, theme, modal and toast hosts and bundled assets.
+- **Keyboard and accessibility.** Visible focus, a keyboard path for every
+  action, and roles, names and actions exposed through AccessKit (UI Automation
+  on Windows, AT-SPI on Linux).
+- **Test utilities.** `fluent-test-utils` dumps the accessibility tree and
+  helps write in-process UI tests.
+- **Native integration surfaces.** A video surface, a terminal grid and view,
+  and file pickers, with [documented contracts](docs/consumer-contracts.md).
+- **A vendored GPUI.** A filtered snapshot of upstream Zed `main` is vendored,
+  so every release builds against one known GPUI.
 
----
+## Install
 
-## 2. How to reference it
-
-fluent-gpui is distributed **by git tag only**. It is not published to
-crates.io. Tags have the form:
-
-```text
-v<major>.<minor>.<patch>+zed.<short-sha>
-```
-
-where `<short-sha>` is the upstream Zed commit the vendored closure was cut
-from. Pin an exact tag on every `fluent-*` crate and use the same tag for
-all of them. Never pin a branch.
+fluent-gpui is distributed by git tag. The latest release is
+[`v3.2.0+zed.ba63a022c9a2`](https://github.com/thedancingdeveloper/fluent-gpui/releases/latest) (the part after `+zed.` is the
+Zed commit the vendored GPUI was cut from). Pin one exact tag on every
+`fluent-*` crate you use:
 
 ```toml
 [dependencies]
 fluent-core       = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
 fluent-primitives = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
-fluent-layout     = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
-fluent-ribbon     = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
 fluent-app        = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
-# Until fluent-core re-exports GPUI (see §1), the quick start imports gpui directly.
-gpui              = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
 
 [dev-dependencies]
 fluent-test-utils = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
 ```
 
-The examples use the latest 3.x release, `v3.2.0+zed.ba63a022c9a2`. To adopt a
-different release, pick its tag from the repository's tags and `CHANGELOG.md`.
-Take only the crates you use.
+> **Not on crates.io (for 3.x).** The names `fluent-core`, `fluent-app`,
+> `fluent-primitives`, `fluent-layout` and `fluent-ribbon` exist on crates.io,
+> but they are an older 2.x line that does not match this repository. Use the
+> git tags.
 
-### Which crate for which need
-
-| Need | Crate |
-|------|-------|
-| Theme, design tokens, colours, typography, motion, the GPUI re-exports | `fluent-core` |
-| Buttons, inputs, dropdowns, checkboxes, switches, badges, cards, tooltips, date/time picker and other controls | `fluent-primitives` |
-| Workspace shell, menus, context menus, dock panels, panes and splits, tree, data table, dialogs, toasts, command palette | `fluent-layout` |
-| Ribbon command bar: tabs, groups, contextual tabs, overflow | `fluent-ribbon` |
-| `FluentApp` entry point, title bar, client-side window chrome, bundled assets | `fluent-app` |
-| Accessibility tree dumps and UI test helpers (dev-dependency) | `fluent-test-utils` |
-
-### Date and time input
-
-`DateTimePicker` edits a timezone-less wall-clock `DateTimeValue`. **The app owns the locale and the
-timezone**: the picker never reads the system locale or zone. Pass a `DateTimeLocale` (`iso`, `en_us`,
-`en_gb`, `de_de`, or your own field order, separator and 12/24-hour clock) to set display format, entry
-parsing and segment order. `formatter` and `parser` hooks replace the locale for anything else.
-`parse_input` reports bad text as a `DateTimeParseError` with a message (also shown in the popup).
-Left/Right move between segments in display order, Home/End jump to the first/last, Up/Down adjust.
-The gallery shows en-US and de-DE side by side.
-
-### Feature flags
-
-Estate renderer additions sit behind Cargo features so that the default
-build is close to upstream GPUI:
-
-| Feature | Gives you | When off |
-|---------|-----------|----------|
-| `backdrop-blur` | `backdrop_blur(radius, tint)` acrylic-style backgrounds | Fluent surfaces fall back to a solid, tinted fill of the same colour. No error, no API change |
-
-Enable them on the crate that exposes them, for example
-`fluent-core = { git = "...", tag = "...", features = ["backdrop-blur"] }`.
-
-### Toolchain
-
-The workspace pins its Rust toolchain in `rust-toolchain.toml` at each tag
-and states the MSRV as `rust-version` in the workspace `Cargo.toml`. The
-MSRV tracks what upstream GPUI needs; build your app with that toolchain or
-newer. (Both files arrive with the 3.x re-fork.)
-
-Linux build dependencies (Debian/Ubuntu):
+Build requirements, the Linux packages and feature flags are in
+[docs/architecture.md](docs/architecture.md#toolchain-and-linux-build-dependencies).
+On Debian or Ubuntu:
 
 ```sh
 sudo apt-get install libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev libfontconfig-dev libwayland-dev libvulkan-dev
 ```
 
-Without `libfontconfig-dev`, the build script for `yeslogic-fontconfig-sys`
-fails; alternatively set `RUST_FONTCONFIG_DLOPEN=on` to load fontconfig at
-runtime, but the link step still needs the `-dev` packages above.
+## Quick start
 
----
-
-## 3. Platform support
-
-| Platform | Renderer | Accessibility | Status |
-|----------|----------|---------------|--------|
-| Windows 10/11 x64 | DirectX 11 | UI Automation | **Supported** |
-| Linux x64, X11 and Wayland | wgpu (Vulkan, GL fallback) | AT-SPI | **Supported** |
-| Web / wasm | — | — | Not a target |
-
----
-
-## 4. Quick start
-
-The smallest app: a window with the Fluent title bar and one button.
+A window with the Fluent title bar and a counter. This is
+[`examples/hello_world`](examples/hello_world/src/main.rs):
 
 ```rust
 use fluent_app::FluentApp;
+use fluent_core::gpui::{div, prelude::*, px, ClickEvent, Context, IntoElement, Render, Window};
 use fluent_core::ThemeProvider as _;
-use fluent_primitives::{Button, ButtonAppearance};
-use gpui::{div, prelude::*, ClickEvent, Context, IntoElement, Render, Window};
+use fluent_primitives::{Button, ButtonAppearance, Label, LabelSize};
 
-struct Hello;
+struct Counter {
+    count: u32,
+}
 
-impl Render for Hello {
+impl Render for Counter {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let colors = cx.theme().colors.clone();
         div()
             .size_full()
             .flex()
+            .flex_col()
             .items_center()
             .justify_center()
-            .bg(cx.theme().colors.surface)
+            .gap(px(24.0))
+            .bg(colors.surface)
+            .child(Label::new(format!("Count: {}", self.count)).size(LabelSize::Display))
             .child(
-                Button::new("hello")
-                    .label("Say hello")
-                    .appearance(ButtonAppearance::Accent)
-                    .on_click(|_: &ClickEvent, _, _| println!("hello")),
+                div()
+                    .flex()
+                    .flex_row()
+                    .gap(px(8.0))
+                    .child(
+                        Button::new("increment")
+                            .label("Increment")
+                            .appearance(ButtonAppearance::Accent)
+                            .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
+                                this.count += 1;
+                                cx.notify();
+                            })),
+                    )
+                    .child(Button::new("reset").label("Reset").on_click(cx.listener(
+                        |this, _: &ClickEvent, _, cx| {
+                            this.count = 0;
+                            cx.notify();
+                        },
+                    ))),
             )
     }
 }
 
 fn main() {
-    FluentApp::new("Hello")
+    FluentApp::new("Hello FluentGUI")
         .window_size(480.0, 320.0)
-        .run(|cx| cx.new(|_| Hello));
+        .run(|cx| cx.new(|_| Counter { count: 0 }));
 }
 ```
 
-`FluentApp::run` installs the theme, modal and toast hosts and the window
-title global, opens a frameless window with the Fluent title bar and resize
-chrome, and loads the bundled assets. Once `fluent-core` re-exports GPUI,
-the `gpui::` import becomes `fluent_core::gpui::`.
+`FluentApp::run` installs the theme, the modal and toast hosts and the window
+title, opens a frameless window with the Fluent title bar and resize chrome, and
+loads the bundled assets. Apps use GPUI through `fluent_core::gpui`, so they
+never depend on `gpui` directly. For forms, a ribbon and a data table, read the
+[quick start guide](docs/quick-start.md).
 
-To see every control, clone the repository and run the gallery:
+## Examples
 
-```sh
-cargo run -p gallery
-```
+Clone the repository and run any example with Cargo:
 
-Other examples: `hello_world`, `widgets`, `form`, `demo_app`.
-
-### The gallery as a regression matrix
-
-The gallery groups its routes by Fluent 2 component family (buttons and
-links, selection controls, text and labels, status and feedback, data and
-lists, date and input, terminal and video, theme and direction). Pick a
-family in the left sidebar. Each page shows the state variants of its
-controls side by side (default, selected, disabled, indeterminate, error).
-The variant row on every page switches light, dark, high contrast and RTL, so
-one pass through the families covers every state in every variant. After a
-change to a primitive or to theme tokens, walk the families in all four
-variants and compare against `docs/VISUAL_TARGETS.md`. A new public
-primitive gets its states added to the matching family page in
-`examples/gallery/src/families.rs`.
-
----
+| Command | What it shows |
+|---|---|
+| `cargo run -p hello_world` | The smallest app, as above |
+| `cargo run -p gallery` | Every control, by component family, with light, dark, high-contrast and RTL variants ([guide](docs/gallery.md)) |
+| `cargo run -p widgets` | A set of widgets in one window |
+| `cargo run -p form` | A form built from `Field` and input controls |
+| `cargo run -p demo_app` | A project-tracker style app with a ribbon, settings navigation and a data table |
+| `cargo run -p screenshots -- <component>` | One component in a small window, used by the [screenshots harness](CONTRIBUTING.md#screenshots) |
 
 ## Screenshots
 
-<table>
-<tr><th>Dark</th><th>Light</th></tr>
-<tr>
-<td><img src="docs/images/gallery/hero-dark.png" width="480" alt="The fluent-gpui gallery, default page (dark theme)"></td>
-<td><img src="docs/images/gallery/hero-light.png" width="480" alt="The fluent-gpui gallery, default page (light theme)"></td>
-</tr>
-</table>
-
-Every image below is a real render of the gallery or of one component, captured headlessly under Xvfb at 1000x600 (components) or 1280x800 (gallery).
+Every image on this page is a real render of the gallery or of one component, captured headlessly under Xvfb at 1000x600 (components) or 1280x800 (gallery).
 
 ### Component gallery
 
@@ -486,65 +424,84 @@ Each image is the component after a real Tab key press, showing its focus ring (
 </tr>
 </table>
 
-These images are generated by the manual "Screenshots (Xvfb)" workflow (`.github/workflows/screenshots.yml`, `workflow_dispatch`) or locally with `scripts/screenshots-xvfb.sh`; `scripts/refresh-readme-screenshots.sh <run-id>` copies a run's artifact into place.
 
----
+## Crates
 
-## Consumer guides
+| Crate | What it provides |
+|---|---|
+| [`fluent-core`](crates/fluent-core) | Theme, design tokens, colours, typography, motion, and the `fluent_core::gpui` re-export |
+| [`fluent-primitives`](crates/fluent-primitives) | Buttons, inputs, dropdowns, checkboxes, switches, badges, cards, tooltips, date and time picker, video surface, terminal view |
+| [`fluent-layout`](crates/fluent-layout) | Menus, context menus, dock panels, panes and splits, tree, data table, dialogs, toasts, command palette |
+| [`fluent-ribbon`](crates/fluent-ribbon) | The ribbon command bar: tabs, groups, contextual tabs, overflow |
+| [`fluent-app`](crates/fluent-app) | `FluentApp`, the title bar, client-side window chrome, bundled assets, file pickers |
+| [`fluent-test-utils`](crates/fluent-test-utils) | Accessibility tree dumps and UI test helpers (use as a dev-dependency) |
 
-- [Quick start](docs/quick-start.md) — dependency setup, themed window, form, ribbon, and data table.
-- [Component index](docs/components.md) — public exports, states, keyboard contracts, and gallery routes.
+## Platform support and status
 
-## 5. Versioning and cadence
+| Platform | Renderer | Accessibility | Status |
+|---|---|---|---|
+| Windows 10/11 x64 | DirectX 11 | UI Automation | Supported |
+| Linux x64, X11 and Wayland | wgpu (Vulkan, GL fallback) | AT-SPI | Supported |
+| macOS, web / wasm | | | Not a target |
 
-- Every tag records the Zed commit it was cut from (`+zed.<short-sha>`).
-- A new tag follows each **monthly** upstream pull, and each patch release
-  (bug or security fix) in between.
-- **Breaking**, for a consumer, means your app needs a source change to
-  build or behaves differently after bumping the tag: a removed or renamed
-  public item in a `fluent-*` crate, a changed signature, a changed
-  feature flag, or a GPUI API change that leaks through the re-exports.
-  Breaking changes bump the major version.
-- Every tag has a `CHANGELOG.md` entry with migration notes for anything
-  breaking. Read it before bumping.
+fluent-gpui is at version 3.x. Parts of it have had limited runtime validation.
+Plainly:
 
----
+- Everything is built and tested on Windows and Linux in CI, including
+  in-process GPUI tests. Screenshots are captured headlessly on Linux.
+- On Linux the example apps have been launched under a headless Wayland
+  compositor with software rendering. Runs on real GPU hardware and on a full
+  X11 desktop session are still outstanding.
+- On Windows the examples launch and the window states (minimise, maximise,
+  restore, move, resize) behave on a real desktop. Rendered output could not be
+  captured automatically, and pointer snap gestures and DirectX device-loss
+  recovery have not been exercised.
+- The video surface and backdrop blur are applied on both platforms but not yet
+  validated at runtime. Without the `backdrop-blur` feature, blur surfaces fall
+  back to a solid tinted fill.
+- Screen reader testing is not yet part of the published validation record.
 
-## 6. Accessibility
+Details and the full list of known gaps:
+[docs/maintainers/status.md](docs/maintainers/status.md).
 
-Every control exposes a role, an accessible name and its actions through
-[AccessKit](https://accesskit.dev), which maps to UI Automation on Windows
-and AT-SPI on Linux. A control without them does not pass the
-accessibility gate described in `CONTRIBUTING.md`.
+## Keyboard and accessibility
 
-To check your own app, dump its accessibility tree in a test with
-`fluent-test-utils` and compare it with a committed snapshot (roles and
-names, not pixels). The gallery's own tree dump test is the worked example.
+Every control is reachable and operable from the keyboard: Tab and Shift+Tab move
+focus, with a visible focus ring; Enter and Space activate; arrow keys,
+Home/End and PageUp/PageDown move within lists, trees, tables and menus; Escape
+closes popups; dialogs trap focus. Each control exposes a role, an accessible
+name and its actions through AccessKit. The [component index](docs/components.md)
+lists the keyboard contract of every component, and `fluent-test-utils` lets you
+test your own app's accessibility tree.
 
----
+## Documentation
 
-## 7. Licence and attribution
+The full list is in [docs/README.md](docs/README.md). Start with:
 
-- The `fluent-*` crates are licensed under the
-  [Apache License, Version 2.0](LICENSE).
-- The vendored Zed crates under `vendor/zed/` keep Zed's Apache-2.0
-  `LICENSE-APACHE` and NOTICE files. Their origin and the upstream commit
-  are recorded in `vendor/zed/UPSTREAM.md`; the estate's changes to them
-  are listed in `vendor/zed/PATCHES.md`. Only Apache-2.0-compatible Zed
-  crates are vendored; no GPL or AGPL code is included.
+- [Quick start](docs/quick-start.md): dependency setup, a themed window, a form, a ribbon and a data table.
+- [Component index](docs/components.md): every component with its states, keyboard contract and gallery page.
+- [Design tokens](docs/tokens.md): colours, typography, spacing and motion.
+- [Architecture and consumer contract](docs/architecture.md): layering, versions, feature flags.
+- [Native integration contracts](docs/consumer-contracts.md): video, terminal and pickers.
+- [Changelog](CHANGELOG.md): release notes and migration notes.
+
+## Contributing, security and licence
+
+- Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) and the
+  [code of conduct](CODE_OF_CONDUCT.md).
+- Report vulnerabilities as described in [SECURITY.md](SECURITY.md), not in a public issue.
+- The `fluent-*` crates are licensed under the [Apache License, Version 2.0](LICENSE);
+  see also [NOTICE](NOTICE). The vendored Zed crates under `vendor/zed/` keep Zed's
+  Apache-2.0 licence and notices; their origin is in
+  [`vendor/zed/UPSTREAM.md`](vendor/zed/UPSTREAM.md) and the changes made to them in
+  [`vendor/zed/PATCHES.md`](vendor/zed/PATCHES.md).
 - The Fluent 2 colour token structure was adapted from
   [aernom/fluent-ui-gpui](https://github.com/aernom/fluent-ui-gpui) (MIT).
 
----
+## Trademarks and affiliation
 
-## 8. Pointers
-
-- `CONTRIBUTING.md` — for maintainers: upstream pulls, the patch set, the
-  accessibility gate (coming with the 3.x work).
-- `AGENTS.md` — for worker sessions (coming with the 3.x work).
-- [docs/graft.md](docs/graft.md) — how changes land in this repository.
-- [docs/consumer-contracts.md](docs/consumer-contracts.md) — video, terminal and
-  picker contracts for native consumers.
-- [docs/VISUAL_TARGETS.md](docs/VISUAL_TARGETS.md) — visual reference
-  targets.
-- [CHANGELOG.md](CHANGELOG.md) — release notes and migration notes.
+fluent-gpui is an independent project. It is not affiliated with, endorsed by or
+sponsored by Microsoft. "Fluent" refers to the publicly documented Fluent 2
+design language; no Microsoft fonts or Office artwork are included. It is built on
+[GPUI](https://gpui.rs) from [Zed](https://github.com/zed-industries/zed), which is
+licensed under Apache-2.0. Zed and GPUI belong to their respective owners.

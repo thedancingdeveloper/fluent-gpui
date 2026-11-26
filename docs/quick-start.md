@@ -6,21 +6,22 @@ is compiled as `demo_app` in `examples/demo_app`.
 
 ## 1. Add the crates
 
-`fluent-gpui` is consumed from an exact git tag. Use one tag for every crate;
-the placeholder below is replaced with the release tag you adopt.
+`fluent-gpui` is consumed from an exact git tag. Use one tag for every crate.
+The snippet below uses the latest release, `v3.2.0+zed.ba63a022c9a2`; see the
+[releases page](https://github.com/thedancingdeveloper/fluent-gpui/releases) for newer ones.
 
 ```toml
 [dependencies]
-fluent-app = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
-fluent-core = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
-fluent-layout = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
-fluent-primitives = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
-fluent-ribbon = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.0.0+zed.<short-sha>" }
+fluent-app = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
+fluent-core = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
+fluent-layout = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
+fluent-primitives = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
+fluent-ribbon = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
 ```
 
-The first 3.x tag is not yet published in this repository. Until the tag work
-lands, a workspace checkout (as used by `demo_app`) can use the same crates as
-path dependencies. Apps should depend on `fluent-*`, not directly on `gpui`.
+Inside a workspace checkout (as `demo_app` does) the same crates can be path
+dependencies. Apps should depend on `fluent-*`, not directly on `gpui`:
+`fluent-core` re-exports it as `fluent_core::gpui`.
 
 ## 2. Create a themed window
 
@@ -31,7 +32,7 @@ and bundled assets. `ThemeProvider` exposes the active tokens while rendering.
 use fluent_app::FluentApp;
 use fluent_core::ThemeProvider as _;
 use fluent_primitives::{Button, ButtonAppearance};
-use gpui::{div, prelude::*, ClickEvent, Context, IntoElement, Render, Window};
+use fluent_core::gpui::{div, prelude::*, ClickEvent, Context, IntoElement, Render, Window};
 
 struct Hello;
 impl Render for Hello {

@@ -56,7 +56,7 @@ def main() -> int:
     for e in errors:
         print(f"error: {e}", file=sys.stderr)
     if errors:
-        print("layering guard failed: only crates/fluent-* may use gpui (CONTRIBUTING.md §2)", file=sys.stderr)
+        print("layering guard failed: only crates/fluent-* may use gpui (CONTRIBUTING.md, Rules for code)", file=sys.stderr)
         return 1
     print("layering ok")
     return 0

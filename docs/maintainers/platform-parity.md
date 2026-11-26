@@ -4,8 +4,8 @@ This matrix is the audit boundary for `fluent-app` consumers. It describes the
 contracts exposed by the vendored GPUI platform layer and the Fluent wrappers;
 it does not promise identical native UI. The supported targets are Windows
 10/11 x64 with DirectX 11, and Linux x64 with X11 or Wayland. See the [consumer
-contracts](consumer-contracts.md#4-support-boundaries) for the supported-target
-boundary and [CONTRIBUTING.md](../CONTRIBUTING.md) for the repository's
+contracts](../consumer-contracts.md#4-support-boundaries) for the supported-target
+boundary and [CONTRIBUTING.md](../../CONTRIBUTING.md) for the repository's
 platform policy.
 
 **Evidence labels:** **verified-by-test** means a repository test exercises the
@@ -23,9 +23,9 @@ row marked **divergent** is an intentional platform difference, not a failure.
 | Window movement and native decorations | `TitleBar` can replace native decorations in client/frameless mode; drag uses `start_window_move`; minimize/maximize/close are app controls. Native frame behavior is a Windows policy. | A move request is handled by the X11 window manager; the app must not assume it can reposition a top-level window directly. Whether the native frame is shown is window-manager policy. | A move request is handled by the compositor through the xdg-shell protocol; the app must not assume it can reposition a top-level surface directly. Server-side/client-side decoration support varies by compositor. | **divergent, unverified** natively. The wrapper behavior is covered by source-level/test-platform contracts; run [WI-3055](https://vogt.sprooty.com/work/WI-3055). |
 | Snap and caption buttons | Windows snap layouts and caption-button hit testing are OS behaviors; custom chrome must preserve the caption-button affordance and leave controls accessible. | No Windows snap-layout equivalent is promised; tiling/window-manager behavior is external to Fluent. | Tiling and decoration behavior are compositor-specific; no Windows snap-layout equivalent is promised. | **divergent, unverified**. Follow [WI-3055](https://vogt.sprooty.com/work/WI-3055) for a native interaction pass. |
 | System theme and accent | Fluent theme state supplies colors; `TitleBar` uses the Fluent accent colors. Automatic OS theme/accent synchronization is not claimed by the wrapper. | Same Fluent theme contract; desktop-environment synchronization is not claimed. | Same Fluent theme contract; desktop-environment synchronization is not claimed. | **unverified** for native synchronization. Follow [WI-3055](https://vogt.sprooty.com/work/WI-3055). |
-| High-contrast detection | `SPI_GETHIGHCONTRAST` reads `HCF_HIGHCONTRASTON`; `WM_SETTINGCHANGE` for that action notifies GPUI observers. | The xdg-desktop-portal `org.freedesktop.appearance` `contrast` setting is read at startup and on setting changes; values `>= 2` mean high contrast. | The same portal contract is consumed by the Wayland event loop; the compositor/portal must provide the setting. | **source-audited, unverified manually**. The shared GPUI contract only notifies when the boolean changes. See the [high-contrast evidence](#high-contrast-evidence-wi-3056) and [`PATCHES.md`](../vendor/zed/PATCHES.md). |
+| High-contrast detection | `SPI_GETHIGHCONTRAST` reads `HCF_HIGHCONTRASTON`; `WM_SETTINGCHANGE` for that action notifies GPUI observers. | The xdg-desktop-portal `org.freedesktop.appearance` `contrast` setting is read at startup and on setting changes; values `>= 2` mean high contrast. | The same portal contract is consumed by the Wayland event loop; the compositor/portal must provide the setting. | **source-audited, unverified manually**. The shared GPUI contract only notifies when the boolean changes. See the [high-contrast evidence](#high-contrast-evidence-wi-3056) and [`PATCHES.md`](../../vendor/zed/PATCHES.md). |
 | IME composition and committed text | `WM_IME_COMPOSITION` sends committed `GCS_RESULTSTR` text through `replace_text_in_range`, and the active `GCS_COMPSTR` through `replace_and_mark_text_in_range`; the IME context is enabled only while the focused input accepts text. | XIM preedit callbacks map to marked text and XIM commit callbacks map to committed text; XKB compose sequences use the same marked/committed path, while the physical key event remains separate. | `zwp_text_input_v3` preedit maps to marked text and commit strings map to committed text; the text-input state is enabled only for an accepting input and committed before dispatch. | **source-audited; unverified manually**. The shared `TextInput` handler replaces marked text, clears the mark on commit, and preserves UTF-16 ranges. See [IME evidence](#ime-evidence). |
-| Physical scancodes and key repeat | Set-1 make code is derived from the Windows message, with `0xE000` marking an extended key. | Scancode is derived from X11 event detail (`detail - 8`). | Wayland supplies the evdev key on the initial event and repeat timer. | **verified-by-test** for the shared patch/InputCapture press-repeat-release contract; **unverified natively** on all three backends. See [scancode evidence](#physical-scancode-evidence) and [`PATCHES.md`](../vendor/zed/PATCHES.md). |
+| Physical scancodes and key repeat | Set-1 make code is derived from the Windows message, with `0xE000` marking an extended key. | Scancode is derived from X11 event detail (`detail - 8`). | Wayland supplies the evdev key on the initial event and repeat timer. | **verified-by-test** for the shared patch/InputCapture press-repeat-release contract; **unverified natively** on all three backends. See [scancode evidence](#physical-scancode-evidence) and [`PATCHES.md`](../../vendor/zed/PATCHES.md). |
 | Clipboard (text and image) | GPUI's DirectX backend reads and writes Unicode text and registered image formats (PNG, GIF, JPEG, SVG). | The X11 selection backend supports UTF-8 text and the GPUI image formats; ownership and persistence depend on the selection owner/clipboard manager. | The data-device backend supports text and image MIME types, with reads transferred through a pipe and cached after a successful offer read. | **source-verified; native run unavailable**. See the [clipboard audit](#clipboard-audit) and follow [WI-3059](https://vogt.sprooty.com/work/WI-3059) for a Windows/X11/Wayland host run. |
 | File and folder pickers | `fluent-app::pickers` delegates to the Windows `IFileOpenDialog`/`IFileSaveDialog`; cancellation maps from `ERROR_CANCELLED` to `Ok(None)`, while other dialog and shell-item failures remain errors. The save dialog currently advertises `*.*`; Fluent applies extension filters and preferred save extensions after the response. | `fluent-app::pickers` delegates to the xdg-desktop-portal OpenFile/SaveFile requests. A missing portal is reported as an error; a portal response cancellation maps to `Ok(None)`, and returned URIs are converted to local paths. | Same portal contract as X11, using the Wayland connection identifier where available. | **source-audited; verified-by-test** for shared filtering, cancellation, save-extension, and result-shape contracts; **unverified manually** on all three native backends. See [picker evidence](#picker-evidence-wi-3060). |
 | DPI scaling and device pixels | `WM_DPICHANGED` updates the window scale factor; device-pixel resize sizes are converted to logical pixels before the resize callback. Text and layout continue to use logical pixels, while renderer bounds use device pixels. | The display scale is selected from `GPUI_X11_SCALE_FACTOR`, RandR, `Xft.dpi`, or the default `1.0` (in that order); X11 resize callbacks receive logical size and scale. | The compositor-provided output scale is applied to the surface; configure/resize handling is throttled during interactive resizing and callbacks receive logical size and scale. | **source-audited, unverified manually**. The shared contract is `logical = physical / scale` and `physical = round(logical * scale)`; see the manual evidence and test plan below. Follow [WI-3061](https://vogt.sprooty.com/work/WI-3061) for native runs. |
@@ -88,7 +88,7 @@ The source audit on 2026-11-02 confirms the following end-to-end contract:
   or dark system theme.
 
 The source boundary is the `high-contrast` patch listed in
-[`vendor/zed/PATCHES.md`](../vendor/zed/PATCHES.md). The relevant files are
+[`vendor/zed/PATCHES.md`](../../vendor/zed/PATCHES.md). The relevant files are
 `gpui_windows/src/system_settings.rs`, `gpui_windows/src/platform.rs`,
 `gpui_windows/src/events.rs`, `gpui_linux/src/linux/xdg_desktop_portal.rs`,
 `gpui_linux/src/linux/x11/client.rs`, `gpui_linux/src/linux/wayland/client.rs`,
@@ -152,15 +152,15 @@ window/render-target size, callback scale factor, and a screenshot of the same
 text sample. Do not mark this row **verified-manually** until those observations
 are attached to the work item.
 
-- The source audit covered [`title_bar.rs`](../crates/fluent-app/src/title_bar.rs),
-  [`pickers.rs`](../crates/fluent-app/src/pickers.rs), and the related
-  [`window_title.rs`](../crates/fluent-app/src/window_title.rs). These files
+- The source audit covered [`title_bar.rs`](../../crates/fluent-app/src/title_bar.rs),
+  [`pickers.rs`](../../crates/fluent-app/src/pickers.rs), and the related
+  [`window_title.rs`](../../crates/fluent-app/src/window_title.rs). These files
   were read-only inputs to this documentation land.
 - The picker tests verify filtering, cancellation/error propagation through the
   test platform, and preferred save extensions. They do not substitute for a
   Windows, X11, or Wayland desktop run.
 - The scancode and high-contrast implementation boundaries are recorded in
-  [`vendor/zed/PATCHES.md`](../vendor/zed/PATCHES.md). A cross-target cargo
+  [`vendor/zed/PATCHES.md`](../../vendor/zed/PATCHES.md). A cross-target cargo
   check is useful build evidence, but it is not a native interaction test.
 - No macOS, web, or wasm behavior is included because those targets are outside
   this repository's support contract.

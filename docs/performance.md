@@ -10,7 +10,7 @@ element builds and interaction notifications. They are deliberately outside requ
 | TextInput | one edited field | 1 | 1 |
 | DataTable | 1,000 rows | 1,000 | 1 |
 | TerminalView | 200 x 50 cells | 1 observed grid | 1 |
-| VirtualList (WI-3033) | 100,000 rows | 26 viewport/overscan rows | 1 |
+| VirtualList | 100,000 rows | 26 viewport/overscan rows | 1 |
 
 `fluent-test-utils::RenderAudit` is opt-in benchmark instrumentation; no library behaviour or
 notification path is changed. The VirtualList fixture makes the lazy-rendering property explicit:
@@ -18,7 +18,7 @@ the 100k-row input builds only a viewport-sized slice. The initial audit found n
 notify/re-render. No follow-up is required unless a future run exceeds a budget or observes more
 than one notification for an unchanged interaction.
 
-## Vendored GPUI baseline (WI-2730)
+## Vendored GPUI baseline
 
 The Linux baseline below was measured from a clean target directory on 2026-11-03 with
 `CARGO_BUILD_JOBS=6`, the pinned toolchain from `rust-toolchain.toml`, and no `RUSTC_WRAPPER`.

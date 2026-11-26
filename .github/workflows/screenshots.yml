@@ -11,8 +11,8 @@ name: Screenshots (Xvfb)
 # a runner whose software Vulkan driver cannot start reports a clearly named
 # step failure and a warning, but never fails the merge queue. A flaky job is
 # fixed or quarantined the same day (delivery process); once it has been green
-# for a sustained run, drop `continue-on-error`. See CONTRIBUTING.md §5,
-# "Headless screenshots in the merge queue".
+# for a sustained run, drop `continue-on-error`. See CONTRIBUTING.md ("Screenshots") and
+# docs/maintainers/contributing-internal.md §5.
 #
 # Manual run: Actions > "Screenshots (Xvfb)" > Run workflow, or locally
 # `scripts/screenshots-xvfb.sh` (needs xvfb, imagemagick, a Vulkan driver).

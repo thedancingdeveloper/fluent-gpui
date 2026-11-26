@@ -1,7 +1,6 @@
 # Native consumer integration contracts
 
-What an app (rdpapp's `rdpapp-fluent`, rustTorrent's `rtbit-fluent`, email-rs's
-`email-desktop-fluent`) can rely on when it uses `VideoSurface`, `TerminalView` /
+What an app can rely on when it uses `VideoSurface`, `TerminalView` /
 `TerminalGrid` and the `fluent-app` pickers. The source of truth is the rustdoc in
 `crates/fluent-primitives/src/{video_surface,terminal_view,terminal_grid}.rs` and
 `crates/fluent-app/src/pickers.rs`; this page states the rules a consumer must follow.
@@ -21,8 +20,8 @@ Windows 10/11 x64 and Linux x64 (X11, Wayland) only.
   may submit at its own rate; pacing to the display refresh only saves copying. Submit from
   the UI thread (inside `Entity::update`); a decoder thread hands frames over to it.
 - **First frame and size changes.** `submit_region` before any frame fails with
-  `RegionOutOfBounds`. Submit a whole frame whenever the source size changes (rdpapp
-  compares the shown `frame_size()` to the framebuffer and falls back to `Whole`).
+  `RegionOutOfBounds`. Submit a whole frame whenever the source size changes (for example,
+  compare the shown `frame_size()` to the framebuffer and fall back to a whole frame).
 - **Resize feedback.** `VideoSurfaceEvent::Resized` carries the new size in device
   pixels. A remote source should be asked for that size; send it only when it differs
   from the last one sent, and only once the stream is open.
@@ -31,8 +30,8 @@ Windows 10/11 x64 and Linux x64 (X11, Wayland) only.
   frame pixels. It is `None` before the first frame.
 - **Errors.** `VideoFrameError` (`BadSize`, `BadLength`, `RegionOutOfBounds`) is returned
   from submit, and the previous frame stays on screen. The surface never panics on
-  bad input. Consumers choose whether to log or drop; rdpapp drops, because its bridge
-  already reports undecodable frames.
+  bad input. Consumers choose whether to log or drop; dropping is reasonable when the
+  decoder already reports undecodable frames.
 - **Tests.** gpui's test platform does not render video; use `VideoSurface::placeholder`
   and a `VideoRecorder` to assert allocations, uploads and paints.
 - **Filtering.** `Fit` is linearly filtered; `Native` is one frame pixel per device pixel.
@@ -63,12 +62,12 @@ Windows 10/11 x64 and Linux x64 (X11, Wayland) only.
   releases). While grabbed every key press/release is emitted as
   `TerminalViewEvent::Key` (logical `key`, W3C `code`, physical scancode via the
   capture, `pressed`, `is_held`, `modifiers`) except Control+Shift+C, which copies. Map
-  keys to bytes in the consumer (rdpapp acts on `pressed: true` and ignores releases).
+  keys to bytes in the consumer (for example, act on `pressed: true` and ignore releases).
   `GrabChanged` reports grab state.
 - **Selection and clipboard.** Drag selects, Shift+click extends, wheel scrolls the
   scrollback viewport (`scroll_offset`). A key press clears the selection and returns to
   the live screen. Copy writes to the system clipboard and then emits `Copied(text)`;
-  a consumer that gates clipboard access (rdpapp's trust prompt) must clear the
+  a consumer that gates clipboard access (for example, a trust prompt) must clear the
   selection while denied, and may overwrite the clipboard from `Copied` if a copy raced
   the decision.
 - **Accessibility.** `Terminal` role, `label(..)`, visible text as value.
@@ -97,7 +96,7 @@ Windows 10/11 x64 and Linux x64 (X11, Wayland) only.
 
 ## 4. Support boundaries
 
-The detailed behavior matrix and its open verification work are in [platform-parity.md](platform-parity.md).
+The detailed behavior matrix and its open verification work are in [platform-parity.md](maintainers/platform-parity.md).
 
 
 - Supported: Windows 10/11 x64 (DirectX 11), Linux x64 X11 and Wayland (wgpu).
