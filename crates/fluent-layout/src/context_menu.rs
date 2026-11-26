@@ -514,7 +514,7 @@ impl ContextMenu {
             "down" => self.move_selection(1, cx),
             "right" => self.enter_submenu(cx),
             "left" => self.leave_submenu(cx),
-            "return" | "space" => self.invoke_selected(window, cx),
+            "enter" | "space" => self.invoke_selected(window, cx),
             _ => {
                 if let Some(ch) = menu_tree::typed_access_char(&ev.keystroke) {
                     self.press_access_key(ch, window, cx);
@@ -1591,5 +1591,19 @@ mod tests {
         cx.type_keys("down down down");
         let snap = cx.accessibility_snapshot().join("\n");
         assert!(snap.contains("MenuItem \"More\""), "{snap}");
+    }
+    #[gpui::test]
+    fn enter_press_and_release_invokes_selected_item_once(cx: &mut TestAppContext) {
+        let hits = std::rc::Rc::new(std::cell::Cell::new(0));
+        let h = hits.clone();
+        let (menu, cx) = open_fluent_test_window(cx, move |_, _| {
+            ContextMenu::build(point(px(0.0), px(0.0)))
+                .action("Open", move |_, _, _| h.set(h.get() + 1))
+        });
+        cx.run_until_parked();
+        menu.update(cx, |menu, _| menu.selected_path = vec![0]);
+
+        cx.type_keys("enter");
+        assert_eq!(hits.get(), 1);
     }
 }

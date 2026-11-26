@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Fixed Enter doing nothing on `MenuBar`, `ContextMenu`, `MenuButton` and `Nav`: their key handlers matched `"return"` but gpui reports `"enter"`; these controls have no click listener on the focused element, so key-down is the only activation path and each now fires once on Enter press and release (WI-4823).
 - Fixed Enter/Space toggling a `GroupedVirtualList` group header twice (open then closed again): the extra key-down handler is gone and gpui's key-up click toggles once; the keyboard test now sends key-down and key-up (WI-3261).
 - Chrome rows share one `ComponentTokens::chrome_height` (32px, was 28px): dock header, toolbar bar, ribbon tab strip (each tab now fills it), menu bar and command palette footer; compact row density does not change it. Removes the `menu_bar_height`, `dock_header_height`, `command_palette_footer_height` and `ribbon_tab_height` fields (WI-3259).
 - Fixed Enter/Space firing twice on `SettingsNav` section headers (open then closed again) and items, `TabStrip` tabs and `Tag` (`on_select`): gpui already turns the key release into a click on a focused element, so the extra key-down handlers are gone; the keyboard tests now send key-down and key-up (WI-3261).

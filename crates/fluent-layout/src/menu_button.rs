@@ -245,7 +245,7 @@ impl MenuButton {
             }
             "right" => self.enter_submenu(cx),
             "left" => self.leave_submenu(cx),
-            "return" | "space" => {
+            "enter" | "space" => {
                 if self.open {
                     self.invoke_selected(window, cx);
                 } else {
@@ -1083,5 +1083,38 @@ mod tests {
             f32::from(shortcut.size.width) >= 30.0,
             "shortcut shrank: {shortcut:?}"
         );
+    }
+    #[gpui::test]
+    fn enter_press_and_release_invokes_selected_item_once(cx: &mut TestAppContext) {
+        let hits = std::rc::Rc::new(std::cell::Cell::new(0));
+        let h = hits.clone();
+        let (button, cx) = fluent_test_utils::open_fluent_test_window(cx, move |_, _| {
+            MenuButton::new("test-menu-button", "Actions")
+                .action("One", move |_, _, _| h.set(h.get() + 1))
+        });
+        cx.run_until_parked();
+        let focus = button.update(cx, |button, cx| button.focus_handle(cx));
+        cx.update(|window, app| window.focus(&focus, app));
+        button.update(cx, |button, cx| button.open_popup(cx));
+        cx.run_until_parked();
+
+        cx.simulate_keystrokes("enter");
+        assert_eq!(hits.get(), 1);
+    }
+
+    #[gpui::test]
+    fn enter_press_and_release_opens_closed_menu_once(cx: &mut TestAppContext) {
+        let (button, cx) = fluent_test_utils::open_fluent_test_window(cx, |_, _| {
+            MenuButton::new("test-menu-button", "Actions").item(item("One"))
+        });
+        cx.run_until_parked();
+        let focus = button.update(cx, |button, cx| button.focus_handle(cx));
+        cx.update(|window, app| window.focus(&focus, app));
+
+        cx.simulate_keystrokes("enter");
+        button.read_with(cx, |button, _| {
+            assert!(button.open);
+            assert!(!button.closing);
+        });
     }
 }

@@ -266,7 +266,7 @@ impl Render for Nav {
                             nav.toggle(key_flat[current].id.as_ref(), cx);
                             None
                         }
-                        "return" | "space" => {
+                        "enter" | "space" => {
                             if let Some(cb) = &key_callback {
                                 cb(key_flat[current].id.clone(), cx);
                             }
@@ -495,5 +495,23 @@ mod tests {
     #[gpui::test]
     fn category_and_item_rows_follow_compact_density(cx: &mut TestAppContext) {
         assert_eq!(row_heights(true, cx), (28.0, 28.0));
+    }
+    #[gpui::test]
+    fn enter_press_and_release_selects_item_once(cx: &mut TestAppContext) {
+        let hits: std::rc::Rc<std::cell::RefCell<Vec<SharedString>>> = Default::default();
+        let h = hits.clone();
+        let (_nav, cx) = open_fluent_test_window(cx, move |_, cx| {
+            Nav::new(cx)
+                .category(NavCategory::new("General").item(NavItem::new("a", "A")))
+                .on_select(move |id, _| h.borrow_mut().push(id))
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| {
+            fluent_primitives::install_focus_keybindings(app);
+            window.focus_next(app);
+        });
+
+        cx.type_keys("enter");
+        assert_eq!(*hits.borrow(), vec![SharedString::from("a")]);
     }
 }
