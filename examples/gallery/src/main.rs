@@ -366,6 +366,21 @@ mod tests {
     }
 
     #[test]
+    fn menu_bar_shows_one_trigger_per_defined_menu() {
+        // WI-4835: `with_file_menu` used to prepend a second "File" trigger
+        // because the gallery's own menu is labelled "&File".
+        use fluent_test_utils::FluentInteractionExt as _;
+        let mut app = TestAppContext::single();
+        let (_root, cx) = open_shell(&mut app);
+        let triggers: Vec<String> = cx
+            .accessibility_snapshot()
+            .into_iter()
+            .filter(|n| n.starts_with("MenuItem \"") && n.contains("[expanded="))
+            .collect();
+        assert_eq!(triggers.len(), 4, "menu bar triggers: {triggers:?}");
+    }
+
+    #[test]
     fn every_family_page_renders_inside_the_full_shell() {
         // The shell adds the title bar, menu bar, ribbon, tab strip and the
         // settings nav around each page; a page that repeats one of their
