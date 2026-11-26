@@ -114,7 +114,8 @@ mod tests {
     #[test]
     fn component_geometry_defaults() {
         let c = ComponentTokens::default();
-        assert_eq!(c.menu_bar_height, 28.0);
+        assert_eq!(c.chrome_height, 32.0);
+        assert_eq!(c.with_row_density(RowDensity::Compact).chrome_height, 32.0);
         assert_eq!(c.list_item_height, 32.0);
         assert_eq!(c.dropdown_height, 32.0);
         assert_eq!(
@@ -139,7 +140,6 @@ mod tests {
                 .row_icon_label_gap,
             8.0
         );
-        assert_eq!(c.ribbon_tab_height, 28.0);
     }
 
     #[test]

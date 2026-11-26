@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Chrome rows share one `ComponentTokens::chrome_height` (32px, was 28px): dock header, toolbar bar, ribbon tab strip (each tab now fills it), menu bar and command palette footer; compact row density does not change it. Removes the `menu_bar_height`, `dock_header_height`, `command_palette_footer_height` and `ribbon_tab_height` fields (WI-3259).
 - Fixed Enter/Space firing twice on `SettingsNav` section headers (open then closed again) and items, `TabStrip` tabs and `Tag` (`on_select`): gpui already turns the key release into a click on a focused element, so the extra key-down handlers are gone; the keyboard tests now send key-down and key-up (WI-3261).
 - One icon-to-label gap rule: new `ComponentTokens::icon_label_gap` (8px), `icon_label_gap_compact` (4px) and `row_icon_label_gap` (follows `with_row_density`), used by `Toolbar` actions, `TabStrip` tabs, `Tree` rows (8px, 4px in compact rows), ribbon button and toggle buttons, `SelectableList` rows and `CommandPalette` rows, replacing the 2px and 4px gaps; vertical large ribbon buttons and icon-only controls are unchanged (WI-3257).
 - `Tooltip` gains an `id(..)` builder (default `"tooltip-trigger"`) that keys its trigger wrapper's hover and open state, so two tooltips in one view open independently; the gallery and screenshots toast pages no longer push one toast at a time (WI-4756).

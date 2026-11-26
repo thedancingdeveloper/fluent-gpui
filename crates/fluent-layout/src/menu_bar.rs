@@ -903,7 +903,7 @@ impl Render for MenuBar {
         let radii = theme.radii;
         let components = theme.components;
         let motion = theme.motion();
-        let bar_height = components.menu_bar_height;
+        let bar_height = components.chrome_height;
         let env =
             MenuRenderEnv::from_theme(theme, fluent_core::LayoutDirection::current(cx).is_rtl());
         let rtl = LayoutDirection::current(cx).is_rtl();
@@ -926,6 +926,7 @@ impl Render for MenuBar {
             .when(rtl, |row| row.flex_row_reverse())
             .when(!rtl, |row| row.flex_row())
             .items_center()
+            .debug_selector(|| "menu-bar".into())
             .h(px(bar_height))
             .bg(bar_bg)
             .px(px(spacing.sm));
@@ -1433,5 +1434,14 @@ mod tests {
             gpui::Modifiers::none(),
         );
         bar.read_with(cx, |bar, _| assert!(bar.closing));
+    }
+
+    /// The bar is 32px, the chrome height (WI-3259).
+    #[gpui::test]
+    fn menu_bar_is_chrome_height(cx: &mut TestAppContext) {
+        let (_bar, cx) = submenu_bar(cx);
+        cx.run_until_parked();
+        let bar = cx.selector_bounds("menu-bar").expect("menu bar");
+        assert_eq!(f32::from(bar.size.height), 32.0, "menu bar height");
     }
 }
