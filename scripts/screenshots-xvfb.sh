@@ -97,6 +97,10 @@ declare -A STOPS=(
     [radio-group]=1 [dropdown]=1 [chip]=1 [card]=1 [tab-strip]=1 [tree]=1
     [selectable-list]=1 [settings-nav]=1 [toolbar]=1 [data-table]=1
     [ribbon]=1 [title-bar]=1 [dialog]=1
+    # Text-like controls (WI-4840): text-input shows three enabled inputs and
+    # field wraps two; `states` has only disabled controls, so no tab stop.
+    [text-input]=3 [textarea]=1 [searchbox]=1 [combobox]=1 [token-input]=1
+    [date-time-picker]=1 [field]=2
 )
 
 DISPLAY_NUM=99

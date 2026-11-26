@@ -1021,6 +1021,14 @@ fn ss_suggestion_popover() -> impl IntoElement {
 
 // ── Entry point ───────────────────────────────────────────────────────────
 
+/// Global services every harness window needs: the modal and toast stacks and
+/// the Tab / Shift-Tab bindings (without them a real Tab key does nothing, WI-4840).
+fn init_services(cx: &mut App) {
+    ModalStack::init(cx);
+    ToastStack::init(cx);
+    fluent_primitives::install_focus_keybindings(cx);
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let component = args.get(1).cloned().unwrap_or_else(|| "button".into());
@@ -1034,8 +1042,7 @@ fn main() {
             } else {
                 cx.set_global(Theme::light());
             }
-            ModalStack::init(cx);
-            ToastStack::init(cx);
+            init_services(cx);
 
             cx.open_window(
                 WindowOptions {
@@ -1143,5 +1150,24 @@ mod tests {
                 "{component}: no {expect:?} in {snapshot:?}"
             );
         }
+    }
+
+    /// WI-4840: the harness setup binds Tab, so a real `tab` focuses a control.
+    #[test]
+    fn harness_setup_binds_tab() {
+        let mut app = TestAppContext::single();
+        let (_view, cx) = open_fluent_test_window(&mut app, move |_, cx| {
+            init_services(cx);
+            Screenshots::new("button".to_owned(), cx)
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+        cx.type_keys("tab");
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+        assert!(
+            cx.update(|window, app| window.focused(app)).is_some(),
+            "Tab must focus the first control in the harness"
+        );
     }
 }
