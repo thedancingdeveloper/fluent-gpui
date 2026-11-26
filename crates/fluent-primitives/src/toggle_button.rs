@@ -133,6 +133,7 @@ impl RenderOnce for ToggleButton {
 
         let debug_id = self.id.to_string();
         let icon_debug_id = debug_id.clone();
+        let label_debug_id = debug_id.clone();
         let mut el = div()
             .id(self.id)
             .debug_selector(move || debug_id)
@@ -183,7 +184,11 @@ impl RenderOnce for ToggleButton {
         }
 
         if let Some(text) = label {
-            el = el.child(text);
+            el = el.child(
+                div()
+                    .debug_selector(move || format!("{label_debug_id}-label"))
+                    .child(text),
+            );
         }
 
         let ring = focus
@@ -358,28 +363,60 @@ mod tests {
         }
     }
 
+    /// Shrink-wrapped (`items_start`) so the margins around the content are the padding.
+    struct ShrinkProbe;
+
+    impl Render for ShrinkProbe {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let mut col = div().flex().flex_col().items_start().w(px(300.));
+            for (j, size) in [ButtonSize::Compact, ButtonSize::Normal, ButtonSize::Large]
+                .into_iter()
+                .enumerate()
+            {
+                col = col.child(
+                    ToggleButton::new(format!("s-{j}"))
+                        .label("Pin")
+                        .icon("icons/none.svg")
+                        .size(size),
+                );
+            }
+            col
+        }
+    }
+
     #[gpui::test]
     fn padding_and_gap_match_button_tokens(cx: &mut TestAppContext) {
-        let (_, vcx) = open_fluent_test_window(cx, |_, _| Probe);
+        let (_, vcx) = open_fluent_test_window(cx, |_, _| ShrinkProbe);
         vcx.update(|window, app| window.draw(app).clear(app));
         let t = vcx.update(|_, app| app.theme().components);
-        let pads = [
-            t.button_small_padding_x,
-            t.button_medium_padding_x,
-            t.button_large_padding_x,
+        let expected = [
+            (t.button_small_padding_x, t.button_small_gap),
+            (t.button_medium_padding_x, t.button_medium_gap),
+            // Large reuses the medium gap, as Button does.
+            (t.button_large_padding_x, t.button_medium_gap),
         ];
-        for (j, pad) in pads.into_iter().enumerate() {
-            // Stretched to 300px: content is centred, so the side margins are equal.
-            let toggle = vcx
-                .selector_bounds(Box::leak(format!("t-{j}").into_boxed_str()))
-                .unwrap();
-            let icon = vcx
-                .selector_bounds(Box::leak(format!("t-{j}-icon").into_boxed_str()))
-                .unwrap();
-            assert_eq!(f32::from(toggle.size.width), 300.0);
-            assert!(
-                f32::from(icon.left() - toggle.left()) >= pad + 1.0,
-                "size {j}"
+        for (j, (pad, gap)) in expected.into_iter().enumerate() {
+            let sel = |suffix: &str| -> &'static str {
+                Box::leak(format!("s-{j}{suffix}").into_boxed_str())
+            };
+            let toggle = vcx.selector_bounds(sel("")).unwrap();
+            let icon = vcx.selector_bounds(sel("-icon")).unwrap();
+            let label = vcx.selector_bounds(sel("-label")).unwrap();
+            // Plus the 1px transparent border.
+            assert_eq!(
+                f32::from(icon.left() - toggle.left()),
+                pad + 1.0,
+                "left padding, size {j}"
+            );
+            assert_eq!(
+                f32::from(toggle.right() - label.right()),
+                pad + 1.0,
+                "right padding, size {j}"
+            );
+            assert_eq!(
+                f32::from(label.left() - icon.right()),
+                gap,
+                "icon-label gap, size {j}"
             );
         }
     }
