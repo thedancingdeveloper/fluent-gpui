@@ -32,9 +32,9 @@ How to add an entry (whoever lands a change writes its entry, in the same change
 - **Keyboard focus works in real apps.** `Tab` and `Shift-Tab` are now bound when
   you start with `FluentApp`, and every control draws a two-tone focus ring, for
   keyboard focus only.
-- **One size rule for rows and chrome.** Title and dock rows, toolbars and menu
-  bars are 32 px (were 28 px). List, menu, tree and table rows are 32 px, with an
-  explicit 28 px `RowDensity::Compact`.
+- **One size rule for rows and chrome.** Dock headers, toolbars, ribbon tabs and menu
+  bars are 32 px (were 28 px). List, menu, tree and table rows are 32 px (were 28 px),
+  with an explicit 28 px `RowDensity::Compact`.
 - **Consistent buttons.** Every button appearance has the same 1 px-bordered box
   (32 px, or 24 px compact), and icon-to-label gaps are 8 px (4 px compact).
 - **Enter and Space activate once.** They no longer fire twice in several controls,
@@ -52,8 +52,8 @@ Removed public items:
 |---|---|
 | `ComponentTokens::menu_item_height` | `ComponentTokens::list_item_height` (32 px) |
 | `ComponentTokens::dropdown_option_height` | `ComponentTokens::list_item_height` |
-| `ComponentTokens::settings_nav_section_height` | `ComponentTokens::list_item_height` |
-| `ComponentTokens::settings_nav_item_height` | `ComponentTokens::list_item_height` |
+| `ComponentTokens::settings_nav_section_height` (was 28 px) | `ComponentTokens::list_item_height` (32 px) |
+| `ComponentTokens::settings_nav_item_height` (was already 32 px) | `ComponentTokens::list_item_height` (32 px, so no visible change) |
 | `ComponentTokens::menu_bar_height` | `ComponentTokens::chrome_height` (32 px) |
 | `ComponentTokens::dock_header_height` | `ComponentTokens::chrome_height` |
 | `ComponentTokens::command_palette_footer_height` | `ComponentTokens::chrome_height` |
@@ -68,6 +68,8 @@ Changed signatures and construction:
 | Change | What to do |
 |---|---|
 | `Flyout::new` now takes the trigger's window-space `Bounds<Pixels>` as its first argument: `Flyout::new(trigger_bounds, child)`. It anchors with window snapping. | Pass the bounds of the element that opens the flyout. |
+| `Flyout::trigger_size(width, height)` is removed. The flyout used to be placed relative to its parent using that size. | Pass the trigger's window-space `Bounds<Pixels>` to `Flyout::new(trigger_bounds, child)` instead. |
+| `ComponentTokens` is not `#[non_exhaustive]` and 4.0 adds public fields (`chrome_height`, `list_item_height`, `icon_label_gap` and others), so code that builds it with a struct literal no longer compiles. | Start from `ComponentTokens::default()` (and `with_row_density` for compact) and change only the fields you need. |
 | `SettingsNav` has private focus fields, so it can no longer be built with a struct literal. | Build it with its builder methods. |
 
 Behaviour changes you will notice (no code change needed unless noted):
@@ -77,7 +79,8 @@ Behaviour changes you will notice (no code change needed unless noted):
 | `Tab` / `Shift-Tab` | Did nothing in a real app, because the key bindings were only installed in tests. | `FluentApp::run` binds them. **Apps that build their own gpui `Application` must call `fluent_primitives::install_focus_keybindings(cx)` once at startup** (safe to call more than once). With nothing focused, `Tab` enters the first tab stop and `Shift-Tab` the last. |
 | Keyboard focus ring | Mixed styles; several controls had none. | Every control draws the same two-tone ring (2 px outer, 1 px inner), only for keyboard focus. Disabled controls are not tab stops. |
 | Chrome rows (dock header, toolbar bar, ribbon tab strip, menu bar, command palette footer) | 28 px | 32 px |
-| List, menu, dropdown option, tree, table and settings-nav rows | 28 px | 32 px. `RowDensity::Compact` keeps 28 px. |
+| List, menu, dropdown option, tree, table and settings-nav section header rows | 28 px | 32 px. `RowDensity::Compact` keeps 28 px. |
+| Settings-nav item rows | 32 px | 32 px (unchanged). |
 | Gap between an icon and its label | 2 px or 4 px, differing by control | 8 px everywhere (4 px in compact rows). Vertical large ribbon buttons and icon-only controls are unchanged. |
 | Button box (`Button`, `ToggleButton`, ribbon commands) | Height and border differed by appearance. | Every appearance has a 1 px border and the same height: 32 px (24 px compact). Horizontal padding is 12 px (8 px compact). Content is always centred. |
 | Enter / Space on `SettingsNav` headers and items, `TabStrip` tabs, `Tag` and grouped-list headers | Fired twice (a header opened and closed again). | Activates once. If your own code worked around the double firing, remove the workaround. |
