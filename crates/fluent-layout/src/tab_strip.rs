@@ -232,15 +232,9 @@ impl Render for TabStrip {
                     (true, "right") => "left",
                     (_, key) => key,
                 };
-                if matches!(key, "enter" | "return" | "space") {
-                    ts.active = i;
-                    if let Some(f) = &ts.on_select.clone() {
-                        f(i, ts, win, cx);
-                    }
-                    cx.stop_propagation();
-                    cx.notify();
-                    return;
-                }
+                // Enter and Space are not handled here: gpui turns their key
+                // release into a click on the focused tab, which `on_click`
+                // already handles (handling the key-down too fires twice).
                 if let Some(next) = crate::roving::target(key, i, &enabled) {
                     ts.focus_handles[next].focus(win, cx);
                     ts.active = next;
@@ -443,8 +437,10 @@ mod tests {
         let (_, cx) = host(cx, log.clone());
         cx.click_selector("tab-1");
         log.borrow_mut().clear();
-        cx.type_keys("enter");
-        cx.type_keys("space");
+        // A press is a key-down and a key-up; each selects exactly once.
+        press(cx, "enter");
+        assert_eq!(*log.borrow(), vec!["select 1".to_string()]);
+        press(cx, "space");
         assert_eq!(
             *log.borrow(),
             vec!["select 1".to_string(), "select 1".to_string()]

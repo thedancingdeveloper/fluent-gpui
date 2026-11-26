@@ -177,18 +177,15 @@ impl RenderOnce for Tag {
             .text_color(if disabled { c.on_neutral_disabled } else { fg })
             .child(self.label);
         if !disabled && (select.is_some() || self.dismissible) {
-            let key_select = select.clone();
             let key_dismiss = dismiss.clone();
             el = el
                 .focusable()
                 .tab_stop(true)
                 .cursor_pointer()
                 .on_key_down(move |ev: &KeyDownEvent, w, a| {
-                    if matches!(ev.keystroke.key.as_str(), "enter" | "space") {
-                        if let Some(f) = &key_select {
-                            f(!selected, &ClickEvent::default(), w, a);
-                        }
-                    }
+                    // Enter and Space select through gpui's keyboard click on
+                    // key-up (the `on_click` below); handling the key-down too
+                    // would select twice.
                     if matches!(ev.keystroke.key.as_str(), "delete" | "backspace") {
                         if let Some(f) = &key_dismiss {
                             f(&ClickEvent::default(), w, a);
@@ -246,5 +243,64 @@ impl RenderOnce for TagGroup {
             .flex_wrap()
             .gap(px(8.))
             .children(self.children)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cell::RefCell;
+
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{Context, InputEvent as _, KeyUpEvent, Keystroke, Render, TestAppContext};
+
+    use super::*;
+
+    struct Host {
+        log: Rc<RefCell<Vec<bool>>>,
+    }
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let log = self.log.clone();
+            Tag::new("tag", "Filter").on_select(move |selected, _, _, _| {
+                log.borrow_mut().push(selected);
+            })
+        }
+    }
+
+    /// Presses `key` and releases it, as a keyboard user does.
+    fn press(cx: &mut gpui::VisualTestContext, key: &'static str) {
+        cx.type_keys(key);
+        let keystroke = Keystroke::parse(key).expect("valid test keystroke");
+        cx.update(|window, app| {
+            window.dispatch_event(
+                KeyUpEvent {
+                    keystroke,
+                    scan_code: None,
+                }
+                .to_platform_input(),
+                app,
+            );
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+    }
+
+    /// gpui turns an Enter or Space key release into a click on the focused
+    /// tag, so the key-down must not also select: one press, one select.
+    #[gpui::test]
+    fn enter_and_space_select_once_per_press(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(vec![]));
+        let host_log = log.clone();
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| Host { log: host_log });
+        cx.update(|_, app| crate::install_focus_keybindings(app));
+        cx.update(|window, app| window.draw(app).clear(app));
+        cx.update(|window, app| window.focus_next(app));
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+        press(cx, "enter");
+        assert_eq!(log.borrow().len(), 1, "enter selected {:?}", log.borrow());
+        press(cx, "space");
+        assert_eq!(log.borrow().len(), 2, "space selected {:?}", log.borrow());
     }
 }

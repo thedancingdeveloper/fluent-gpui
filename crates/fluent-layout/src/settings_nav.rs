@@ -4,8 +4,8 @@ use std::{collections::HashMap, sync::Arc};
 use fluent_core::{Theme, ThemeProvider as _};
 use fluent_primitives::{focus_ring, is_keyboard_focused, FluentFocus as _};
 use gpui::{
-    div, prelude::*, px, App, ClickEvent, Context, FocusHandle, FontWeight, IntoElement,
-    KeyDownEvent, Render, SharedString, Window,
+    div, prelude::*, px, App, ClickEvent, Context, FocusHandle, FontWeight, IntoElement, Render,
+    SharedString, Window,
 };
 
 // ---------------------------------------------------------------------------
@@ -150,10 +150,6 @@ impl SettingsNav {
     }
 }
 
-fn is_activation_key(key: &str) -> bool {
-    matches!(key, "enter" | "space")
-}
-
 impl Render for SettingsNav {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
@@ -194,13 +190,6 @@ impl Render for SettingsNav {
                     cx.notify();
                 });
 
-            let toggle_key = cx.listener(move |nav: &mut SettingsNav, ev: &KeyDownEvent, _, cx| {
-                if is_activation_key(&ev.keystroke.key) {
-                    nav.sections[si].expanded = !nav.sections[si].expanded;
-                    cx.notify();
-                }
-            });
-
             let header_focus = self
                 .focus_handles
                 .entry((si, None))
@@ -222,7 +211,6 @@ impl Render for SettingsNav {
                     .hover(move |s| s.bg(hover_bg))
                     .track_focus(&header_focus)
                     .fluent_tab_stop(0)
-                    .on_key_down(toggle_key)
                     .on_click(toggle_handler)
                     .child(
                         div()
@@ -257,20 +245,6 @@ impl Render for SettingsNav {
                 let item_label = item.label.clone();
                 let is_active =
                     self.active_id.as_ref().map(|s| s.as_ref()) == Some(item_id.as_ref());
-
-                let select_key = {
-                    let sel_id = item_id.clone();
-                    let cb = self.on_select.clone();
-                    cx.listener(move |nav: &mut SettingsNav, ev: &KeyDownEvent, _, cx| {
-                        if is_activation_key(&ev.keystroke.key) {
-                            nav.active_id = Some(sel_id.clone());
-                            if let Some(f) = &cb {
-                                f(sel_id.clone(), cx);
-                            }
-                            cx.notify();
-                        }
-                    })
-                };
 
                 let select_handler = {
                     let sel_id = item_id.clone();
@@ -308,7 +282,6 @@ impl Render for SettingsNav {
                     .hover(move |s| s.bg(if is_active { active_bg } else { hover_bg }))
                     .track_focus(&item_focus)
                     .fluent_tab_stop(0)
-                    .on_key_down(select_key)
                     .on_click(select_handler)
                     // Left accent bar (3px, accent colour when active)
                     .child(
@@ -347,7 +320,7 @@ mod tests {
     use gpui::TestAppContext;
 
     use super::*;
-    use crate::roving::test_support::clipped_ring_quads;
+    use crate::roving::test_support::{clipped_ring_quads, press};
 
     fn nav(cx: &mut Context<SettingsNav>, log: Rc<RefCell<Vec<String>>>) -> SettingsNav {
         SettingsNav::new(cx)
@@ -387,7 +360,8 @@ mod tests {
             cx.run_until_parked();
             cx.update(|window, app| window.draw(app).clear(app));
         }
-        cx.type_keys("enter");
+        // A press is a key-down and a key-up; it selects exactly once.
+        press(cx, "enter");
         nav.read_with(cx, |n, _| assert_eq!(n.active_id.as_deref(), Some("b")));
         assert_eq!(*log.borrow(), vec!["b".to_string()]);
     }
@@ -430,7 +404,7 @@ mod tests {
         let log = Rc::new(RefCell::new(vec![]));
         let (nav, cx) = open_fluent_test_window(cx, |_, cx| nav(cx, log.clone()));
         tab_to(cx, 3);
-        cx.type_keys("space");
+        press(cx, "space");
         nav.read_with(cx, |n, _| assert_eq!(n.active_id.as_deref(), Some("b")));
         assert_eq!(*log.borrow(), vec!["b".to_string()]);
     }
@@ -441,9 +415,10 @@ mod tests {
         let (nav, cx) = open_fluent_test_window(cx, |_, cx| nav(cx, log.clone()));
         tab_to(cx, 1);
         nav.read_with(cx, |n, _| assert!(n.sections[0].expanded));
-        cx.type_keys("enter");
+        // Each press (key-down and key-up) toggles exactly once.
+        press(cx, "enter");
         nav.read_with(cx, |n, _| assert!(!n.sections[0].expanded));
-        cx.type_keys("space");
+        press(cx, "space");
         nav.read_with(cx, |n, _| assert!(n.sections[0].expanded));
         // Toggling a header never selects an item.
         assert!(log.borrow().is_empty());
