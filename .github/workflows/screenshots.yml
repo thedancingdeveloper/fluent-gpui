@@ -16,8 +16,9 @@ name: Screenshots (Xvfb)
 #
 # Manual run: Actions > "Screenshots (Xvfb)" > Run workflow, or locally
 # `scripts/screenshots-xvfb.sh` (needs xvfb, imagemagick, a Vulkan driver).
-# The PNGs come back as the `screenshots-xvfb` workflow artifact, so baselines
-# can be regenerated without a GPU host.
+# The PNGs and report.txt come back as the `screenshots-xvfb` workflow artifact
+# (`gh run download <id> -n screenshots-xvfb`), so baselines can be regenerated
+# without a GPU host.
 
 on:
   merge_group:
@@ -34,21 +35,21 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Install Linux system libraries and a software GPU
-        # Same GUI libraries as the `test` job, plus Xvfb, ImageMagick (window
-        # capture) and mesa's lavapipe software Vulkan driver for wgpu.
+        # Same GUI libraries as the `test` job, plus Xvfb, xdotool (real Tab key
+        # events for the focus-ring captures), ImageMagick (window capture) and mesa's lavapipe software Vulkan driver for wgpu.
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libxcb1-dev libx11-xcb-dev libxkbcommon-dev libxkbcommon-x11-dev \
             libwayland-dev libvulkan-dev libfontconfig-dev libfreetype-dev \
-            xvfb imagemagick x11-utils mesa-vulkan-drivers vulkan-tools
+            xvfb xdotool imagemagick x11-utils mesa-vulkan-drivers vulkan-tools
       - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8
       - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a
       - name: Gallery and screenshots smoke tests (in-process)
         # gpui TestAppContext: pages render, wiring works. No display needed.
         run: cargo test -p gallery -p screenshots
-      - name: Build screenshots binary
-        run: cargo build -p screenshots
+      - name: Build screenshots and gallery binaries
+        run: cargo build -p screenshots -p gallery
       - name: Check for a software Vulkan adapter
         # Report clearly when the runner has no usable GPU stack; the capture
         # step below then fails too and the job stays non-blocking.
@@ -60,6 +61,9 @@ jobs:
             exit 1
           fi
       - name: Render screenshots under Xvfb
+        # Resting shots, focus-ring shots (real Tab key), gallery page shots
+        # and report.txt; the focus-ring table also goes to the job summary.
+        # A missing ring is reported, not a failure.
         run: scripts/screenshots-xvfb.sh --out screenshots-xvfb
       - name: Upload screenshots
         if: always()

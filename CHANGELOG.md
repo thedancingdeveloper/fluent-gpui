@@ -12,6 +12,7 @@ per crate.
 
 ## Unreleased
 
+- Screenshot harness (WI-4838): `scripts/screenshots-xvfb.sh` now also sends a real `xdotool` Tab key and captures `focus/{dark,light}/<component>.png`, prints a `focus ring: visible|NOT visible|n/a` line per component to `report.txt` and the job summary, and captures the whole gallery at 1280x800 to `gallery/<page>-<theme>.png` plus `hero-<theme>.png`; `--only <component>` for quick runs. The gallery accepts `--page <id>` / `GALLERY_PAGE`, `--theme dark|light`, `--size WxH`, `--ready-file <path>` and `--list-pages`; defaults are unchanged. Workflow installs `xdotool`.
 - `Button` and `ToggleButton` share one `ButtonMetrics` sizing helper (height 32px normal / 24px compact, horizontal padding 12px / 8px, icon gap 8px / 4px from the `button_*` tokens, always a 1px border so every appearance has the same box); new tests measure height and padding for every appearance and size and the centred-when-stretched layout. No public API removed (WI-3257).
 - Fixed Enter doing nothing on `MenuBar`, `ContextMenu`, `MenuButton` and `Nav`: their key handlers matched `"return"` but gpui reports `"enter"`; these controls have no click listener on the focused element, so key-down is the only activation path and each now fires once on Enter press and release (WI-4823).
 - Fixed Enter/Space toggling a `GroupedVirtualList` group header twice (open then closed again): the extra key-down handler is gone and gpui's key-up click toggles once; the keyboard test now sends key-down and key-up (WI-3261).
