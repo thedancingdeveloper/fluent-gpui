@@ -266,7 +266,6 @@ impl RenderOnce for GroupedVirtualList {
                 let group = &groups_for_rows[gi];
                 let expanded_now = expanded_for_rows[gi];
                 let state = state_for_rows.clone();
-                let key_state = state.clone();
                 let default = gpui::div()
                     .id(("group-header", gi as u64))
                     .debug_selector(move || format!("group-header-{gi}"))
@@ -283,13 +282,10 @@ impl RenderOnce for GroupedVirtualList {
                         });
                     })
                     .on_key_down(move |event: &KeyDownEvent, window, cx| {
-                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                            key_state.update(cx, |s, cx| {
-                                s.expanded[gi] = !s.expanded[gi];
-                                s.pending_focus = None;
-                                cx.notify();
-                            });
-                        } else {
+                        // Enter and Space toggle through gpui's keyboard click
+                        // on key-up (the `on_click` above); handling the
+                        // key-down too would toggle twice.
+                        if !matches!(event.keystroke.key.as_str(), "enter" | "space") {
                             navigate(event, window, cx);
                         }
                     });
@@ -474,8 +470,21 @@ mod tests {
 
         let (_, cx) = open_fluent_test_window(cx, |_, _| Host);
         cx.click_selector("group-header-0");
-        cx.type_keys("enter");
-        assert!(cx.selector_bounds("group-row-1").is_some());
+        assert!(
+            cx.selector_bounds("group-row-1").is_none(),
+            "click collapsed"
+        );
+        // One press (key-down and key-up) toggles exactly once.
+        crate::roving::test_support::press(cx, "enter");
+        assert!(
+            cx.selector_bounds("group-row-1").is_some(),
+            "enter expanded"
+        );
+        crate::roving::test_support::press(cx, "space");
+        assert!(
+            cx.selector_bounds("group-row-1").is_none(),
+            "space collapsed"
+        );
     }
 
     fn state() -> gpui::Entity<GroupedState> {
