@@ -71,6 +71,46 @@ impl ButtonSize {
     pub const Compact: Self = Self::Small;
 }
 
+/// Box metrics shared by `Button` and `ToggleButton`, read from the component
+/// and typography tokens so every button-shaped control has one sizing rule.
+pub(crate) struct ButtonMetrics {
+    pub height: f32,
+    pub padding_x: f32,
+    pub gap: f32,
+    pub ramp: fluent_core::TypeRamp,
+    pub icon_size: f32,
+}
+
+impl ButtonMetrics {
+    pub(crate) fn new(size: ButtonSize, theme: &fluent_core::Theme) -> Self {
+        let components = &theme.components;
+        let typography = &theme.typography;
+        match size {
+            ButtonSize::Medium => Self {
+                height: components.button_medium_height,
+                padding_x: components.button_medium_padding_x,
+                gap: components.button_medium_gap,
+                ramp: typography.body,
+                icon_size: components.button_medium_icon_size,
+            },
+            ButtonSize::Small => Self {
+                height: components.button_small_height,
+                padding_x: components.button_small_padding_x,
+                gap: components.button_small_gap,
+                ramp: typography.caption,
+                icon_size: components.button_small_icon_size,
+            },
+            ButtonSize::Large => Self {
+                height: components.button_large_height,
+                padding_x: components.button_large_padding_x,
+                gap: components.button_medium_gap,
+                ramp: typography.subtitle,
+                icon_size: components.button_large_icon_size,
+            },
+        }
+    }
+}
+
 /// Placement of an optional icon relative to the label.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ButtonIconPosition {
@@ -190,7 +230,6 @@ impl RenderOnce for Button {
         let theme = cx.theme();
         let colors = &theme.colors;
         let radii = &theme.radii;
-        let typography = &theme.typography;
 
         let (states, border): (ControlStates, Option<Hsla>) = match self.appearance {
             ButtonAppearance::Primary => (colors.accent_control(), None),
@@ -236,30 +275,13 @@ impl RenderOnce for Button {
             ButtonShape::Circular => px(radii.pill),
         };
 
-        let components = &theme.components;
-        let (height, px_val, gap, ramp, icon_size) = match self.size {
-            ButtonSize::Medium => (
-                components.button_medium_height,
-                components.button_medium_padding_x,
-                components.button_medium_gap,
-                typography.body,
-                components.button_medium_icon_size,
-            ),
-            ButtonSize::Small => (
-                components.button_small_height,
-                components.button_small_padding_x,
-                components.button_small_gap,
-                typography.caption,
-                components.button_small_icon_size,
-            ),
-            ButtonSize::Large => (
-                components.button_large_height,
-                components.button_large_padding_x,
-                components.button_medium_gap,
-                typography.subtitle,
-                components.button_large_icon_size,
-            ),
-        };
+        let ButtonMetrics {
+            height,
+            padding_x: px_val,
+            gap,
+            ramp,
+            icon_size,
+        } = ButtonMetrics::new(self.size, theme);
 
         let disabled = self.disabled;
         let tab_index = self.tab_index;
@@ -613,6 +635,62 @@ mod tests {
                     f32::from(bounds.size.height),
                     want,
                     "appearance {i} size {j}"
+                );
+            }
+        }
+    }
+
+    #[gpui::test]
+    fn horizontal_padding_follows_tokens_for_every_appearance_and_size(cx: &mut TestAppContext) {
+        let (_, vcx) = open_fluent_test_window(cx, |_, _| {
+            A11yHost(Box::new(|| {
+                // Shrink-wrapped (items_start), so the label's offset is the padding.
+                let mut col = div().flex().flex_col().items_start().w(px(400.));
+                for (i, appearance) in APPEARANCES.into_iter().enumerate() {
+                    for (j, size) in [ButtonSize::Small, ButtonSize::Medium, ButtonSize::Large]
+                        .into_iter()
+                        .enumerate()
+                    {
+                        col = col.child(
+                            Button::new(format!("p-{i}-{j}"))
+                                .label("Save")
+                                .appearance(appearance)
+                                .size(size),
+                        );
+                    }
+                }
+                col.into_any_element()
+            }))
+        });
+        vcx.update(|window, app| window.draw(app).clear(app));
+        let t = vcx.update(|_, app| app.theme().components);
+        // 12px normal, 8px compact, plus the 1px border every appearance carries.
+        assert_eq!(
+            (t.button_medium_padding_x, t.button_small_padding_x),
+            (12.0, 8.0)
+        );
+        let expected = [
+            t.button_small_padding_x,
+            t.button_medium_padding_x,
+            t.button_large_padding_x,
+        ];
+        for i in 0..APPEARANCES.len() {
+            for (j, pad) in expected.into_iter().enumerate() {
+                let button = vcx
+                    .selector_bounds(Box::leak(format!("p-{i}-{j}").into_boxed_str()))
+                    .expect("button");
+                let label = vcx
+                    .selector_bounds(Box::leak(format!("p-{i}-{j}-label").into_boxed_str()))
+                    .expect("label");
+                assert_eq!(
+                    f32::from(label.left() - button.left()),
+                    pad + 1.0,
+                    "left padding, appearance {i} size {j}"
+                );
+                assert_eq!(
+                    f32::from(button.right() - label.right()),
+                    pad + 1.0,
+                    "right padding, appearance {i} size {j}"
                 );
             }
         }
