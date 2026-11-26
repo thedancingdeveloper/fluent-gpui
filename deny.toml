@@ -53,6 +53,7 @@ ignore = [
     { id = "RUSTSEC-2026-0371", reason = "zbus_names 4.3.5 is pinned by vendored Zed's zbus 5.15/accessibility stack; it handles local session-bus metadata (WI-3116)" },
     { id = "RUSTSEC-2026-0370", reason = "zvariant 5.15.1 is pinned by vendored Zed's zbus 5.15/accessibility stack; it handles local session-bus values (WI-3116)" },
     { id = "RUSTSEC-2026-0372", reason = "zvariant_derive 5.15.1 is pinned by vendored Zed's zbus 5.15/accessibility stack; it generates local session-bus serialization (WI-3116)" },
+    { id = "RUSTSEC-2026-0543", reason = "chrono is unmaintained, not exploitable; it comes only via vendored zed (gpui, scheduler); revisit in the WI-4684 upstream pull. Added 2026-11-26, review by 2026-12-31 (WI-4821)" },
 ]
 
 [bans]
