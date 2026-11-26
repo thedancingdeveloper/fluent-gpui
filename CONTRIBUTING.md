@@ -179,8 +179,35 @@ Where they run:
 - **CI** runs the workspace on Windows and Linux. The `test` job is a matrix
   (`ubuntu-latest`, `windows-latest`); the `ci` summary job needs `test`,
   `layering`, `deny` and `zed-rev` and is the one required check. No macOS.
+- **Merge queue only:** the `Screenshots (Xvfb)` workflow
+  (`.github/workflows/screenshots.yml`) runs on `merge_group` and
+  `workflow_dispatch`, never on pull requests. It is not required and `ci`
+  does not need it (see below).
 - **GPU runtime validation** (WI-1438, WI-1439) is manual, on the approved
   hosts (desktop-tlk1gff for DirectX 11), and recorded on the work item.
+
+### Headless screenshots in the merge queue (WI-3263)
+
+`.github/workflows/screenshots.yml` installs the `test` job's GUI libraries
+plus `xvfb`, `imagemagick` and `mesa-vulkan-drivers` (lavapipe), runs the
+in-process `gallery` and `screenshots` tests, then
+`scripts/screenshots-xvfb.sh`: one Xvfb server, the `screenshots` binary per
+component and theme (names read from `ALL_COMPONENTS` in
+`scripts/screenshots.sh`), a 1000x600 grab of the window. The PNGs are uploaded
+as the `screenshots-xvfb` artifact (14 days), so baselines can be regenerated
+without a GPU host.
+
+- Runs on `merge_group` and `workflow_dispatch` only; not on pull requests, not
+  a required check, and not in the `ci` aggregator's `needs`.
+- **Non-blocking until proven stable:** the job is `continue-on-error: true`.
+  If the software Vulkan driver cannot start, the "Check for a software Vulkan
+  adapter" step fails with a warning and the merge queue is unaffected. Fix or
+  quarantine it the same day; drop `continue-on-error` after a sustained green
+  run.
+- By hand: `cargo build -p screenshots && scripts/screenshots-xvfb.sh --out DIR`
+  (`--component NAME`, `--dark`, `--light`).
+- Output is not compared with the checked-in `screenshots/` baselines:
+  Xvfb/lavapipe rendering differs from the GNOME/GPU captures.
 
 ### Headless screenshots on Linux (spike, WI-2913)
 
