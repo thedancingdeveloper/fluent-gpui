@@ -235,7 +235,11 @@ impl MenuBar {
         items: Vec<ContextMenuItem>,
     ) {
         let label = label.into();
-        if self.menus.first().is_some_and(|menu| menu.label == label) {
+        // Compare without the `&` mnemonic marker so an app's own "&File" counts
+        // as the File menu (WI-4835); it keeps its items and gets no duplicate.
+        let plain = |l: &str| l.replace('&', "");
+        let wanted = plain(&label);
+        if self.menus.iter().any(|menu| plain(&menu.label) == wanted) {
             return;
         }
 
@@ -1154,6 +1158,23 @@ mod tests {
             assert_eq!(bar.menus[1].label.as_ref(), "Edit");
             assert_eq!(bar.menus[2].label.as_ref(), "View");
             assert_eq!(bar.active_index, 0);
+        });
+    }
+
+    #[gpui::test]
+    fn ensure_front_menu_treats_mnemonic_label_as_existing(cx: &mut TestAppContext) {
+        init_fluent_test(cx);
+        let bar = cx.new(|cx| {
+            MenuBar::new(cx)
+                .menu("&File", vec![ContextMenuItem::action("New", |_, _, _| {})])
+                .menu("&Edit", vec![ContextMenuItem::action("Cut", |_, _, _| {})])
+        });
+        bar.update(cx, |bar, _| {
+            bar.ensure_front_menu("File", vec![ContextMenuItem::action("Exit", |_, _, _| {})]);
+            assert_eq!(bar.menus.len(), 2);
+            assert_eq!(bar.trigger_bounds.len(), 2);
+            assert_eq!(bar.menus[0].label.as_ref(), "&File");
+            assert_eq!(bar.menus[0].items.len(), 1);
         });
     }
 
