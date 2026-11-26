@@ -91,9 +91,6 @@ impl Render for OverlaysPage {
             Button::new(format!("gal-push-{id}"))
                 .label(format!("Push {title}"))
                 .on_click(move |_, _, cx| {
-                    // One toast at a time: ToastHost gives every MessageBar the
-                    // same element id, so two at once collide in the a11y tree.
-                    ToastStack::clear(cx);
                     ToastStack::push(
                         Toast::new(id, "Something happened.")
                             .title(title)
