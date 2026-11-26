@@ -64,9 +64,12 @@ struct Screenshots {
     text_error: Entity<TextInput>,
     text_disabled: Entity<TextInput>,
     textarea: Entity<Textarea>,
+    textarea_error: Entity<Textarea>,
     searchbox: Entity<Searchbox>,
     dropdown: Entity<Dropdown>,
+    dropdown_error: Entity<Dropdown>,
     combobox: Entity<fluent_primitives::Combobox>,
+    combobox_error: Entity<fluent_primitives::Combobox>,
     /// The stateful view for the layout and overlay components that need one.
     view: Option<AnyView>,
 }
@@ -90,6 +93,13 @@ impl Screenshots {
                     .value("Multi-line text input\nsupports several rows.")
                     .rows(4)
             }),
+            textarea_error: cx.new(|_| {
+                Textarea::new()
+                    .placeholder("Notes")
+                    .value("Too short")
+                    .rows(3)
+                    .error(true)
+            }),
             searchbox: cx.new(|_| Searchbox::new().placeholder("Search connections…")),
             dropdown: cx.new(|_| {
                 Dropdown::new("dd-ss")
@@ -99,6 +109,20 @@ impl Screenshots {
                     .option("vnc", "VNC")
                     .option("sftp", "SFTP")
                     .selected("ssh")
+            }),
+            dropdown_error: cx.new(|_| {
+                Dropdown::new("dd-ss-error")
+                    .placeholder("Choose protocol")
+                    .option("ssh", "SSH")
+                    .option("rdp", "RDP")
+                    .error(true)
+            }),
+            combobox_error: cx.new(|_| {
+                fluent_primitives::Combobox::new()
+                    .placeholder("Protocol")
+                    .option("ssh", "SSH")
+                    .option("rdp", "RDP")
+                    .error(true)
             }),
             combobox: cx.new(|_| {
                 fluent_primitives::Combobox::new()
@@ -133,11 +157,15 @@ impl Render for Screenshots {
         let text_placeholder = self.text_placeholder.clone();
         let text_filled = self.text_filled.clone();
         let text_error = self.text_error.clone();
+        let text_error_field = self.text_error.clone();
         let text_disabled = self.text_disabled.clone();
         let textarea = self.textarea.clone();
+        let textarea_error = self.textarea_error.clone();
         let searchbox = self.searchbox.clone();
         let dropdown = self.dropdown.clone();
+        let dropdown_error = self.dropdown_error.clone();
         let combobox = self.combobox.clone();
+        let combobox_error = self.combobox_error.clone();
 
         let panel_content: fluent_core::gpui::AnyElement = match self.component.as_ref() {
             "button" => ss_buttons().into_any_element(),
@@ -159,12 +187,12 @@ impl Render for Screenshots {
                 ss_text_inputs(text_placeholder, text_filled, text_error, text_disabled)
                     .into_any_element()
             }
-            "textarea" => ss_textarea(textarea).into_any_element(),
+            "textarea" => ss_textarea(textarea, textarea_error).into_any_element(),
             "searchbox" => ss_searchbox(searchbox).into_any_element(),
-            "dropdown" => ss_dropdown(dropdown).into_any_element(),
-            "combobox" => ss_combobox(combobox).into_any_element(),
+            "dropdown" => ss_dropdown(dropdown, dropdown_error).into_any_element(),
+            "combobox" => ss_combobox(combobox, combobox_error).into_any_element(),
             "radio-group" => ss_radio_group().into_any_element(),
-            "field" => ss_field(text_filled, textarea).into_any_element(),
+            "field" => ss_field(text_filled, textarea, text_error_field).into_any_element(),
             "card" => ss_cards().into_any_element(),
             "section-header" => ss_section_headers().into_any_element(),
             "states" => ss_states().into_any_element(),
@@ -250,6 +278,23 @@ fn ss_buttons() -> impl IntoElement {
                         .appearance(ButtonAppearance::Hyperlink),
                 )
                 .child(Button::new("b-disabled").label("Disabled").disabled(true)),
+        ))
+        .child(group(
+            "Loading",
+            row()
+                .child(Button::new("b-loading").label("Saving").loading(true))
+                .child(
+                    Button::new("b-loading-accent")
+                        .label("Saving")
+                        .appearance(ButtonAppearance::Accent)
+                        .loading(true),
+                )
+                .child(
+                    Button::new("b-loading-compact")
+                        .label("Saving")
+                        .size(ButtonSize::Compact)
+                        .loading(true),
+                ),
         ))
         .child(group(
             "Size",
@@ -526,8 +571,13 @@ fn ss_text_inputs(
 }
 
 // ── Textarea ──────────────────────────────────────────────────────────────
-fn ss_textarea(textarea: Entity<Textarea>) -> impl IntoElement {
-    group("Textarea", div().w(px(360.0)).child(textarea))
+fn ss_textarea(textarea: Entity<Textarea>, textarea_error: Entity<Textarea>) -> impl IntoElement {
+    col()
+        .child(group("Textarea", div().w(px(360.0)).child(textarea)))
+        .child(group(
+            "Textarea (error)",
+            div().w(px(360.0)).child(textarea_error),
+        ))
 }
 
 // ── Searchbox ─────────────────────────────────────────────────────────────
@@ -536,13 +586,26 @@ fn ss_searchbox(searchbox: Entity<Searchbox>) -> impl IntoElement {
 }
 
 // ── Dropdown ──────────────────────────────────────────────────────────────
-fn ss_dropdown(dropdown: Entity<Dropdown>) -> impl IntoElement {
-    group("Dropdown", div().w(px(220.0)).child(dropdown))
+fn ss_dropdown(dropdown: Entity<Dropdown>, dropdown_error: Entity<Dropdown>) -> impl IntoElement {
+    col()
+        .child(group("Dropdown", div().w(px(220.0)).child(dropdown)))
+        .child(group(
+            "Dropdown (error)",
+            div().w(px(220.0)).child(dropdown_error),
+        ))
 }
 
 // ── Combobox ──────────────────────────────────────────────────────────────
-fn ss_combobox(combobox: Entity<fluent_primitives::Combobox>) -> impl IntoElement {
-    group("Combobox", div().w(px(220.0)).child(combobox))
+fn ss_combobox(
+    combobox: Entity<fluent_primitives::Combobox>,
+    combobox_error: Entity<fluent_primitives::Combobox>,
+) -> impl IntoElement {
+    col()
+        .child(group("Combobox", div().w(px(220.0)).child(combobox)))
+        .child(group(
+            "Combobox (error)",
+            div().w(px(220.0)).child(combobox_error),
+        ))
 }
 
 // ── RadioGroup ────────────────────────────────────────────────────────────
@@ -568,7 +631,11 @@ fn ss_radio_group() -> impl IntoElement {
 }
 
 // ── Field ─────────────────────────────────────────────────────────────────
-fn ss_field(name: Entity<TextInput>, notes: Entity<Textarea>) -> impl IntoElement {
+fn ss_field(
+    name: Entity<TextInput>,
+    notes: Entity<Textarea>,
+    invalid: Entity<TextInput>,
+) -> impl IntoElement {
     col()
         .w(px(360.0))
         .child(
@@ -581,6 +648,12 @@ fn ss_field(name: Entity<TextInput>, notes: Entity<Textarea>) -> impl IntoElemen
             Field::new(div().w_full().child(notes))
                 .label("Notes")
                 .validation(FieldValidationState::Success, "Saved."),
+        )
+        .child(
+            Field::input(invalid)
+                .label("Host")
+                .helper_text("Enter a host name or address.")
+                .error(true),
         )
 }
 

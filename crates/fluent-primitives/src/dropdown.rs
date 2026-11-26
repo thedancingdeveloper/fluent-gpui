@@ -46,6 +46,7 @@ pub struct Dropdown {
     selected: Option<SharedString>,
     placeholder: SharedString,
     disabled: bool,
+    error: bool,
     tab_index: Option<isize>,
     options: Vec<DropdownOption>,
     open: bool,
@@ -66,6 +67,7 @@ impl Dropdown {
             selected: None,
             placeholder: "Select...".into(),
             disabled: false,
+            error: false,
             tab_index: None,
             options: vec![],
             open: false,
@@ -101,6 +103,22 @@ impl Dropdown {
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
+    }
+
+    /// Marks the control as invalid: danger border, like
+    /// [`crate::TextInput::error`].
+    pub fn error(mut self, error: bool) -> Self {
+        self.error = error;
+        self
+    }
+
+    /// Trigger border colour for the current state.
+    fn border_color(&self, colors: &fluent_core::ColorScheme) -> gpui::Hsla {
+        if self.error {
+            colors.status_error
+        } else {
+            colors.stroke_neutral
+        }
     }
 
     /// Sets the option configuration for this control.
@@ -348,7 +366,7 @@ impl Render for Dropdown {
                 colors.neutral
             })
             .border_1()
-            .border_color(colors.stroke_neutral)
+            .border_color(self.border_color(&colors))
             .text_ramp(&typography.body)
             .text_color(fg)
             .child(div().flex_1().child(label))
@@ -618,5 +636,15 @@ mod tests {
     #[gpui::test]
     fn dropdown_rows_follow_compact_density(cx: &mut TestAppContext) {
         assert_eq!(dropdown_row_height(true, cx), 28.0);
+    }
+
+    #[gpui::test]
+    fn error_flag_switches_border_to_danger(cx: &mut TestAppContext) {
+        init_fluent_test(cx);
+        let colors = cx.update(|cx| cx.theme().colors.clone());
+        let plain = Dropdown::new("d");
+        let invalid = Dropdown::new("d").error(true);
+        assert_eq!(plain.border_color(&colors), colors.stroke_neutral);
+        assert_eq!(invalid.border_color(&colors), colors.status_error);
     }
 }

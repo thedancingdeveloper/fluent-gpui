@@ -94,6 +94,7 @@ pub struct Field {
     helper_text: Option<SharedString>,
     validation_message: Option<SharedString>,
     validation_state: FieldValidationState,
+    error: bool,
     label_width: Option<f32>,
     control: AnyElement,
     semantics: Option<SemanticsApplier>,
@@ -109,6 +110,7 @@ impl Field {
             helper_text: None,
             validation_message: None,
             validation_state: FieldValidationState::None,
+            error: false,
             label_width: None,
             control: control.into_any_element(),
             semantics: None,
@@ -169,6 +171,32 @@ impl Field {
         self
     }
 
+    /// Marks the field invalid without a message: the wrapped control gets the
+    /// error state and the helper text turns danger-coloured. An explicit
+    /// [`Field::validation`] state wins.
+    pub fn error(mut self, error: bool) -> Self {
+        self.error = error;
+        self
+    }
+
+    /// The validation state pushed to the control and used for messages.
+    fn effective_state(&self) -> FieldValidationState {
+        if self.error && self.validation_state == FieldValidationState::None {
+            FieldValidationState::Error
+        } else {
+            self.validation_state
+        }
+    }
+
+    /// Helper text colour: danger while the field is in error.
+    fn helper_color(&self, colors: &fluent_core::ColorScheme) -> gpui::Hsla {
+        if self.effective_state() == FieldValidationState::Error {
+            colors.status_error
+        } else {
+            colors.on_subtle
+        }
+    }
+
     /// Render the label in a fixed-width leading column.
     pub fn horizontal(mut self, label_width: f32) -> Self {
         self.label_width = Some(label_width);
@@ -178,6 +206,8 @@ impl Field {
 
 impl RenderOnce for Field {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let state = self.effective_state();
+        let helper_color = self.helper_color(&cx.theme().colors);
         let accessible_label = self
             .info_label
             .as_ref()
@@ -188,12 +218,7 @@ impl RenderOnce for Field {
                 .validation_message
                 .clone()
                 .or_else(|| self.helper_text.clone());
-            apply(
-                accessible_label.clone(),
-                description,
-                self.validation_state,
-                cx,
-            );
+            apply(accessible_label.clone(), description, state, cx);
         }
         let theme = cx.theme();
         let colors = &theme.colors;
@@ -201,7 +226,7 @@ impl RenderOnce for Field {
         let typography = &theme.typography;
         let rtl = LayoutDirection::current(cx).is_rtl();
 
-        let message_color = match self.validation_state {
+        let message_color = match state {
             FieldValidationState::Error => colors.status_error,
             FieldValidationState::Warning => colors.status_warning,
             FieldValidationState::Success => colors.status_success,
@@ -259,7 +284,7 @@ impl RenderOnce for Field {
                     div()
                         .text_ramp(&typography.caption)
                         .line_height(px(typography.caption.line_height))
-                        .text_color(colors.on_subtle)
+                        .text_color(helper_color)
                         .child(helper),
                 );
             }
@@ -267,7 +292,7 @@ impl RenderOnce for Field {
                 body = body.child(validation_message(
                     message,
                     message_color,
-                    self.validation_state,
+                    state,
                     spacing,
                     typography,
                 ));
@@ -283,7 +308,7 @@ impl RenderOnce for Field {
                 div()
                     .text_ramp(&typography.caption)
                     .line_height(px(typography.caption.line_height))
-                    .text_color(colors.on_subtle)
+                    .text_color(helper_color)
                     .child(helper),
             );
         }
@@ -292,7 +317,7 @@ impl RenderOnce for Field {
             root = root.child(validation_message(
                 message,
                 message_color,
-                self.validation_state,
+                state,
                 spacing,
                 typography,
             ));
@@ -371,6 +396,16 @@ mod tests {
     impl gpui::Render for InfoLabelHost {
         fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
             Field::input(self.input.clone()).info_label(self.label.clone())
+        }
+    }
+
+    struct ErrorHost {
+        probe: Entity<ValidationProbe>,
+    }
+
+    impl gpui::Render for ErrorHost {
+        fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+            Field::input(self.probe.clone()).label("Host").error(true)
         }
     }
 
@@ -503,5 +538,31 @@ mod tests {
         assert_eq!(field.helper_text.as_deref(), Some("Use the account name"));
         assert_eq!(field.validation_message.as_deref(), Some("Account found"));
         assert_eq!(field.validation_state, FieldValidationState::Success);
+    }
+
+    #[gpui::test]
+    fn error_flag_turns_helper_text_danger_and_marks_control(cx: &mut TestAppContext) {
+        let state = Rc::new(RefCell::new(FieldValidationState::None));
+        let state_for_probe = state.clone();
+        let (_, vcx) = open_fluent_test_window(cx, move |_, cx| {
+            let probe = cx.new(|_| ValidationProbe {
+                state: state_for_probe,
+            });
+            ErrorHost { probe }
+        });
+        vcx.update(|window, cx| window.draw(cx).clear(cx));
+        assert_eq!(*state.borrow(), FieldValidationState::Error);
+        let colors = vcx.update(|_, app| app.theme().colors.clone());
+        let plain = Field::new(gpui::div()).helper_text("Hint");
+        let invalid = Field::new(gpui::div()).helper_text("Hint").error(true);
+        assert_eq!(plain.helper_color(&colors), colors.on_subtle);
+        assert_eq!(invalid.helper_color(&colors), colors.status_error);
+        assert_eq!(plain.effective_state(), FieldValidationState::None);
+        assert_eq!(invalid.effective_state(), FieldValidationState::Error);
+        // An explicit validation state wins over the flag.
+        let warned = Field::new(gpui::div())
+            .error(true)
+            .validation(FieldValidationState::Warning, "Careful");
+        assert_eq!(warned.effective_state(), FieldValidationState::Warning);
     }
 }
