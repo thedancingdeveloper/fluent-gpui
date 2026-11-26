@@ -784,9 +784,6 @@ fn stateful_view(component: &str, cx: &mut App) -> Option<AnyView> {
             .into(),
         "toast" => {
             ToastStack::init(cx);
-            // One toast at a time: ToastHost gives every MessageBar the same
-            // element id, so a second one would collide in the a11y tree
-            // (library issue, noted on WI-3263).
             ToastStack::push(
                 Toast::new("t1", "Something happened.")
                     .title("Toast")
