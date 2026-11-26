@@ -511,7 +511,7 @@ mod tests {
             window.focus_next(app);
         });
 
-        cx.type_keys("enter");
+        crate::roving::test_support::press(cx, "enter");
         assert_eq!(*hits.borrow(), vec![SharedString::from("a")]);
     }
 }
