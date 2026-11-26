@@ -1,266 +1,537 @@
 # Changelog
 
-All notable changes to FluentGUI are documented here. Versions are per-crate; the
-"workspace release" headings below group simultaneous bumps so consumers can pin
-a coherent set.
+All notable changes to fluent-gpui are documented in this file.
 
-The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
-and FluentGUI follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
-per crate.
+The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/).
+fluent-gpui follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
----
+What is versioned: a release is one workspace release of the `fluent-*` crates
+(`fluent-core`, `fluent-primitives`, `fluent-layout`, `fluent-ribbon`,
+`fluent-app`, `fluent-test-utils`). They share one version number. Releases are
+Git tags of the form `vX.Y.Z+zed.<sha>`, where `<sha>` is the first 12 characters
+of the vendored Zed commit the release is built on (for example
+`v3.2.0+zed.ba63a022c9a2`). Pin the tag, not a branch. How a release is cut is
+described in [docs/maintainers/RELEASING.md](docs/maintainers/RELEASING.md).
 
-## Unreleased
+## Unreleased (next release: 4.0.0)
 
-- Focus-ring report (WI-4841): `NOT visible` only when under 30 px differ (the checkbox's 100-140 px ring was a false negative); chip, card and title-bar are `n/a (no tab stop: ...)` because the harness renders them non-interactive. Comparison factored into `scripts/focus-ring-lib.sh` with `scripts/test-focus-ring.sh`.
-- Fixed the gallery menu bar showing a fifth, highlighted "File" cell (WI-4835): `Workspace::with_file_menu` compared its "File" label with the app's "&File" literally and prepended a second menu holding only Exit (which also made keyboard-opened File show just Exit). `MenuBar` now ignores the `&` mnemonic marker when deciding whether a File menu already exists. Tests count the gallery's triggers.
+<!--
+How to add an entry (whoever lands a change writes its entry, in the same change):
+- Put it under Added, Changed, Deprecated, Removed, Fixed or Security, below a
+  short bold area label such as **Buttons and inputs**. Reuse an existing label.
+- Write plain language for a developer who has never seen our tracker: what
+  changed for the person using the library and, for a breaking change, what to
+  do about it. One line to a short paragraph. Crate and type names in backticks.
+- No work-item numbers, changeset ids or internal process words.
+- A breaking change also gets a row in "Breaking changes and migration" below.
+- scripts/check-changelog.sh checks the format.
+-->
 
-- Added `.error(bool)` to `Textarea`, `Combobox`, `Dropdown` and `Field` (danger border like `TextInput::error`; `Field::error` also turns the helper text danger-coloured and marks a wrapped input, an explicit `validation` state wins) and `Button::loading(bool)` (spinner replaces the leading icon, same size, click/Enter/Space ignored, Tab stop and focus ring kept). Screenshot harness and gallery show the new states (WI-4827).
-- Fixed Tab / Shift-Tab doing nothing in real apps (WI-4840, root cause of WI-4836): `install_focus_keybindings` was only ever called from tests. `FluentApp::run` and the screenshots harness now call it, so keyboard focus and the focus ring work; it is idempotent and still public for apps that build their own gpui `Application`. A Tab with nothing focused now enters the first tab stop (and Shift-Tab the last). New regression tests drive a real `tab` through the startup path, and check each text-like control moves focus exactly one stop per press.
-- Screenshot harness (WI-4838): `scripts/screenshots-xvfb.sh` now also sends a real `xdotool` Tab key and captures `focus/{dark,light}/<component>.png`, prints a `focus ring: visible|NOT visible|n/a` line per component to `report.txt` and the job summary, and captures the whole gallery at 1280x800 to `gallery/<page>-<theme>.png` plus `hero-<theme>.png`; `--only <component>` for quick runs. The gallery accepts `--page <id>` / `GALLERY_PAGE`, `--theme dark|light`, `--size WxH`, `--ready-file <path>` and `--list-pages`; defaults are unchanged. Workflow installs `xdotool`.
-- `Button` and `ToggleButton` share one `ButtonMetrics` sizing helper (height 32px normal / 24px compact, horizontal padding 12px / 8px, icon gap 8px / 4px from the `button_*` tokens, always a 1px border so every appearance has the same box); new tests measure height and padding for every appearance and size and the centred-when-stretched layout. No public API removed (WI-3257).
-- Fixed Enter doing nothing on `MenuBar`, `ContextMenu`, `MenuButton` and `Nav`: their key handlers matched `"return"` but gpui reports `"enter"`; these controls have no click listener on the focused element, so key-down is the only activation path and each now fires once on Enter press and release (WI-4823).
-- Fixed Enter/Space toggling a `GroupedVirtualList` group header twice (open then closed again): the extra key-down handler is gone and gpui's key-up click toggles once; the keyboard test now sends key-down and key-up (WI-3261).
-- Chrome rows share one `ComponentTokens::chrome_height` (32px, was 28px): dock header, toolbar bar, ribbon tab strip (each tab now fills it), menu bar and command palette footer; compact row density does not change it. Removes the `menu_bar_height`, `dock_header_height`, `command_palette_footer_height` and `ribbon_tab_height` fields (WI-3259).
-- Fixed Enter/Space firing twice on `SettingsNav` section headers (open then closed again) and items, `TabStrip` tabs and `Tag` (`on_select`): gpui already turns the key release into a click on a focused element, so the extra key-down handlers are gone; the keyboard tests now send key-down and key-up (WI-3261).
-- One icon-to-label gap rule: new `ComponentTokens::icon_label_gap` (8px), `icon_label_gap_compact` (4px) and `row_icon_label_gap` (follows `with_row_density`), used by `Toolbar` actions, `TabStrip` tabs, `Tree` rows (8px, 4px in compact rows), ribbon button and toggle buttons, `SelectableList` rows and `CommandPalette` rows, replacing the 2px and 4px gaps; vertical large ribbon buttons and icon-only controls are unchanged (WI-3257).
-- `Tooltip` gains an `id(..)` builder (default `"tooltip-trigger"`) that keys its trigger wrapper's hover and open state, so two tooltips in one view open independently; the gallery and screenshots toast pages no longer push one toast at a time (WI-4756).
-- `DataTable` gains an `id(..)` builder (default `"data-table"`) that keys its wrapper, grid, focus handle and column widths, so two tables in one view no longer panic with a duplicate a11y node id (and share a Tab stop and widths); the WI-4756 audit found `TabStrip`, `Switch`, `DocumentViewer` and the other `Render` views already safe (an id'd div without a role makes no a11y node, `Render` views are scoped per view, nested ids sit under their parent's id), with regression tests for `Switch` and `TabStrip` (WI-4756).
-- `ToastHost` gains an `id(..)` builder (default `"toast-host"`) that sets its root element id; the stack and each toast's message bar derive their ids from it and the toast id, so several toasts in one host no longer panic with a duplicate a11y node id in debug builds (WI-4750).
-- `MessageBar`, `Spinner` and `ProgressBar` gain an `id(..)` builder that also sets their accessibility node id, so two of one kind in a window no longer panic with a duplicate a11y node id in debug builds (defaults unchanged; the gallery drops its id-scoped wrapper divs) (WI-4743).
-- Menu separators (`ContextMenu`, `MenuButton`, `MenuBar`) share one `menu_tree::separator` helper: a `flex_none` row with equal padding above and below the 1px line, so it stays centred between rows at default (32) and compact (28) density and no longer shrinks to 0px when a capped menu scrolls (WI-4741).
-- `MenuButton` item labels (action, checkbox, radio, submenu) now go through `menu_tree::label_element` like `ContextMenu` and `MenuBar`: a long label truncates to one line with an ellipsis instead of wrapping (WI-3268).
-- Docs: compile-tested `no_run` rustdoc examples on `Button`, `TextInput`, `Field`, `Dropdown`, `Checkbox`, `DataTable`, `Tree`, `Dialog`, `TabStrip` and `FluentApp` (WI-2947).
-- Gallery: new Inputs, Status and feedback, and Layout components pages (text/textarea/dropdown/combobox/field states, spinner, progress, skeleton, message bars, toolbar narrow with overflow, tree loading/error), an Edit menu plus checkbox/radio/shortcut menu items, and in-process smoke tests for every page and the theme buttons (WI-3263).
-- Gallery: sidebar is now a `SettingsNav` of 12 pages with new Data display, Overlays and Menus and commands pages (data table, selectable list, document viewer, token input, date-time picker, toast, dialog, flyout, popover, suggestion popover, tooltip, context menu, menu button, command palette); the screenshots binary and `scripts/screenshots.sh` gain layout, overlay, open-menu and error/loading/disabled captures, with tests that keep the page, script and binary lists in step. No baselines regenerated (WI-3263).
-- Menus (`ContextMenu`, `MenuButton`, `MenuBar`): the submenu chevron mirrors in right-to-left layouts, and `ContextMenuItem::shortcut` now also sets the trailing secondary-text column of checkbox and radio items (new `shortcut` field on those variants) (WI-3041).
-- `Toolbar` collapses the items that do not fit its width (measured, or `available_width`) into a "More" menu; the More button is the last member of the toolbar's roving Tab stop with a keyboard-only focus ring, Enter/Space/Down open the menu (menu roles, arrows, Escape returns focus) (WI-3041).
-- `RibbonBar` keys each command's focus handle by an `(item, Option<sub>)` position instead of `item * 10 + sub`, so the controls of a `Stack` no longer share a handle (one Tab stop, two rings) with the plain buttons after it.
-- `Checkbox` box, `RadioGroup` circle (inner dot half) and the `Switch` track height now read one `ComponentTokens::toggle_box` (20px, Fluent 2), so the three toggles share a size; layout tests assert the sizes and a symmetric switch knob inset in both states (WI-3258).
-- `ToggleButton` and `IconButton` read icon size and square size from the `button_*` component tokens (ToggleButton icons were fixed at 16px at every size) (WI-3257).
-- Ribbon command buttons (`Button` and `ToggleButton`) always centre their content, so an icon+label button stretched wider than its content is no longer left-aligned (WI-3257).
-- `Link`, `Slider`, `SpinButton`, `Expander`/`Accordion` headers, `ColorPicker` swatches (one roving Tab stop), `Toolbar` (one roving stop; items no longer activate twice on Enter/Space), `DataTable` (one Tab stop; the ring sits on an unclipped wrapper), ribbon tabs (active tab is the strip's Tab stop), ribbon command buttons, collapse and overflow buttons, the `TitleBar` caption buttons and `Dialog` actions (now `Button`s; the close button was already an `IconButton`) own a tracked `FocusHandle` and draw the two-tone keyboard-only `focus_ring` instead of `fluent_focus`; disabled controls are not Tab stops. The ColorPicker selection outline now uses the accent colour (WI-3261).
-- `TabStrip`, `Tree` and `SelectableList` are single Tab stops (tabs: arrows move and select, Enter/Space select) with a tracked `FocusHandle`, key context and the two-tone keyboard-only `focus_ring`; `SelectableList` now activates on Enter (matched as `return` before) (WI-3261).
-- `Tree::id` keys the tree's focus handle, so trees under one parent no longer share a Tab stop and ring; the default id is still `"tree"`, so give each sibling tree its own id (WI-3261).
-- `TabStrip` draws its focus ring inside each tab, so the strip's `overflow_hidden` no longer clips it; `SettingsNav` keeps its 2px side headroom and `DataTable` its unclipped frame, each now covered by a ring-not-clipped test (WI-3261).
-- `Checkbox`, `Switch`, `RadioGroup`, `Dropdown`, a dismissable `Chip` and a clickable `Card` own a persistent tracked `FocusHandle` (key context, Tab stop at `tab_index`, Enter/Space activation) and draw the two-tone `focus_ring` for keyboard focus only; disabled controls are not Tab stops and never activate. A `RadioGroup` stays one Tab stop with arrows moving within it. A `Chip` focuses its dismiss button; set `Card::id` on clickable cards so each keeps its own focus (WI-3261).
-- `Button`, `IconButton` and `ToggleButton` own a tracked `FocusHandle` (`Button` key context, Tab stop at `tab_index`, Enter/Space activation) and draw the two-tone `focus_ring` for keyboard focus only; disabled buttons are not Tab stops and never activate. Other `fluent_focus` callers are unchanged (WI-3261).
-- Add `stroke_focus_outer` / `stroke_focus_inner` colour tokens (all themes) and the shared `fluent_primitives::focus_ring` / `is_keyboard_focused` helpers: a 2px outer plus 1px inner ring drawn only for keyboard focus. `SettingsNav` now draws it (new `SettingsNav` focus handles; the private field means it can no longer be built by struct literal) and has tests for Space, header toggle, keyboard-only ring (WI-3261).
-- `SettingsNav` section headers and items are Tab stops with the Fluent keyboard focus ring, activate on Enter/Space, and keep 2px headroom so the ring is not clipped by the nav's `overflow_hidden` (WI-3261).
-- README: status now says 3.x is released on the vendored upstream Zed gpui (latest `v3.2.0+zed.ba63a022c9a2`); the consumer snippet uses that tag and no longer calls the first 3.x tag missing (WI-4702).
-- Add a Fluent 2 `Scrollbar` (vertical and horizontal, overlay auto-hide, thumb drag, track paging, hover/pressed states from theme tokens) over a `ScrollHandle` or `ListState` via `ScrollbarSource`; `VirtualList::scrollbar(true)` shows it, and the gallery has a scrollbar page (WI-3459).
-- `ContextMenu` caps its panels to the window height and scrolls them with the wheel; arrow, access-key and Left/Right navigation scroll the selected row into view. Submenus are now separate layers anchored to their trigger row, so a scrolling parent does not clip them (WI-3262).
-- `FluentApp::window_position(x, y)` opens the window at a saved screen position, clamped onto the display it overlaps (centred if none), and `fluent_app::window_bounds(&Window)` reads the current bounds so apps can save them (WI-3439).
-- Add a `gpui_wgpu` headless regression test that a non-blur quad frame renders after intermediate-texture invalidation, guarding the backdrop placeholder (WI-3122).
-- Restore the missing layout-to-primitives lockfile dependency so locked release dry-runs resolve without dependency version changes (WI-2951).
-- Combobox scrolls the highlighted option into view during keyboard navigation; `Tree` fills its parent height so its virtual list renders inside a fixed-height container (WI-3262).
-- Tree, ribbon items/tabs and title-bar caption buttons are now Tab stops with the Fluent keyboard focus ring; caption buttons activate on Enter/Space and the tree activates its selection on Enter (the key was matched as `return`) (WI-3261).
+### Highlights
 
-- Popups: `Flyout::new` now takes the trigger's window-space `Bounds` and anchors with window snapping (breaking, no in-repo callers); popup motion offsets with `top` instead of a margin; `fluent_core::layer` holds the shared deferred-priority table; menu rows wait 200 ms before closing an open submenu in favour of a sibling row (WI-3255).
-- Pill, badge, dock, app-dot and date-time action radii and the tree/list badge font size now come from theme tokens; avatar and app-dot initials use `on_accent` (WI-3266).
-- Tree/list badge padding, list text gap and ribbon tab vertical padding now use `spacing` tokens (values unchanged) (WI-3266).
-- Badge dot/counter, title-bar, command-palette result list and document-viewer image sizes now come from new `ComponentTokens` fields (WI-3266).
-- Dialog and closable-tab close buttons are now compact subtle `IconButton`s, gaining hover and pressed states; dividers already use `stroke_neutral_subtle` (WI-3266).
+- **Keyboard focus works in real apps.** `Tab` and `Shift-Tab` are now bound when
+  you start with `FluentApp`, and every control draws a two-tone focus ring, for
+  keyboard focus only.
+- **One size rule for rows and chrome.** Title and dock rows, toolbars and menu
+  bars are 32 px (were 28 px). List, menu, tree and table rows are 32 px, with an
+  explicit 28 px `RowDensity::Compact`.
+- **Consistent buttons.** Every button appearance has the same 1 px-bordered box
+  (32 px, or 24 px compact), and icon-to-label gaps are 8 px (4 px compact).
+- **Enter and Space activate once.** They no longer fire twice in several controls,
+  and Enter now works in menus and navigation.
+- **New:** a Fluent 2 `Scrollbar`, a `Toolbar` "More" menu, `Button::loading`, an
+  `.error(bool)` state on text-like inputs, and window position save/restore.
+- **Much wider gallery:** twelve pages, plus screenshots that also prove the
+  focus ring is visible.
 
-- Pressed (active) backgrounds on toggle button, checkbox, radio, chip, tabs, tree, list, toolbar, menus, dialogs, dock, ribbon and title bar; switch knob grows on hover/press; command palette disabled rows drop the opacity hack (WI-3265).
+### Breaking changes and migration
 
-- Menu, dropdown/combobox option and settings-nav rows now use `list_item_height` (32px). `menu_item_height`, `dropdown_option_height` and `settings_nav_section_height` are removed; new `RowDensity` and `ComponentTokens::with_row_density` give an explicit 28px compact density (WI-3259).
-- New `list_item_height` component token (32px, Fluent 2); tree and data table rows use it instead of `menu_item_height` (WI-3259).
-- Settings-nav items and `Nav` category/item rows now follow `list_item_height` (so `RowDensity::Compact` reaches them); `settings_nav_item_height` is removed (WI-3259).
+Removed public items:
 
-- Text input error state and selection, and title-bar close hover, now use theme colours (WI-3264, WI-3266)
-- Chip dismiss and spin-button radii now use theme radius tokens (WI-3266)
+| Removed | Use instead |
+|---|---|
+| `ComponentTokens::menu_item_height` | `ComponentTokens::list_item_height` (32 px) |
+| `ComponentTokens::dropdown_option_height` | `ComponentTokens::list_item_height` |
+| `ComponentTokens::settings_nav_section_height` | `ComponentTokens::list_item_height` |
+| `ComponentTokens::settings_nav_item_height` | `ComponentTokens::list_item_height` |
+| `ComponentTokens::menu_bar_height` | `ComponentTokens::chrome_height` (32 px) |
+| `ComponentTokens::dock_header_height` | `ComponentTokens::chrome_height` |
+| `ComponentTokens::command_palette_footer_height` | `ComponentTokens::chrome_height` |
+| `ComponentTokens::ribbon_tab_height` | `ComponentTokens::chrome_height` |
 
-- Single-line ellipsis truncation (`TruncateExt::truncate_label`) on tab labels (max width 240px token), tree rows, data table cells and headers, the title bar title and message bar/toast titles (WI-3268).
+To get the old 28 px rows, call `ComponentTokens::with_row_density(RowDensity::Compact)`
+rather than setting a height by hand. Chrome rows (`chrome_height`) do not change
+with density.
 
-- Single-line ellipsis truncation also on `Button` labels, menu / context-menu / menu-button item labels and the menu-button trigger label, and command-palette rows; menus gain a `menu_max_width` token (320px) and keep icon, chevron and shortcut columns from shrinking (WI-3268).
+Changed signatures and construction:
 
-Workspace release. Includes `VideoSurface` (3.1.0), the AccessKit tree snapshot test helper and the `test-a11y-activation` vendor patch (headless test-window AccessKit activation) that rdpapp-fluent needs. Crate versions are unchanged, as in v3.1.0; consumers pin the tag.
+| Change | What to do |
+|---|---|
+| `Flyout::new` now takes the trigger's window-space `Bounds<Pixels>` as its first argument: `Flyout::new(trigger_bounds, child)`. It anchors with window snapping. | Pass the bounds of the element that opens the flyout. |
+| `SettingsNav` has private focus fields, so it can no longer be built with a struct literal. | Build it with its builder methods. |
 
-- fluent-core, fluent-primitives, fluent-layout, fluent-ribbon, fluent-app: text no longer inherits gpui's 1.618x line height. `TextRampExt::text_ramp` sets a ramp step's size and whole-pixel line height together, `FluentApp` sets the body ramp (13/20) as the root text style, and Button, ToggleButton and dialog actions share one border-box height per size, always centre their content, and take 12/8px padding and gap from new `ComponentTokens` (WI-3256, WI-3257).
-- fluent-layout: submenus open beside their parent row, flip left and snap inside the window with an 8px margin; the MenuBar dropdown anchors to the trigger's bottom-left with the same fit; MenuButton and ContextMenu click-away backdrops cover the window; popups use an 8px window margin (WI-3252, WI-3253, WI-3254).
+Behaviour changes you will notice (no code change needed unless noted):
 
-- fluent-primitives: deny missing public API documentation and document every exported control and supporting type (WI-2945).
-- fluent-primitives: switch thumb 12px with symmetric insets (40x20 track); checkbox 20px with `radii.md`; radio 20/10 (WI-3258).
-- Single-line ellipsis truncation (`TruncateExt::truncate_label`) on tab labels (max width 240px token), tree rows, data table cells and headers, the title bar title and message bar/toast titles (WI-3268).
+| Area | Before | After |
+|---|---|---|
+| `Tab` / `Shift-Tab` | Did nothing in a real app, because the key bindings were only installed in tests. | `FluentApp::run` binds them. **Apps that build their own gpui `Application` must call `fluent_primitives::install_focus_keybindings(cx)` once at startup** (safe to call more than once). With nothing focused, `Tab` enters the first tab stop and `Shift-Tab` the last. |
+| Keyboard focus ring | Mixed styles; several controls had none. | Every control draws the same two-tone ring (2 px outer, 1 px inner), only for keyboard focus. Disabled controls are not tab stops. |
+| Chrome rows (dock header, toolbar bar, ribbon tab strip, menu bar, command palette footer) | 28 px | 32 px |
+| List, menu, dropdown option, tree, table and settings-nav rows | 28 px | 32 px. `RowDensity::Compact` keeps 28 px. |
+| Gap between an icon and its label | 2 px or 4 px, differing by control | 8 px everywhere (4 px in compact rows). Vertical large ribbon buttons and icon-only controls are unchanged. |
+| Button box (`Button`, `ToggleButton`, ribbon commands) | Height and border differed by appearance. | Every appearance has a 1 px border and the same height: 32 px (24 px compact). Horizontal padding is 12 px (8 px compact). Content is always centred. |
+| Enter / Space on `SettingsNav` headers and items, `TabStrip` tabs, `Tag` and grouped-list headers | Fired twice (a header opened and closed again). | Activates once. If your own code worked around the double firing, remove the workaround. |
+| Enter in `MenuBar`, `ContextMenu`, `MenuButton` and `Nav` | Did nothing. | Activates the focused item. |
+| Enter in `SelectableList` and `Tree` | Did nothing. | Activates the selection. |
+| Text height | Inherited gpui's 1.618x line height. | `FluentApp` sets a 13 px text with 20 px line height as the root style. |
+| Several tab-like controls | Two siblings could share one tab stop and ring. | Give sibling `Tree`s and clickable `Card`s their own `id(..)`. |
 
-- docs: document DPI scaling conversion and resize behavior across Windows DirectX, Linux X11, and Linux Wayland, with native-run evidence requirements (WI-3061).
-- Layout: add Fluent 2 Breadcrumb and Pagination controls with overflow menus, current-item semantics, RTL separators, and keyboard-ready controls (WI-3036).
-- fluent-layout, gallery: Drawer with inline and overlay modes, RTL-aware start/end placement, size presets, reduced-motion-aware transitions, focus trapping and opener restoration (WI-3038).
-- Add the Windows/Linux platform parity matrix and native verification gap list ([WI-3043](https://vogt.sprooty.com/work/WI-3043)).
-- fluent-layout, gallery: virtualised expanded tree rows with keyboard-preserving navigation, lazy child loading states, and a 50,000-node gallery story (WI-3035).
-- fluent-layout, gallery: virtualised `SelectableList` rows (`rows(count, item_at)`, optional variable row heights, scroll-into-view on keyboard selection, AccessKit position-in-set/set-size) on a new `VirtualList` element, and a 100,000-row gallery story (WI-3033).
-- fluent-primitives, gallery: `Slider` (horizontal/vertical, step, range, disabled, Slider role with value text, arrow/Home/End/PageUp/PageDown keys) and `SpinButton` (step buttons, min/max clamp, Up/Down keys, format and parse hooks, SpinButton role) with gallery stories; no pointer drag or typed text entry yet (WI-3032).
-- fluent-core, fluent-primitives, docs: `ControlStates` (`neutral/accent/subtle/danger_control()`) map every control state to theme aliases; Button, Card and Field read them instead of raw tokens; Danger button pressed fill is now the error border colour, the disabled neutral border uses the disabled stroke; control-state completeness test; high-contrast pressed foregrounds now use HighlightText; docs/tokens.md updated (WI-3021).
-- gallery, docs: routes grouped by Fluent 2 component family with state matrices for buttons, links, selection controls and labels, a light/dark/high-contrast/RTL variant row on every page, and README guidance for using the gallery as a regression matrix (WI-3018).
-- docs: `docs/consumer-contracts.md` states the frame lifetime and cadence, terminal sizing and focus, picker cancellation, error and platform-support contracts for rtbit-fluent, rdpapp and email-desktop-fluent (WI-3020).
-- fluent-test-utils: reusable assertions for accessibility role/name/state (`assert_a11y_node`), tab order, keyboard outcomes, WCAG contrast (`assert_contrast`) and RTL inline order; Button, Switch and Dialog tests migrated (WI-3019).
-- fluent-app, fluent-primitives, docs: icon-only control audit; arrow_left/arrow_right resolve to specific builtins, referenced-icon test, icon size/contrast/label/tooltip rules in docs/tokens.md (WI-3017).
-- fluent-primitives, fluent-layout, gallery: ProgressBar value text (default percentage) and Spinner label for assistive tech, ConnectionBadge Status role, MessageBar Alert/Status roles plus a recovery `action`, and an rtbit download-progress gallery story; animations already honour `reduce_motion` (WI-3016).
-- fluent-ribbon: RibbonBar exposes TabList, Tab, TabPanel, Group and Button roles with names, selected/toggled/expanded state, arrow/Home/End tab navigation, Enter/Space command activation, overflow semantics and a last-command status; gallery gains an rdpapp-style Connection tab (WI-3015).
-- fluent-layout, gallery: DataStatusKind loading/empty/no-results/error states with Status/Alert roles for DataTable (new NoResults state) and Tree (`status`, auto empty and no-match), plus rtbit and rdpapp gallery stories (WI-3012).
-- fluent-core, fluent-primitives, fluent-layout, gallery: add `LayoutDirection::current/set/toggle/pick` as the single direction API, route components through it, and add an Arabic/Hebrew RTL demo to the gallery (WI-3010).
-- fluent-primitives: DateTimePicker gains DateTimeLocale (field order, separator, 12/24h), formatter/parser hooks, locale-ordered keyboard segment navigation with Home/End, and invalid-date messages; app owns locale and timezone (WI-3013).
-- fluent-layout: nested modals — Escape and backdrop click dismiss the topmost modal only, non-dismissible dialogs ignore both, focus stays trapped until the stack empties; contract documented on ModalStack (WI-3014).
-- fluent-layout: Toolbar exposes Toolbar and Button roles with accessible names, toggled state and overflow expansion (WI-3007).
-- fluent-primitives: add TextInput interaction tests for grapheme-safe cursor movement, selection and UTF-16 offsets (WI-3011).
-- fluent-core, gallery: extend high-contrast AAA token tests to brand, subtle and status pairs; add success, warning and focus-ring states to the gallery theme matrix (WI-3009).
-- fluent-primitives, fluent-layout: complete list and picker keyboard contracts for Home/End, paging, Alt+Down, selection, dismissal, and focus-preserving navigation (WI-3008).
-- Primitives: add `Accordion`, grouping `Expander` items with single/multiple open modes, collapsible control and arrow-key header navigation (WI-2933).
+### Added
 
-- fluent-primitives: add presence badges over avatars and sized persona rows with primary and secondary text (WI-2934).
-- fluent-primitives: add `InfoLabel` with a click/Enter info popover and `Field` integration (WI-2936).
-- fluent-primitives: add indeterminate ProgressBar animation, semantic status colours, medium/large thicknesses, clamped values, and progress accessibility semantics (WI-2937).
-- fluent-primitives: add configurable `CounterBadge` counts, overflow labels, zero visibility, dot mode and filled/ghost appearance (WI-2935).
-- Add Field validation states, status messages, required markers, hints, and input borders.
-- fluent-app: add async native file/folder/save picker helpers and a read-only `FilePickerField` with Browse action (WI-2940).
-- fluent-primitives: add inline and standalone `Link` with default/subtle and disabled styles, hover underline, keyboard activation, accessible link semantics, and URL-opening support (WI-2930).
-- fluent-core: add complete Fluent 2 neutral foreground, background and stroke state aliases for light, dark, Midnight, Ember and high-contrast themes (WI-2981).
-- fluent-core: add public Fluent 2 `StrokeWidthTokens` for 1px thin, 2px thick and 3px thickest logical-pixel strokes (WI-2983).
-- fluent-core: add Fluent 2 motion curves and duration tokens while preserving popup motion defaults (WI-2984).
-- fluent-core: add public Fluent 2 `shadow2`, `shadow4`, `shadow8`, `shadow16`, `shadow28` and `shadow64` two-layer elevation tokens (WI-2982).
-- fluent-core: audit Fluent 2 alias token coverage in `docs/tokens.md`, mapping existing neutral, brand, status, radius and popup-motion names and recording missing state, shadow, stroke-width and motion families (WI-2925).
-- fluent-layout, fluent-app, fluent-primitives: mirror Dock, MenuBar, TabStrip and Field layouts for RTL while preserving the platform title-bar control position (WI-2927).
-- Add opt-in system light/dark theme following for FluentApp.
-- fluent-core: high-contrast theme (`ColorScheme::high_contrast`, `Theme::high_contrast`, `Theme::apply_high_contrast`) mapped from the system colours Canvas, CanvasText, Highlight, GrayText and ButtonFace, with strokes in place of fills; covered by the token and contrast tests (7:1 checks); the gallery ribbon View group switches Dark, Light and High contrast (WI-2923).
-- fluent-layout: AccessKit semantics for Tree (tree/treeitem with level, expanded, selected), DataTable (grid/row/columnheader/cell), TabStrip (tablist/tab), SelectableList (list/listitem), MenuBar, MenuButton and ContextMenu (menubar/menu/menuitem); snapshot test per widget (WI-2918).
-- fluent-layout: keyboard access for MenuBar and ContextMenu: F10 or a tap of Alt focuses the menu bar, `&` access keys (underlined) open menus and pick items (Alt+key from anywhere), Escape and F10 hand focus back; `context_menu_key_target` and `is_context_menu_key` open a context menu on Shift+F10 or the Menu key at the focused element (WI-2922).
-- fluent-primitives: AccessKit semantics for TextInput, Textarea, Searchbox, Combobox and TokenInput (textbox/searchbox/combobox roles with value; masked TextInput is a password input and exposes no value); `Field::input` sets the input's accessible name from the label and description from the validation message (WI-2917).
-- fluent-primitives: Button, IconButton, ToggleButton, Checkbox, Switch and RadioGroup expose AccessKit roles, names and toggled state; Checkbox, Switch, RadioGroup and IconButton gain `label()` (WI-2916)
-- fluent-layout: DataTable interaction tests: header click sort asc/desc, ctrl/shift click multi-select, selection kept by row key across a data refresh (WI-2910).
-- fluent-layout: interaction tests for DockPanel collapse, SettingsNav selection, Pane tab switching, Toolbar dispatch and Workspace docks; `debug_selector`s on dock close and settings-nav items (WI-2912).
-- fluent-layout: interaction tests for ModalStack/ModalHost, Dialog, Flyout, Popover and Toast (backdrop dismissal, input blocking, toast timeout on the fake clock); `debug_selector`s on dialog and modal buttons (WI-2911).
-- fluent-layout: dialogs dismiss on Escape, trap focus while open, restore focus on close, and retain actions across rerenders (WI-2911).
-- fluent-layout: DataTable keyboard navigation: Up/Down/Home/End/PageUp/PageDown move the active row and scroll it into view, Space selects, Shift extends via `on_row_extend`, Enter activates (WI-2921).
-- fluent-primitives, fluent-layout: RadioGroup, TabStrip and Toolbar are one tab stop with arrow-key roving focus (arrows also select in RadioGroup and TabStrip), Home/End jump (WI-2920).
-- fluent-primitives: Button, IconButton, ToggleButton, Checkbox, Switch, RadioGroup and Dropdown take `tab_index`, handle Tab/Shift-Tab, and show the Fluent 2 focus stroke for keyboard focus only (WI-2919).
-- Add interaction coverage for text-input editing and clipboard shortcuts, textarea newlines, and Escape-cleared searchboxes (WI-2909).
-- fluent-test-utils: add compact role, accessible-name and state snapshots of rendered AccessKit trees, with Expander coverage (WI-2915).
-- Add click, keyboard, dismissal, callback, and filtering interaction coverage for radio groups, dropdowns, and comboboxes.
-- Add headless click and keyboard interaction coverage for buttons, checkboxes, and switches.
-- fluent-core: check every dark, light, Midnight and Ember colour token for initialization and enforce WCAG contrast for text, brand and status pairs (WI-2914).
-- fluent-test-utils: `FluentInteractionExt` helpers on `VisualTestContext` to type keys, click an element by debug selector and assert focus (WI-2906).
-- gpui: re-apply backdrop blur (`backdrop_blur(radius, tint)`) on the vendored gpui, with a wgpu renderer path and an unverified DirectX path; drop the vendored patch budget from CONTRIBUTING (WI-1349).
-- gpui: backport upstream zed fix #65952 so entities read in paint callbacks or deferred draws inside a reused cached view still redraw the window when notified (WI-1346).
-- Docs: outstanding.md, README and VISUAL_TARGETS state the vendored-gpui status: video frames applied on wgpu and DirectX, not runtime-validated; blur not re-applied (WI-1437).
-- Primitives: `VideoSurface` shows caller-supplied RGBA8 frames (up to 8192 per side) on a gpui video texture: whole frames or dirty-region patches, texture allocated, reallocated on size change and freed on release; `Fit` (letterboxed) or `Native` 1:1 device-pixel-snapped scaling; `VideoLayout` widget-to-frame coordinate mapping and a `Resized` event in device pixels; `Video` accessibility role; a placeholder backend and `VideoRecorder` for tests. Fit scaling is linearly filtered (nearest needs a renderer patch). Gallery demo animates a generated frame. Windows DirectX path unverified (WI-2803).
-- Primitives: `TerminalView` monospace cell-grid element over a caller-owned `TerminalGrid` (char, fg/bg, bold/italic/underline/inverse cells; cursor shape/blink; drag selection + Ctrl+Shift+C copy; bounded scrollback viewport; dirty rows; resize-to-fit with a `Resize` event); input via `InputCapture`, rows shaped once and cached by line version; `Terminal` accessibility role with visible text as value. No VT parsing. Gallery demo in the split-pane first panel (WI-2806).
-- Primitives: `InputCapture` element: grabbed raw key press/release (incl. Tab/Alt, synthesised lone modifiers), element-local pointer/wheel, click or Enter to grab, Escape / Ctrl+Alt / blur to release; best-effort W3C key codes, `scan_code` reserved (always None; needs a vendored-gpui patch). Gallery demo in the split-pane detail. Windows and Linux; Windows unverified (WI-2804).
-- Primitives: `Expander`, a collapsible section with a chevron header, Enter/Space keyboard toggle, a visible focus ring and an accessible button role with expanded state; caller-owned `expanded` state, instant toggle; widgets example entry (WI-2805).
-- Vendor: `key-scan-code` patch: `KeyDownEvent`, `KeyUpEvent` and `KeystrokeEvent` carry the physical `scan_code` (Windows set-1 make code, `0xE000` for extended keys; Linux X11/Wayland evdev code). `InputCapture` reports it, derives the W3C `code` from it (`code_for_scan_code`), and releases keys held at ungrab with their scancode. Windows unverified (WI-2804).
-- Vendor: `video-frames-directx` patch: the DirectX renderer draws video frames from a standalone RGBA8 texture per id, with a `video_frame` HLSL pass. Unverified on Windows (WI-1434).
-- Vendor: `video-frames` patch: `Window::alloc_video_texture` / `upload_video_frame` / `paint_video_frame` / `free_video_texture` with packed RGBA8 frames, drawn by the wgpu renderer from a standalone texture per id, plus a `video_frame` example. `upload_video_frame` rejects a zero or over-8192 dimension and the wgpu renderer skips a frame shorter than `w*h*4`. Linux only; Windows is WI-1434 (WI-1348).
-- Vendor: the font assets the vendored zed crates `include_bytes!` (IBM Plex Sans, Lilex; SIL OFL 1.1) are copied to `vendor/zed/assets` by `scripts/vendor-zed.py`, so `cargo test -p gpui` compiles (WI-2786).
-- Tree: optional per-row checkbox slot (`TreeItem::checkable`, `checked`) with tri-state folders derived from leaves, `Tree::on_check`, and `set_tree_checked` for propagating a folder toggle to its descendants. Off by default; Windows and Linux (WI-2782).
-- Vendor: `gpui_ios` and the `runtime_shaders` feature are trimmed from `vendor/zed` (Windows and Linux only; WI-2728).
-- Vendor: `gpui` gets an opt-in `svg-font-warmup` feature (enabled by `fluent-core`) with `warmup_svg_font_db()`, which primes the usvg system font database on a background thread so the first SVG render does not block the UI (WI-1432).
-- CI: layering guard, `cargo deny` (no GPL exception), zed-rev check, Windows test job and a `ci` summary check (WI-2725).
-- Docs: `AGENTS.md` (how a worker session completes a work item) and a `CLAUDE.md` pointer.
-- Dependency: the workspace now builds on the vendored zed gpui (`vendor/zed`, zed ba63a022) instead of `crates/gpui`, which is removed. `fluent-app` starts through `gpui_platform::application()`. Breaking: `Popover::anchor` takes `gpui::Anchor` (was `gpui::Corner`). Windows and Linux only.
+**Buttons and inputs**
+- `Button::loading(bool)`: a spinner replaces the leading icon at the same size.
+  Click, Enter and Space are ignored while loading; the tab stop and focus ring stay.
+- `.error(bool)` on `Textarea`, `Combobox`, `Dropdown` and `Field`: a danger-coloured
+  border, like `TextInput::error`. `Field::error` also colours the helper text and
+  marks the wrapped input; an explicit `validation` state wins.
+- `Scrollbar`: a Fluent 2 vertical and horizontal scrollbar with overlay
+  auto-hide, thumb drag, track paging and hover/pressed states. It works over a
+  `ScrollHandle` or `ListState` through `ScrollbarSource`. `VirtualList::scrollbar(true)`
+  shows it.
+- `Tooltip::id(..)` (default `"tooltip-trigger"`), `DataTable::id(..)` (default
+  `"data-table"`) and `ToastHost::id(..)` (default `"toast-host"`): give each one
+  its own id when you have several in a view, otherwise they share hover state,
+  tab stops or column widths, or panic with a duplicate accessibility node id in
+  debug builds.
+- `id(..)` on `MessageBar`, `Spinner` and `ProgressBar`, which also sets the
+  accessibility node id, so two of a kind in one window no longer panic in debug
+  builds. Defaults are unchanged.
 
-- Build: `cargo deny` bans now list the vendored gpui crates that depend on `gpui` as wrappers, and the vendoring docs no longer describe the removed `crates/gpui` copy (WI-2754).
-- Docs: README consumer snippet adds the direct `gpui` dependency the quick start needs, and the Linux build dependencies add `libxcb1-dev` and `libfontconfig-dev` (WI-2727).
+**Layout and navigation**
+- `Toolbar` moves the items that do not fit (by measured width, or `available_width`)
+  into a "More" menu. The More button is the last stop of the toolbar's single tab
+  stop; Enter, Space and Down open the menu.
+- `ContextMenu` limits its height to the window and scrolls with the wheel;
+  arrow, access-key and Left/Right navigation scroll the selected row into view.
+  Submenus are now separate layers anchored to their trigger row, so a scrolling
+  parent no longer clips them.
+- `RowDensity` and `ComponentTokens::with_row_density` for an explicit compact (28 px)
+  or default (32 px) density.
 
-## Workspace release v2.4.0 — 2026-05-28
+**Menus**
+- `ContextMenuItem::shortcut` now also fills the trailing column of checkbox and
+  radio items (a new `shortcut` field on those variants).
 
-Cohesive uplift focused on application primitives (multi-value inputs, date/time
-selection, anchored suggestion surfaces), richer layout components
-(`SelectableList`, `DocumentViewer`, constrained `PaneGroup` splits), and app
-lifecycle hooks. Reactivity, theme-toggle behaviour, and the GPUI fork pin are
-unchanged.
+**App shell and window chrome**
+- `FluentApp::window_position(x, y)` opens the window at a saved screen position,
+  clamped onto the display it overlaps (centred if none). `fluent_app::window_bounds(&Window)`
+  reads the current bounds so an app can save them.
 
-### Crate versions
+**Theming and tokens**
+- Colour tokens `stroke_focus_outer` and `stroke_focus_inner` in every theme, and the
+  shared `fluent_primitives::focus_ring` and `is_keyboard_focused` helpers.
+- New `ComponentTokens` fields: `chrome_height`, `list_item_height`, `icon_label_gap`,
+  `icon_label_gap_compact`, `row_icon_label_gap`, `toggle_box` (20 px), `menu_max_width`
+  (320 px), button padding and gap tokens, and size tokens for badges, the title bar,
+  the command palette result list and document-viewer images.
 
-| Crate              | Previous | New     |
-|--------------------|----------|---------|
-| `fluent-core`      | 2.3.0    | 2.4.0   |
-| `fluent-primitives`| 2.3.0    | 2.4.0   |
-| `fluent-ribbon`    | 2.0.2    | 2.0.2   |
-| `fluent-layout`    | 2.1.1    | 2.2.0   |
-| `fluent-app`       | 2.2.0    | 2.3.0   |
-| `gpui` (vendored)  | 0.2.4    | 0.2.5   |
+**Gallery and screenshots**
+- New gallery pages: Inputs, Status and feedback, Layout components, Data display,
+  Overlays, and Menus and commands, a Scrollbar page, an Edit menu, and checkbox,
+  radio and shortcut menu items. The sidebar is now a `SettingsNav` of 12 pages.
+- The gallery accepts `--page <id>` (or `GALLERY_PAGE`), `--theme dark|light`,
+  `--size WxH`, `--ready-file <path>` and `--list-pages`. Defaults are unchanged.
+- `scripts/screenshots-xvfb.sh` sends a real Tab key, saves `focus/{dark,light}/<component>.png`
+  and prints one `focus ring: visible|NOT visible|n/a` line per component. It also
+  captures every gallery page at 1280x800 and a `hero-<theme>.png`.
+  `--only <component>` runs one component. `scripts/screenshots.sh` gains layout,
+  overlay, open-menu and error/loading/disabled captures.
 
-### `fluent-core` 2.4.0
+**Build, CI and docs**
+- Compile-tested `no_run` examples in the documentation of `Button`, `TextInput`,
+  `Field`, `Dropdown`, `Checkbox`, `DataTable`, `Tree`, `Dialog`, `TabStrip` and `FluentApp`.
+- The focus-ring comparison lives in `scripts/focus-ring-lib.sh`, with `scripts/test-focus-ring.sh`.
 
-Added
-- `AsyncResource<T, E>` and `AsyncResourceState` for modelling
-  `Idle`/`Loading`/`Ready`/`Error` request state with generation tokens. Lets
-  views ignore stale async responses while keeping cached values visible during
-  refreshes.
-- **Midnight** colour scheme — deep navy darks with a vivid violet accent
-  (`Theme::midnight`, `Theme::apply_midnight`).
-- **Ember** colour scheme — warm dark browns with an amber/orange accent
-  (`Theme::ember`, `Theme::apply_ember`).
+### Changed
 
-### `fluent-primitives` 2.4.0
+**Accessibility and keyboard**
+- `Button`, `IconButton`, `ToggleButton`, `Checkbox`, `Switch`, `RadioGroup`, `Dropdown`,
+  `Link`, `Slider`, `SpinButton`, `Expander`/`Accordion` headers, `ColorPicker` swatches,
+  `Toolbar`, `DataTable`, `TabStrip`, `Tree`, `SelectableList`, `SettingsNav`, ribbon tabs
+  and commands, the `TitleBar` caption buttons, `Dialog` actions, dismissable `Chip` and
+  clickable `Card` each own a focus handle, activate on Enter and Space, and draw the
+  two-tone focus ring for keyboard focus only. Disabled controls are not tab stops.
+- Groups are one tab stop with arrow-key movement: `RadioGroup`, `TabStrip` (arrows move
+  and select), `Tree`, `SelectableList`, `Toolbar`, `ColorPicker` swatches. `DataTable`
+  is one tab stop with its ring on an unclipped wrapper; the active ribbon tab is the
+  strip's tab stop.
+- A `Chip` focuses its dismiss button. `Dialog` and closable-tab close buttons are now
+  compact subtle `IconButton`s with hover and pressed states.
+- The `ColorPicker` selection outline uses the accent colour.
+- `TabStrip` draws its ring inside each tab, and `SettingsNav` keeps 2 px of room at the
+  side, so the ring is no longer clipped.
 
-Added
-- `TokenInput` — multi-value chip input with freeform tokens, filtered anchored
-  suggestion popover, keyboard selection/removal, and validity state per token.
-- `SuggestionPopover` — reusable anchored listbox surface and keyboard roving
-  state shared by search/autocomplete and tokenised inputs.
-- `DateTimePicker` — local wall-clock date and time selection with validation,
-  segment keyboard adjustment, and `YYYY-MM-DDTHH:MM` parsing/formatting.
-- `Textarea` runtime state setters (`set_text`, `set_placeholder`).
-- `Searchbox::set_value` for programmatic value updates after construction.
+**Buttons and inputs**
+- `Button` and `ToggleButton` share one sizing helper, so every appearance has the same box
+  (see the behaviour table). `ToggleButton` and `IconButton` read icon and square sizes
+  from the `button_*` component tokens (toggle icons were fixed at 16 px at every size).
+- `Checkbox`, `RadioGroup` and `Switch` share one 20 px `toggle_box` size.
+- Long labels are cut to one line with an ellipsis (`TruncateExt::truncate_label`) on
+  tab labels (maximum width 240 px), tree rows, table cells and headers, the title-bar
+  title, message bar and toast titles, `Button` labels, menu items and the menu-button
+  trigger, and command-palette rows.
+- Pressed backgrounds on toggle button, checkbox, radio, chip, tabs, tree, list, toolbar,
+  menus, dialogs, dock, ribbon and title bar. The `Switch` knob grows on hover and press.
+  Disabled command-palette rows no longer use an opacity trick.
+- Text input error state and selection, and the title-bar close hover, use theme colours.
 
-Fixed
-- Combobox / Dropdown / DateTimePicker close listeners no longer
-  `stop_propagation`, unblocking click-through onto sibling widgets and
-  application content underneath the popup.
-- `TokenInput::set_tokens` clears transient query state and resets the
-  highlighted suggestion index so external resets do not leak prior typing.
+**Layout and navigation**
+- `Combobox` scrolls the highlighted option into view during keyboard navigation.
+  `Tree` fills its parent's height so its list renders in a fixed-height container.
+- `RibbonBar` keys each command's focus handle by its position, so the controls of a
+  `Stack` no longer share one handle (one tab stop and two rings) with the plain buttons
+  after it.
 
-### `fluent-ribbon` 2.0.2
+**Menus**
+- Menu separators share one helper: equal space above and below the 1 px line, centred
+  at both densities, and no longer shrinking to nothing when a long menu scrolls.
+- `MenuButton` item labels truncate to one line with an ellipsis, like `ContextMenu`
+  and `MenuBar`.
+- The submenu chevron mirrors in right-to-left layouts.
+- Submenus open beside their parent row, flip left and snap inside the window with an
+  8 px margin. The `MenuBar` drop-down anchors to the trigger's bottom-left with the same
+  fit. Click-away backdrops cover the whole window, and popups keep an 8 px window margin.
+- A menu row waits 200 ms before closing an open submenu in favour of a sibling row.
+- Popup motion offsets with `top` instead of a margin, and `fluent_core::layer` holds the
+  shared stacking-priority table.
 
-No source changes; bundled for workspace consistency.
+**Theming and tokens**
+- Pill, badge, dock, app-dot and date-time action radii, chip and spin-button radii, and
+  the tree/list badge font size now come from theme tokens. Avatar and app-dot initials use
+  `on_accent`. Tree and list badge padding, list text gap and ribbon-tab padding use
+  `spacing` tokens (values unchanged).
+- The switch thumb is 12 px with symmetric insets (40x20 track); the checkbox is 20 px with
+  `radii.md`; the radio is 20/10 px.
+- Text no longer inherits gpui's 1.618x line height. `TextRampExt::text_ramp` sets a text
+  step's size and whole-pixel line height together.
 
-### `fluent-layout` 2.2.0
+**Build, CI and docs**
+- The README states that 3.x is released on the vendored upstream Zed gpui and names the
+  latest tag.
+- The screenshot workflow installs `xdotool`. The focus-ring report says `NOT visible`
+  only when fewer than 30 px differ, and shows `n/a (no tab stop: ...)` for chip, card and
+  title bar, which the harness renders as non-interactive.
 
-Added
-- `SelectableList` — lazy uniform-row list with single selection, keyboard
-  roving, activation and context-menu callbacks, and loading/empty/error states
-  for app-owned list data.
-- `DocumentViewer` — safe rich-document model with lossy HTML/plain-text import
-  helpers for headings, paragraphs, links, code, images, and tables.
-- `ResizablePanelGroup`/`PaneGroup` constrained two-panel splits — horizontal
-  or vertical, per-panel min/max pixel constraints, draggable dividers, and an
-  `on_resize` ratio callback so apps can persist restored widths or heights
-  without framework-specific state.
-- Command palette enhancements: hint text, disabled rows, and entry-owned
-  action callbacks.
+### Fixed
 
-Fixed
-- `MenuBar` backdrop now uses `anchored()` at the window origin so
-  close-on-click-away covers the full window instead of a stale region.
-- Menu bar opens on mouse-down rather than click, and backdrop mouse-down no
-  longer re-opens the menu trigger after a click-away close.
-- Context menu, menu button, and command palette popups stop propagation of
-  the backdrop click so sibling triggers cannot re-open the popup as part of
-  the same gesture.
-- Item row clipping, image rendering, and clipboard handling fixes shared
-  between menus and the command palette.
+**Accessibility and keyboard**
+- `Tab` and `Shift-Tab` did nothing in real apps (see the behaviour table). Regression
+  tests now send a real Tab through the startup path and check that every text-like
+  control moves focus by exactly one stop per press.
+- Enter did nothing on `MenuBar`, `ContextMenu`, `MenuButton` and `Nav`, and on
+  `SelectableList` and `Tree` selections. The handlers checked for the key name `"return"`
+  but gpui reports `"enter"`.
+- Enter and Space fired twice on `SettingsNav` headers and items, `TabStrip` tabs, `Tag`,
+  `Toolbar` items and `GroupedVirtualList` group headers, so a header opened and closed
+  again. They now activate once.
+- Tree rows, ribbon items and tabs, and title-bar caption buttons are now tab stops; caption
+  buttons activate on Enter and Space.
 
-### `fluent-app` 2.3.0
+**Menus**
+- The gallery menu bar no longer shows a fifth, highlighted "File" cell. `MenuBar` now
+  ignores the `&` access-key marker when it checks whether a File menu already exists, so
+  `Workspace::with_file_menu` does not add a second one holding only Exit. This also fixes
+  a keyboard-opened File menu showing only Exit.
 
-Added
-- `WindowTitle` global — `set_title` and `set_status` keep platform chrome and
-  the Fluent `TitleBar` aligned with application state from any code site.
-- `FluentApp` lifecycle hooks — opt-in callbacks at app startup, post-window
-  open, and theme change so consumers can wire status messages, keymaps, and
-  background work without subclassing the entry point.
-- `TitleBar` refinements aligning leading icon, drag region, and window
-  controls with the new lifecycle.
+**Layout and navigation**
+- Two `DataTable`s, `Tooltip`s or `ToastHost` toasts in one view no longer panic with a
+  duplicate accessibility node id (see `id(..)` under Added).
 
-### `gpui` (vendored) 0.2.5
+**Buttons and inputs**
+- Ribbon command buttons always centre their content, so an icon-and-label button stretched
+  wider than its content is no longer left-aligned.
 
-Performance
-- Pre-warm the `usvg` font database during renderer initialisation so the first
-  SVG render no longer blocks the UI thread.
+**Build, CI and docs**
+- A missing dependency from `fluent-layout` to `fluent-primitives` in `Cargo.lock` is
+  restored, so locked release builds resolve without version changes.
+- A headless `gpui_wgpu` regression test covers drawing a plain quad frame after the
+  intermediate texture is invalidated.
 
----
+### Dependencies and security
 
-## v2.3.0 — 2026-05-11
+- `url` is updated to 2.5.9, which fixes the advisory about nested `blob:` URLs.
+- The advisory that `chrono` is unmaintained is ignored in `deny.toml` with a dated entry
+  (added 2026-11-26, review by 2026-12-31). It is not exploitable here and `chrono` only
+  comes in through the vendored Zed crates; it will be revisited at the next Zed update.
 
-See git history for the v2.3.0 release notes (primitives polish, GPUI 0.2.4
-renderer fixes, AndroidConnect-driven uplift).
+## 3.2.0 - 2026-11-05
+
+Includes `VideoSurface` (from 3.1.0), the AccessKit tree snapshot test helper and the
+`test-a11y-activation` vendor patch (headless AccessKit activation in test windows) that
+`rdpapp-fluent` needs. Crate versions are unchanged from 3.1.0; consumers pin the tag
+`v3.2.0+zed.ba63a022c9a2`.
+
+### Added
+
+**Buttons and inputs**
+- `Slider` (horizontal or vertical, step, range, disabled, arrow/Home/End/PageUp/PageDown
+  keys) and `SpinButton` (step buttons, min/max clamp, Up/Down keys, format and parse hooks),
+  with gallery stories. No pointer drag or typed text entry yet.
+- `Link`, inline or standalone, with default, subtle and disabled styles, hover underline,
+  keyboard activation, link accessibility semantics and URL opening.
+- `Accordion`, grouping `Expander` items with single or multiple open modes, a collapsible
+  control and arrow-key header navigation.
+- `InfoLabel` with a click/Enter info popover and `Field` integration.
+- `Field` validation states, status messages, required markers, hints and input borders.
+- `CounterBadge` with configurable counts, overflow labels, zero visibility, dot mode and
+  filled or ghost appearance. Presence badges over avatars and sized persona rows with
+  primary and secondary text.
+- `ProgressBar`: indeterminate animation, semantic status colours, medium and large
+  thicknesses and clamped values.
+- `DateTimePicker`: `DateTimeLocale` (field order, separator, 12/24 h), formatter and parser
+  hooks, locale-ordered keyboard segment navigation with Home/End, and invalid-date messages.
+  Your app owns locale and time zone.
+- `fluent-app`: async native file, folder and save pickers, and a read-only `FilePickerField`
+  with a Browse action.
+
+**Layout and navigation**
+- `Breadcrumb` and `Pagination` with overflow menus, current-item semantics, right-to-left
+  separators and keyboard support.
+- `Drawer` with inline and overlay modes, start/end placement that follows text direction,
+  size presets, transitions that respect reduced motion, focus trapping and focus restored
+  to the opener.
+- `SelectableList` rows are virtualised: `rows(count, item_at)`, optional variable row
+  heights, scroll-into-view on keyboard selection and position-in-set accessibility data, on
+  a new `VirtualList` element. The gallery has a 100,000-row story.
+- `Tree` rows are virtualised with keyboard-preserving navigation, lazy child loading
+  states and a 50,000-node gallery story.
+- `DataStatusKind` loading, empty, no-results and error states with status roles for
+  `DataTable` (new `NoResults` state) and `Tree`.
+- `ModalStack`: nested modals dismiss the topmost one only on Escape or backdrop click;
+  non-dismissible dialogs ignore both; focus stays trapped until the stack is empty.
+- Dialogs dismiss on Escape, trap focus while open, restore focus on close and keep their
+  actions across re-renders.
+- Keyboard: `MenuBar` and `ContextMenu` get F10 or a tap of Alt to focus the menu bar,
+  underlined `&` access keys (Alt+key from anywhere), and Escape/F10 to hand focus back.
+  `context_menu_key_target` and `is_context_menu_key` open a context menu on Shift+F10 or the
+  Menu key. `DataTable` gets Up/Down/Home/End/PageUp/PageDown, Space to select, Shift to
+  extend through `on_row_extend`, and Enter to activate. List and picker keyboard contracts
+  now cover Home/End, paging, Alt+Down, selection and dismissal.
+- `RadioGroup`, `TabStrip` and `Toolbar` are one tab stop with arrow-key roving focus; Home
+  and End jump.
+
+**Accessibility**
+- Screen-reader roles, names and state for: `Button`, `IconButton`, `ToggleButton`,
+  `Checkbox`, `Switch`, `RadioGroup`; `TextInput`, `Textarea`, `Searchbox`, `Combobox`,
+  `TokenInput` (a masked `TextInput` is a password input and exposes no value);
+  `Tree`, `DataTable`, `TabStrip`, `SelectableList`, `MenuBar`, `MenuButton`, `ContextMenu`;
+  `Toolbar`; `RibbonBar` (tab list, tabs, panels, groups, buttons, overflow, last-command
+  status); `ProgressBar` (value text), `Spinner` (label), `ConnectionBadge` and `MessageBar`
+  (status and alert roles, plus a recovery `action`).
+  `Checkbox`, `Switch`, `RadioGroup` and `IconButton` gain `label()`, and `Field::input`
+  names its input from the label.
+- `Button`, `IconButton`, `ToggleButton`, `Checkbox`, `Switch`, `RadioGroup` and `Dropdown`
+  take `tab_index`, handle Tab and Shift-Tab, and show the Fluent 2 focus stroke for keyboard
+  focus only.
+- A text-direction API, `LayoutDirection::current/set/toggle/pick`, is the single source of
+  direction. `Dock`, `MenuBar`, `TabStrip` and `Field` mirror in right-to-left layouts while
+  the platform title-bar buttons keep their position. The gallery has an Arabic and Hebrew demo.
+- A high-contrast theme (`ColorScheme::high_contrast`, `Theme::high_contrast`,
+  `Theme::apply_high_contrast`) mapped from the system colours, with strokes in place of
+  fills and 7:1 contrast tests. The gallery View group switches Dark, Light and High contrast.
+- Opt-in system light/dark theme following for `FluentApp`.
+
+**Theming and tokens**
+- Complete Fluent 2 neutral foreground, background and stroke state aliases for light, dark,
+  Midnight, Ember and high-contrast themes.
+- `StrokeWidthTokens` (1 px thin, 2 px thick, 3 px thickest), Fluent 2 motion curves and
+  durations (popup motion defaults are kept), and the `shadow2` to `shadow64` elevation tokens.
+- `ControlStates` (`neutral/accent/subtle/danger_control()`) map every control state to theme
+  aliases. `Button`, `Card` and `Field` read them. The danger button's pressed fill is now the
+  error border colour, the disabled neutral border uses the disabled stroke, and high-contrast
+  pressed foregrounds use HighlightText.
+
+**Testing**
+- `fluent-test-utils`: `assert_a11y_node`, tab-order, keyboard-outcome, WCAG-contrast
+  (`assert_contrast`) and right-to-left order assertions; compact role, name and state
+  snapshots of rendered accessibility trees; `FluentInteractionExt` helpers to type keys,
+  click by debug selector and assert focus.
+- Interaction tests for buttons, checkboxes, switches, radio groups, dropdowns, comboboxes,
+  text input (grapheme-safe cursor, selection, clipboard, UTF-16 offsets), `DataTable`,
+  docks, `SettingsNav`, panes, `Toolbar`, `Workspace`, modals, dialogs, flyouts, popovers and
+  toasts. Every dark, light, Midnight and Ember colour token is checked for initialisation
+  and WCAG contrast, and high-contrast tests cover brand, subtle and status pairs.
+
+**Gallery and docs**
+- Gallery routes are grouped by Fluent 2 component family, with state matrices for buttons,
+  links, selection controls and labels, a light/dark/high-contrast/right-to-left variant row
+  on every page, and success, warning and focus-ring states in the theme matrix.
+- `docs/consumer-contracts.md` (frame lifetime and cadence, terminal sizing and focus, picker
+  cancellation, error and platform-support contracts), `docs/platform-parity.md` (Windows and
+  Linux parity matrix and the native verification gaps), and DPI-scaling and resize notes for
+  Windows DirectX and Linux X11 and Wayland. `docs/tokens.md` covers token aliases and
+  icon size, contrast, label and tooltip rules.
+
+### Changed
+
+- `fluent-primitives` denies missing public API documentation; every exported control and
+  supporting type is now documented.
+- An icon-only control audit: `arrow_left` and `arrow_right` resolve to specific built-in
+  icons, and a test checks every referenced icon exists.
+- Vendored gpui: backdrop blur (`backdrop_blur(radius, tint)`) is re-applied, with a wgpu
+  renderer path and a DirectX path that is not yet verified. Upstream Zed fix 65952 is
+  backported, so entities read in paint callbacks of a cached view redraw the window when
+  notified. The `key-scan-code` patch gives `KeyDownEvent`, `KeyUpEvent` and `KeystrokeEvent`
+  the physical `scan_code` (Windows set-1 make code, `0xE000` for extended keys; Linux
+  evdev code), and `InputCapture` now reports it and derives the W3C `code` from it. Windows
+  is not yet verified.
+
+## 3.1.0 - 2026-11-01
+
+### Added
+
+**Buttons and inputs**
+- `VideoSurface` shows caller-supplied RGBA8 frames (up to 8192 px per side) on a gpui video
+  texture: whole frames or dirty-region patches, with `Fit` (letterboxed) or `Native`
+  (1:1, device-pixel-snapped) scaling, a `VideoLayout` widget-to-frame coordinate mapping, a
+  `Resized` event in device pixels and a `Video` accessibility role. A placeholder backend and
+  `VideoRecorder` are provided for tests. `Fit` scaling is linearly filtered. The Windows
+  DirectX path is not yet verified.
+- `TerminalView`, a monospace cell grid over a caller-owned `TerminalGrid` (characters,
+  colours, bold/italic/underline/inverse, cursor shape and blink, drag selection and
+  Ctrl+Shift+C copy, bounded scrollback, dirty rows, resize-to-fit with a `Resize` event),
+  with a `Terminal` accessibility role. It does no terminal escape-sequence parsing.
+- `InputCapture` grabs raw key press and release events (including Tab, Alt and lone
+  modifiers) and element-local pointer and wheel events. Click or Enter grabs; Escape,
+  Ctrl+Alt or losing focus releases. `scan_code` is reserved and always `None` in this release
+  (it arrives in 3.2.0). Not yet verified on Windows.
+- `Expander`: a collapsible section with a chevron header, Enter/Space toggle, a visible
+  focus ring and an accessible button role with expanded state. You own the `expanded` state.
+
+**Layout and navigation**
+- `Tree` rows can have a checkbox (`TreeItem::checkable`, `checked`), with tri-state folders
+  derived from their children, `Tree::on_check` and `set_tree_checked` to propagate a folder
+  toggle to its descendants. Off by default.
+
+**Gallery and docs**
+- Gallery demos for video, terminal and input capture.
+
+### Changed
+
+- Vendored gpui patches: video frames (`Window::alloc_video_texture`, `upload_video_frame`,
+  `paint_video_frame`, `free_video_texture`) drawn by the wgpu renderer on Linux, and by the
+  DirectX renderer on Windows (not yet verified there). `upload_video_frame` rejects a zero or
+  over-8192 dimension. gpui also gets an opt-in `svg-font-warmup` feature (enabled by
+  `fluent-core`) that loads system fonts for SVG rendering on a background thread, so the first
+  SVG render no longer blocks the UI.
+- `scripts/vendor-zed.py` copies the font assets the vendored Zed crates embed (IBM Plex Sans
+  and Lilex, SIL OFL 1.1) into `vendor/zed/assets`, so `cargo test -p gpui` compiles.
+
+## 3.0.0 - 2026-10-31
+
+fluent-gpui now builds on the vendored upstream Zed gpui instead of the old in-repo copy.
+Windows and Linux only.
+
+### Changed
+
+- **Breaking:** the workspace builds on the vendored Zed gpui (`vendor/zed`, Zed commit
+  `ba63a022`). The old `crates/gpui` copy is removed, and `fluent-app` starts through
+  `gpui_platform::application()`. `Popover::anchor` takes `gpui::Anchor` (it took `gpui::Corner`).
+- The vendored tree drops `gpui_ios` and the `runtime_shaders` feature (Windows and Linux only).
+- `cargo deny` bans now list the vendored crates that depend on `gpui` as wrappers.
+
+### Added
+
+- CI checks: a layering guard (no direct `gpui` use outside the `fluent-*` crates and the
+  vendored closure), `cargo deny` (no GPL exception), a Zed revision check, a Windows test
+  job and a summary check.
+- `AGENTS.md` guidance for automated contributors, with a `CLAUDE.md` pointer.
+
+### Fixed
+
+- The README consumer snippet now includes the direct `gpui` dependency the quick start needs,
+  and the Linux build dependencies list `libxcb1-dev` and `libfontconfig-dev`. The vendoring
+  docs no longer describe the removed `crates/gpui` copy.
+
+## 2.4.0 - 2026-05-28
+
+A release focused on application primitives (multi-value inputs, date and time selection,
+anchored suggestion surfaces), richer layout components (`SelectableList`, `DocumentViewer`,
+constrained `PaneGroup` splits) and app lifecycle hooks. Reactivity, theme-toggle behaviour
+and the GPUI fork pin are unchanged.
+
+Crate versions:
+
+| Crate | Previous | New |
+|---|---|---|
+| `fluent-core` | 2.3.0 | 2.4.0 |
+| `fluent-primitives` | 2.3.0 | 2.4.0 |
+| `fluent-ribbon` | 2.0.2 | 2.0.2 |
+| `fluent-layout` | 2.1.1 | 2.2.0 |
+| `fluent-app` | 2.2.0 | 2.3.0 |
+| `gpui` (vendored) | 0.2.4 | 0.2.5 |
+
+### Added
+
+**Theming and tokens** (`fluent-core`)
+- `AsyncResource<T, E>` and `AsyncResourceState` model `Idle`/`Loading`/`Ready`/`Error`
+  request state with generation tokens, so views can ignore stale async responses while
+  keeping cached values visible during refreshes.
+- The **Midnight** colour scheme (deep navy with a vivid violet accent: `Theme::midnight`,
+  `Theme::apply_midnight`) and the **Ember** colour scheme (warm dark browns with an
+  amber/orange accent: `Theme::ember`, `Theme::apply_ember`).
+
+**Buttons and inputs** (`fluent-primitives`)
+- `TokenInput`: a multi-value chip input with freeform tokens, a filtered suggestion
+  popover, keyboard selection and removal, and a validity state per token.
+- `SuggestionPopover`: a reusable anchored list surface with keyboard roving state, shared
+  by search, autocomplete and tokenised inputs.
+- `DateTimePicker`: local date and time selection with validation, keyboard adjustment per
+  segment, and `YYYY-MM-DDTHH:MM` parsing and formatting.
+- `Textarea::set_text` and `set_placeholder`, and `Searchbox::set_value`, for updating
+  state after construction.
+
+**Layout and navigation** (`fluent-layout`)
+- `SelectableList`: a lazy uniform-row list with single selection, keyboard roving,
+  activation and context-menu callbacks, and loading, empty and error states.
+- `DocumentViewer`: a safe rich-document model with lossy HTML and plain-text import for
+  headings, paragraphs, links, code, images and tables.
+- `ResizablePanelGroup`/`PaneGroup` two-panel splits, horizontal or vertical, with per-panel
+  minimum and maximum pixel sizes, draggable dividers and an `on_resize` ratio callback so
+  apps can save restored sizes.
+- Command palette: hint text, disabled rows and callbacks owned by each entry.
+
+**App shell and window chrome** (`fluent-app`)
+- `WindowTitle` global: `set_title` and `set_status` keep platform chrome and the Fluent
+  `TitleBar` in step with app state from anywhere.
+- `FluentApp` lifecycle hooks at app startup, after the window opens and on theme change.
+- `TitleBar` refinements aligning the leading icon, drag region and window controls.
+
+### Changed
+
+- `fluent-ribbon` has no source changes; it was bundled for workspace consistency.
+- Vendored gpui 0.2.5: the SVG font database is warmed up while the renderer starts, so the
+  first SVG render no longer blocks the UI thread.
+
+### Fixed
+
+- `Combobox`, `Dropdown` and `DateTimePicker` close listeners no longer stop click
+  propagation, so clicks pass through to sibling widgets and app content under the popup.
+- `TokenInput::set_tokens` clears transient query state and resets the highlighted
+  suggestion, so an external reset does not keep earlier typing.
+- `MenuBar` backdrop is anchored at the window origin so click-away covers the whole window.
+  The menu bar opens on mouse-down, and a backdrop mouse-down no longer re-opens the menu
+  after a click-away close.
+- Context menu, menu button and command palette popups stop the backdrop click from
+  reaching sibling triggers, so they cannot re-open as part of the same gesture.
+- Item row clipping, image rendering and clipboard handling fixes shared between menus and
+  the command palette.
+
+## 2.3.0 - 2026-05-11
+
+Primitives polish, GPUI 0.2.4 renderer fixes and the AndroidConnect-driven uplift. No more
+detailed notes were kept for this release; see the Git history.
+
+### Changed
+
+- Primitives polish and GPUI 0.2.4 renderer fixes (see the Git history for details).
