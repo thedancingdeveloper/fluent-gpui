@@ -278,7 +278,7 @@ impl Render for TabStrip {
                 .when(rtl, |tab| tab.flex_row_reverse())
                 .when(!rtl, |tab| tab.flex_row())
                 .items_center()
-                .gap(px(spacing.xs))
+                .gap(px(components.icon_label_gap))
                 .px(px(spacing.md))
                 .h_full()
                 .max_w(px(components.content_tab_max_width))
@@ -296,13 +296,19 @@ impl Render for TabStrip {
             if let Some(icon_path) = tab_icon {
                 tab_el = tab_el.child(
                     svg()
+                        .debug_selector(move || format!("tab-{i}-icon"))
                         .path(icon_path)
                         .size(px(components.content_tab_icon_size))
                         .text_color(on_neutral),
                 );
             }
 
-            tab_el = tab_el.child(div().truncate_label().child(tab_label));
+            tab_el = tab_el.child(
+                div()
+                    .debug_selector(move || format!("tab-{i}-label"))
+                    .truncate_label()
+                    .child(tab_label),
+            );
 
             if let Some(handler) = close_handler {
                 let close_btn_id = ("tab-close", (n_tabs as u64 * 100 + i as u64));
@@ -555,5 +561,19 @@ mod tests {
                 "Tab \"c\" [selected=false, position_in_set=3, size_of_set=3]".to_string(),
             ]
         );
+    }
+
+    /// The icon-to-label gap of a tab (WI-3257: 8px, one rule).
+    #[gpui::test]
+    fn tab_icon_to_label_gap_is_the_shared_token(cx: &mut TestAppContext) {
+        let (_, cx) = open_fluent_test_window(cx, |_, cx| {
+            let mut ts = TabStrip::new(cx);
+            ts.add_tab(TabItem::new("a").label("Alpha").icon("icons/none.svg"));
+            ts
+        });
+        cx.run_until_parked();
+        let icon = cx.selector_bounds("tab-0-icon").expect("icon");
+        let label = cx.selector_bounds("tab-0-label").expect("label");
+        assert_eq!(f32::from(label.origin.x - icon.right()), 8.0);
     }
 }

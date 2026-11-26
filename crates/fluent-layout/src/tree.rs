@@ -626,20 +626,26 @@ impl Tree {
             .flex()
             .flex_row()
             .items_center()
-            .gap(px(spacing.xs))
+            .gap(px(components.row_icon_label_gap))
             .flex_1()
             .h_full();
 
         if let Some(icon) = item.icon.clone() {
             content = content.child(
                 svg()
+                    .debug_selector(move || format!("tree-item-{index}-icon"))
                     .path(icon)
                     .size(px(components.popup_icon_slot))
                     .text_color(fg),
             );
         }
 
-        content = content.child(div().truncate_label().child(item.label));
+        content = content.child(
+            div()
+                .debug_selector(move || format!("tree-item-{index}-label"))
+                .truncate_label()
+                .child(item.label),
+        );
         if item.loading {
             content = content.child(div().text_color(colors.on_subtle).child("Loading…"));
         }
@@ -1309,5 +1315,41 @@ mod density_tests {
     #[gpui::test]
     fn tree_rows_follow_compact_density(cx: &mut TestAppContext) {
         assert_eq!(tree_row_height(true, cx), 28.0);
+    }
+
+    struct IconHost;
+
+    impl gpui::Render for IconHost {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            Tree::new().items(vec![TreeItem::new("a", "A").icon("icons/none.svg")])
+        }
+    }
+
+    fn tree_icon_gap(compact: bool, cx: &mut TestAppContext) -> f32 {
+        let (host, cx) = open_fluent_test_window(cx, |_, _| IconHost);
+        if compact {
+            cx.update(|_, app| {
+                let theme = app.global_mut::<fluent_core::Theme>();
+                theme.components = theme
+                    .components
+                    .with_row_density(fluent_core::RowDensity::Compact);
+            });
+            host.update(cx, |_, cx| cx.notify());
+        }
+        cx.run_until_parked();
+        let icon = cx.selector_bounds("tree-item-0-icon").expect("icon");
+        let label = cx.selector_bounds("tree-item-0-label").expect("label");
+        f32::from(label.origin.x - icon.right())
+    }
+
+    /// WI-3257: 8px at default density, 4px in compact rows.
+    #[gpui::test]
+    fn tree_icon_to_label_gap_follows_density(cx: &mut TestAppContext) {
+        assert_eq!(tree_icon_gap(false, cx), 8.0);
+    }
+
+    #[gpui::test]
+    fn tree_icon_to_label_gap_is_compact_in_compact_rows(cx: &mut TestAppContext) {
+        assert_eq!(tree_icon_gap(true, cx), 4.0);
     }
 }

@@ -126,6 +126,19 @@ mod tests {
             32.0
         );
         assert_eq!(c.text_input_height, 32.0);
+        assert_eq!(c.icon_label_gap, 8.0);
+        assert_eq!(c.icon_label_gap_compact, 4.0);
+        assert_eq!(c.row_icon_label_gap, 8.0);
+        assert_eq!(
+            c.with_row_density(RowDensity::Compact).row_icon_label_gap,
+            4.0
+        );
+        assert_eq!(
+            c.with_row_density(RowDensity::Compact)
+                .with_row_density(RowDensity::Default)
+                .row_icon_label_gap,
+            8.0
+        );
         assert_eq!(c.ribbon_tab_height, 28.0);
     }
 

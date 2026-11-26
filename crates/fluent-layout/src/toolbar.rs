@@ -342,6 +342,13 @@ impl Toolbar {
         } else {
             components.dock_header_height
         };
+        // One icon-to-label rule: menu rows follow the row density, the bar
+        // itself has no compact mode.
+        let icon_gap = if in_menu {
+            components.row_icon_label_gap
+        } else {
+            components.icon_label_gap
+        };
 
         match item {
             ToolbarItem::Separator if in_menu => div()
@@ -380,7 +387,7 @@ impl Toolbar {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(px(spacing.xs))
+                    .gap(px(icon_gap))
                     .h(px(row_h))
                     .px(px(spacing.sm))
                     .rounded(px(radii.sm))
@@ -388,13 +395,18 @@ impl Toolbar {
                     .text_color(fg)
                     .child(match icon {
                         Some(icon) => svg()
+                            .debug_selector(move || format!("toolbar-item-{idx}-icon"))
                             .path(icon)
                             .size(px(components.popup_icon_slot))
                             .text_color(fg)
                             .into_any_element(),
                         None => div().size(px(0.0)).into_any_element(),
                     })
-                    .child(label);
+                    .child(
+                        div()
+                            .debug_selector(move || format!("toolbar-item-{idx}-label"))
+                            .child(label),
+                    );
                 if !disabled {
                     el = el
                         .cursor_pointer()
@@ -448,7 +460,7 @@ impl Toolbar {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(px(spacing.xs))
+                    .gap(px(icon_gap))
                     .h(px(row_h))
                     .px(px(spacing.sm))
                     .rounded(px(radii.sm))
@@ -457,13 +469,18 @@ impl Toolbar {
                     .text_color(fg)
                     .child(match icon {
                         Some(icon) => svg()
+                            .debug_selector(move || format!("toolbar-item-{idx}-icon"))
                             .path(icon)
                             .size(px(components.popup_icon_slot))
                             .text_color(fg)
                             .into_any_element(),
                         None => div().size(px(0.0)).into_any_element(),
                     })
-                    .child(label);
+                    .child(
+                        div()
+                            .debug_selector(move || format!("toolbar-item-{idx}-label"))
+                            .child(label),
+                    );
                 if !disabled {
                     el = el
                         .cursor_pointer()
@@ -1136,5 +1153,29 @@ mod tests {
         let joined = cx.accessibility_snapshot().join("\n");
         assert!(!joined.contains("MenuItem"), "{joined}");
         assert_eq!(outer_ring_quads(cx), 1, "focus is back on More");
+    }
+
+    struct IconToolbar;
+
+    impl Render for IconToolbar {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            Toolbar::new().item(ToolbarItem::action_with_icon(
+                "a",
+                "Alpha",
+                "icons/none.svg",
+                |_, _, _| {},
+            ))
+        }
+    }
+
+    /// The icon-to-label gap of a toolbar item (WI-3257: 8px, one rule).
+    #[gpui::test]
+    fn toolbar_icon_to_label_gap_is_the_shared_token(cx: &mut TestAppContext) {
+        let (_host, cx) = open_fluent_test_window(cx, |_, _| IconToolbar);
+        cx.run_until_parked();
+        let icon = cx.selector_bounds("toolbar-item-0-icon").expect("icon");
+        let label = cx.selector_bounds("toolbar-item-0-label").expect("label");
+        let gap = f32::from(label.origin.x - icon.right());
+        assert_eq!(gap, 8.0, "toolbar icon-to-label gap");
     }
 }

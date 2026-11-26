@@ -489,7 +489,7 @@ fn render_row(
         .flex()
         .flex_row()
         .items_center()
-        .gap(px(spacing.sm))
+        .gap(px(components.row_icon_label_gap))
         .when(variable_height, |row| row.min_h(px(row_height)))
         .when(!variable_height, |row| row.h(px(row_height)))
         .w_full()

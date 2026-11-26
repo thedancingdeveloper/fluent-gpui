@@ -50,6 +50,14 @@ pub struct ComponentTokens {
     pub button_small_gap: f32,
     /// Public API item.
     pub button_medium_gap: f32,
+    /// Gap between an icon and its label in normal (32px) controls and rows.
+    /// The one icon-to-label rule: every control follows it (WI-3257).
+    pub icon_label_gap: f32,
+    /// Icon-to-label gap in compact density (24px controls, compact rows).
+    pub icon_label_gap_compact: f32,
+    /// Icon-to-label gap for list-like rows. Follows [`ComponentTokens::with_row_density`]:
+    /// `icon_label_gap` by default, `icon_label_gap_compact` for compact rows.
+    pub row_icon_label_gap: f32,
     /// Public API item.
     pub menu_bar_height: f32,
     /// Row height for every list-like row: menu items, dropdown/combobox options,
@@ -135,6 +143,10 @@ impl ComponentTokens {
     /// These tokens with every list-like row set to `density`'s height.
     pub fn with_row_density(mut self, density: RowDensity) -> Self {
         self.list_item_height = density.list_item_height();
+        self.row_icon_label_gap = match density {
+            RowDensity::Default => self.icon_label_gap,
+            RowDensity::Compact => self.icon_label_gap_compact,
+        };
         self
     }
 }
@@ -153,6 +165,9 @@ impl Default for ComponentTokens {
             button_large_padding_x: 16.0,
             button_small_gap: 4.0,
             button_medium_gap: 8.0,
+            icon_label_gap: 8.0,
+            icon_label_gap_compact: 4.0,
+            row_icon_label_gap: 8.0,
             menu_bar_height: 28.0,
             list_item_height: 32.0,
             menu_min_width: 200.0,

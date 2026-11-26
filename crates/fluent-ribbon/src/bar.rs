@@ -317,7 +317,7 @@ impl RibbonBar {
                     .flex_row()
                     .items_center()
                     .justify_center()
-                    .gap(px(spacing.xs))
+                    .gap(px(components.icon_label_gap))
                     .px(px(spacing.sm))
                     .py(px(spacing.xs))
                     .cursor_pointer()
@@ -391,6 +391,7 @@ impl RibbonBar {
                 let (bar, label_c) = (tokens.bar.clone(), label.clone());
                 div()
                     .id(("rtb", pos.uid(gidx)))
+                    .debug_selector(move || pos.selector(gidx))
                     .role(Role::Button)
                     .aria_label(label.clone())
                     .aria_toggled(if is_sel {
@@ -403,7 +404,7 @@ impl RibbonBar {
                     .flex_row()
                     .items_center()
                     .justify_center()
-                    .gap(px(spacing.xs))
+                    .gap(px(components.icon_label_gap))
                     .px(px(spacing.sm))
                     .py(px(spacing.xs))
                     .bg(bg)
@@ -416,12 +417,14 @@ impl RibbonBar {
                     })
                     .child(
                         svg()
+                            .debug_selector(move || format!("{}-icon", pos.selector(gidx)))
                             .path(icon.clone())
                             .size(px(components.ribbon_small_icon_size))
                             .text_color(fg),
                     )
                     .child(
                         div()
+                            .debug_selector(move || format!("{}-label", pos.selector(gidx)))
                             .text_ramp(&typography.caption)
                             .text_color(fg)
                             .child(label.clone()),
@@ -1339,5 +1342,29 @@ mod tests {
             (left - right).abs() <= 1.0,
             "content not centred: {left} left vs {right} right"
         );
+    }
+
+    /// The icon-to-label gap of ribbon command buttons (WI-3257: 8px).
+    #[gpui::test]
+    fn ribbon_icon_to_label_gap_is_the_shared_token(cx: &mut TestAppContext) {
+        let (_bar, vcx) = open_fluent_test_window(cx, move |_, cx| {
+            RibbonBar::new(cx).tab("Home", |t| {
+                t.group("G", |g| {
+                    g.stack(|s| {
+                        s.button("Hi", "icons/none.svg", |_, _, _| {})
+                            .toggle_button("Tog", "icons/none.svg", false, |_, _, _, _| {})
+                    })
+                })
+            })
+        });
+        vcx.update(|window, app| window.draw(app).clear(app));
+        for (icon, label) in [
+            ("ribbon-item-0-0-0-icon", "ribbon-item-0-0-0-label"),
+            ("ribbon-item-0-0-1-icon", "ribbon-item-0-0-1-label"),
+        ] {
+            let icon_b = vcx.selector_bounds(icon).expect("icon");
+            let label_b = vcx.selector_bounds(label).expect("label");
+            assert_eq!(f32::from(label_b.origin.x - icon_b.right()), 8.0, "{icon}");
+        }
     }
 }
