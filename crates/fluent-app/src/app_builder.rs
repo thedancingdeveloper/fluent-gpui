@@ -232,8 +232,7 @@ impl FluentApp {
                         .detach();
                     }
                 }
-                ModalStack::init(cx);
-                ToastStack::init(cx);
+                init_app_services(cx);
                 let mut window_title = WindowTitle::new(title.clone());
                 if let Some(status) = window_status.clone() {
                     window_title = window_title.with_status(status);
@@ -361,9 +360,111 @@ pub fn window_title_bar(cx: &mut App) -> Entity<TitleBar> {
     cx.new(TitleBar::from_window_title)
 }
 
+/// Per-app global services every [`FluentApp`] starts with. `run` calls this
+/// once the theme is applied, and the tests drive the same function.
+pub(crate) fn init_app_services(cx: &mut App) {
+    ModalStack::init(cx);
+    ToastStack::init(cx);
+    fluent_primitives::install_focus_keybindings(cx);
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{clamp_position, FluentApp};
+    use super::{clamp_position, init_app_services, FluentApp};
+    use fluent_primitives::{Button, Checkbox};
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{
+        div, Context, IntoElement, ParentElement as _, Render, TestAppContext, VisualTestContext,
+        Window,
+    };
+    use std::{cell::RefCell, rc::Rc};
+
+    struct Two(Rc<RefCell<Vec<&'static str>>>);
+
+    impl Render for Two {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let (a, b) = (self.0.clone(), self.0.clone());
+            div()
+                .child(
+                    Button::new("first")
+                        .label("First")
+                        .on_click(move |_, _, _| {
+                            a.borrow_mut().push("first");
+                        }),
+                )
+                .child(
+                    Checkbox::new("second")
+                        .label("Second")
+                        .on_click(move |_, _, _, _| b.borrow_mut().push("second")),
+                )
+        }
+    }
+
+    /// Key-down then key-up, like a real key press.
+    fn press(cx: &mut VisualTestContext, keys: &'static str) {
+        use gpui::InputEvent as _;
+        for key in keys.split(' ') {
+            cx.type_keys(key);
+            let keystroke = gpui::Keystroke::parse(key).expect("valid test keystroke");
+            cx.update(|window, app| {
+                window.dispatch_event(
+                    gpui::KeyUpEvent {
+                        keystroke,
+                        scan_code: None,
+                    }
+                    .to_platform_input(),
+                    app,
+                );
+            });
+            settle(cx);
+        }
+    }
+
+    fn settle(cx: &mut VisualTestContext) {
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+    }
+
+    /// Regression for WI-4840: the app is set up through the startup path only
+    /// (no explicit `install_focus_keybindings`), and a real `tab` must move focus.
+    #[gpui::test]
+    fn tab_moves_focus_in_an_app_started_like_fluent_app_run(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(Vec::new()));
+        let (_, cx) = open_fluent_test_window(cx, {
+            let log = log.clone();
+            move |_, _| Two(log)
+        });
+        cx.update(|_, app| init_app_services(app));
+        settle(cx);
+
+        press(cx, "tab");
+        assert!(cx.update(|w, _| w.last_input_was_keyboard()));
+        press(cx, "enter");
+        assert_eq!(*log.borrow(), ["first"]);
+
+        press(cx, "tab enter");
+        assert_eq!(*log.borrow(), ["first", "second"]);
+
+        press(cx, "shift-tab enter");
+        assert_eq!(*log.borrow(), ["first", "second", "first"]);
+    }
+
+    /// Installing twice must not move focus twice per press.
+    #[gpui::test]
+    fn init_twice_does_not_double_move_focus(cx: &mut TestAppContext) {
+        let log = Rc::new(RefCell::new(Vec::new()));
+        let (_, cx) = open_fluent_test_window(cx, {
+            let log = log.clone();
+            move |_, _| Two(log)
+        });
+        cx.update(|_, app| {
+            init_app_services(app);
+            init_app_services(app);
+        });
+        settle(cx);
+        press(cx, "tab enter");
+        assert_eq!(*log.borrow(), ["first"]);
+    }
 
     const DISPLAY: (f32, f32, f32, f32) = (0.0, 0.0, 1920.0, 1080.0);
 

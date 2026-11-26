@@ -6,12 +6,54 @@ use gpui::{
 
 actions!(fluent_primitives, [FocusNextControl, FocusPreviousControl]);
 
-/// Installs the standard Fluent focus-navigation key bindings.
+struct FocusKeybindingsInstalled;
+
+impl gpui::Global for FocusKeybindingsInstalled {}
+
+/// Installs the standard Fluent focus-navigation key bindings (`tab`,
+/// `shift-tab`). `FluentApp::run` calls this for you; call it yourself in an
+/// app that builds its own gpui `Application`. Safe to call more than once: only
+/// the first call binds.
 pub fn install_focus_keybindings(cx: &mut App) {
+    if cx.has_global::<FocusKeybindingsInstalled>() {
+        return;
+    }
+    cx.set_global(FocusKeybindingsInstalled);
     cx.bind_keys([
         KeyBinding::new("tab", FocusNextControl, None),
         KeyBinding::new("shift-tab", FocusPreviousControl, None),
     ]);
+    // With nothing focused no control's `on_action` is on the dispatch path, so
+    // the first Tab would be dropped. These app-level handlers only run when no
+    // focused element handled the action, and enter the first/last tab stop.
+    cx.on_action(|_: &FocusNextControl, cx: &mut App| {
+        if let Some(window) = target_window(cx) {
+            // The action is dispatched inside the window's own update, so the
+            // move is deferred until that update has finished.
+            cx.defer(move |cx| {
+                window
+                    .update(cx, |_, window, cx| window.focus_next(cx))
+                    .ok();
+            });
+        }
+    });
+    cx.on_action(|_: &FocusPreviousControl, cx: &mut App| {
+        if let Some(window) = target_window(cx) {
+            // The action is dispatched inside the window's own update, so the
+            // move is deferred until that update has finished.
+            cx.defer(move |cx| {
+                window
+                    .update(cx, |_, window, cx| window.focus_prev(cx))
+                    .ok();
+            });
+        }
+    });
+}
+
+/// The window an app-level Tab belongs to: the platform-active one, else the
+/// most recently opened (platforms that do not report activation).
+fn target_window(cx: &App) -> Option<gpui::AnyWindowHandle> {
+    cx.active_window().or_else(|| cx.windows().last().copied())
 }
 
 pub(crate) fn focus_next(_: &FocusNextControl, window: &mut Window, cx: &mut App) {
@@ -1037,5 +1079,136 @@ mod leftover_family_tests {
         cx.click_selector("color-swatch-0");
         cx.update(|window, app| window.draw(app).clear(app));
         assert_eq!(outer_ring_quads(cx), 0, "mouse focus draws no ring");
+    }
+}
+
+/// WI-4840: with Tab bound, the text-like controls (which also handle Tab in
+/// their own key-down) must move focus exactly one stop per press.
+#[cfg(test)]
+mod single_move_tests {
+    use std::{cell::RefCell, rc::Rc};
+
+    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use gpui::{
+        div, AnyView, AppContext as _, Context, Entity, Focusable, IntoElement, ParentElement as _,
+        Render, TestAppContext, VisualTestContext, Window,
+    };
+
+    use crate::{Button, Combobox, DateTimePicker, Searchbox, TextInput, Textarea, TokenInput};
+
+    type Log = Rc<RefCell<Vec<&'static str>>>;
+
+    /// `[before] [middle control] [after]`.
+    struct Host(Log, AnyView);
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let (a, b) = (self.0.clone(), self.0.clone());
+            div()
+                .child(
+                    Button::new("before")
+                        .label("Before")
+                        .on_click(move |_, _, _| {
+                            a.borrow_mut().push("before");
+                        }),
+                )
+                .child(self.1.clone())
+                .child(
+                    Button::new("after")
+                        .label("After")
+                        .on_click(move |_, _, _| {
+                            b.borrow_mut().push("after");
+                        }),
+                )
+        }
+    }
+
+    fn check<T: Render + Focusable>(
+        cx: &mut TestAppContext,
+        name: &str,
+        make: impl FnOnce(&mut Window, &mut gpui::App) -> Entity<T>,
+    ) {
+        let log: Log = Rc::default();
+        let mut entity = None;
+        let (_, cx) = open_fluent_test_window(cx, |window, cx| {
+            let e = make(window, cx);
+            entity = Some(e.clone());
+            Host(log.clone(), e.into())
+        });
+        cx.update(|_, app| crate::install_focus_keybindings(app));
+        settle(cx);
+        let entity = entity.unwrap();
+        cx.update(|window, app| {
+            let handle = entity.read(app).focus_handle(app);
+            window.focus(&handle, app);
+        });
+        settle(cx);
+        press(cx, "tab");
+        press(cx, "enter");
+        assert_eq!(
+            *log.borrow(),
+            ["after"],
+            "{name}: one Tab from the control must land on the next stop"
+        );
+        log.borrow_mut().clear();
+        press(cx, "shift-tab");
+        press(cx, "shift-tab");
+        press(cx, "enter");
+        assert_eq!(
+            *log.borrow(),
+            ["before"],
+            "{name}: Shift-Tab moves back one stop each"
+        );
+    }
+
+    /// Key-down then key-up, as a real key press (a focused button's click
+    /// fires on the key release).
+    fn press(cx: &mut VisualTestContext, key: &'static str) {
+        use gpui::InputEvent as _;
+        cx.type_keys(key);
+        let keystroke = gpui::Keystroke::parse(key).expect("valid test keystroke");
+        cx.update(|window, app| {
+            window.dispatch_event(
+                gpui::KeyUpEvent {
+                    keystroke,
+                    scan_code: None,
+                }
+                .to_platform_input(),
+                app,
+            );
+        });
+        settle(cx);
+    }
+
+    fn settle(cx: &mut VisualTestContext) {
+        cx.run_until_parked();
+        cx.update(|window, app| window.draw(app).clear(app));
+    }
+
+    #[gpui::test]
+    fn text_input_moves_once(cx: &mut TestAppContext) {
+        check(cx, "text-input", |_, app| app.new(|_| TextInput::new()));
+    }
+    #[gpui::test]
+    fn textarea_moves_once(cx: &mut TestAppContext) {
+        check(cx, "textarea", |_, app| app.new(|_| Textarea::new()));
+    }
+    #[gpui::test]
+    fn searchbox_moves_once(cx: &mut TestAppContext) {
+        check(cx, "searchbox", |_, app| app.new(|_| Searchbox::new()));
+    }
+    #[gpui::test]
+    fn combobox_moves_once(cx: &mut TestAppContext) {
+        check(cx, "combobox", |_, app| app.new(|_| Combobox::new()));
+    }
+    #[gpui::test]
+    fn token_input_moves_once(cx: &mut TestAppContext) {
+        check(cx, "token-input", |_, app| app.new(|_| TokenInput::new()));
+    }
+    #[gpui::test]
+    fn date_time_picker_moves_once(cx: &mut TestAppContext) {
+        check(cx, "date-time-picker", |_, app| {
+            app.new(|_| DateTimePicker::new())
+        });
     }
 }
