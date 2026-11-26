@@ -1,4 +1,5 @@
 use crate::focus::{control_focus_handle, focus_ring, is_keyboard_focused, FluentFocus as _};
+use crate::Spinner;
 use fluent_core::{
     ControlStates, NeutralColorStates, TextRampExt as _, ThemeProvider as _, TruncateExt as _,
 };
@@ -144,6 +145,7 @@ pub struct Button {
     shape: ButtonShape,
     size: ButtonSize,
     disabled: bool,
+    loading: bool,
     tab_index: Option<isize>,
     on_click: Option<Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>>,
 }
@@ -160,6 +162,7 @@ impl Button {
             shape: ButtonShape::default(),
             size: ButtonSize::default(),
             disabled: false,
+            loading: false,
             tab_index: None,
             on_click: None,
         }
@@ -210,6 +213,14 @@ impl Button {
     /// Sets the disabled configuration for this control.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
+        self
+    }
+
+    /// Shows a spinner in place of the leading icon (or before the label) and
+    /// ignores clicks, Enter and Space. The button keeps its size, Tab stop and
+    /// focus ring.
+    pub fn loading(mut self, loading: bool) -> Self {
+        self.loading = loading;
         self
     }
 
@@ -284,6 +295,7 @@ impl RenderOnce for Button {
         } = ButtonMetrics::new(self.size, theme);
 
         let disabled = self.disabled;
+        let loading = self.loading;
         let tab_index = self.tab_index;
         let on_click = self.on_click;
         let icon = self.icon;
@@ -324,14 +336,20 @@ impl RenderOnce for Button {
                 .active(move |s| s.bg(bg_active));
         }
 
-        if let Some(handler) = on_click.filter(|_| !disabled) {
+        if let Some(handler) = on_click.filter(|_| !disabled && !loading) {
             el = el.on_click(move |ev, win, app| handler(ev, win, app));
         }
 
-        if let Some(icon_path) = icon
+        let leading_icon = icon
             .as_ref()
-            .filter(|_| icon_position == ButtonIconPosition::Before)
-        {
+            .filter(|_| icon_position == ButtonIconPosition::Before);
+        if loading {
+            el = el.child(
+                Spinner::new()
+                    .id(format!("{icon_debug_id}-spinner"))
+                    .size(icon_size),
+            );
+        } else if let Some(icon_path) = leading_icon {
             el = el.child(
                 gpui::svg()
                     .debug_selector(move || format!("{icon_debug_id}-icon"))
@@ -775,5 +793,66 @@ mod tests {
         let snap = snapshot(cx, || Button::new("b").label("Save").into_any_element());
         assert_eq!(snap.len(), 2, "{snap:?}");
         assert_a11y_node(&snap, "Button", Some("Save"), &[]);
+    }
+
+    struct LoadingHost {
+        clicks: Rc<Cell<usize>>,
+        loading: bool,
+    }
+
+    impl Render for LoadingHost {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let clicks = self.clicks.clone();
+            div()
+                .flex()
+                .flex_col()
+                .w(px(300.))
+                .child(Button::new("normal").label("Save"))
+                .child(
+                    Button::new("busy")
+                        .label("Save")
+                        .loading(self.loading)
+                        .on_click(move |_, _, _| clicks.set(clicks.get() + 1)),
+                )
+        }
+    }
+
+    #[gpui::test]
+    fn loading_button_ignores_click_enter_and_space_and_keeps_height(cx: &mut TestAppContext) {
+        let clicks = Rc::new(Cell::new(0));
+        let host_clicks = clicks.clone();
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| LoadingHost {
+            clicks: host_clicks,
+            loading: true,
+        });
+        cx.update(|window, app| window.draw(app).clear(app));
+        cx.click_selector("busy");
+        cx.update(|window, app| window.draw(app).clear(app));
+        press(cx, "enter");
+        press(cx, "space");
+        assert_eq!(clicks.get(), 0);
+
+        let normal = cx.selector_bounds("normal").expect("normal laid out");
+        let busy = cx.selector_bounds("busy").expect("busy laid out");
+        assert_eq!(busy.size.height, normal.size.height);
+        let snap = cx.accessibility_snapshot();
+        assert!(
+            snap.iter().any(|n| n.starts_with("ProgressIndicator")),
+            "{snap:?}"
+        );
+    }
+
+    #[gpui::test]
+    fn not_loading_button_still_activates(cx: &mut TestAppContext) {
+        let clicks = Rc::new(Cell::new(0));
+        let host_clicks = clicks.clone();
+        let (_, cx) = open_fluent_test_window(cx, move |_, _| LoadingHost {
+            clicks: host_clicks,
+            loading: false,
+        });
+        cx.click_selector("busy");
+        cx.update(|window, app| window.draw(app).clear(app));
+        press(cx, "enter");
+        assert_eq!(clicks.get(), 2);
     }
 }

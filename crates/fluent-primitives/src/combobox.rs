@@ -35,6 +35,7 @@ pub struct Combobox {
     query: String,
     placeholder: SharedString,
     disabled: bool,
+    error: bool,
     field_validation: crate::FieldValidationState,
     freeform: bool,
     open: bool,
@@ -59,6 +60,7 @@ impl Default for Combobox {
             query: String::new(),
             placeholder: "Select or type".into(),
             disabled: false,
+            error: false,
             field_validation: crate::FieldValidationState::None,
             freeform: false,
             open: false,
@@ -129,6 +131,25 @@ impl Combobox {
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
+    }
+
+    /// Marks the control as invalid: danger border, like
+    /// [`crate::TextInput::error`]. A [`crate::Field`] validation state wins.
+    pub fn error(mut self, error: bool) -> Self {
+        self.error = error;
+        self
+    }
+
+    /// Border colour for the current state.
+    fn border_color(&self, colors: &fluent_core::ColorScheme, focused: bool) -> gpui::Hsla {
+        match self.field_validation {
+            crate::FieldValidationState::Error => colors.status_error,
+            crate::FieldValidationState::Warning => colors.status_warning,
+            crate::FieldValidationState::Success => colors.status_success,
+            crate::FieldValidationState::None if self.error => colors.status_error,
+            crate::FieldValidationState::None if focused => colors.accent,
+            crate::FieldValidationState::None => colors.stroke_neutral,
+        }
     }
 
     /// Sets the freeform configuration for this control.
@@ -408,13 +429,7 @@ impl Render for Combobox {
                 colors.neutral
             })
             .border_1()
-            .border_color(match self.field_validation {
-                crate::FieldValidationState::Error => colors.status_error,
-                crate::FieldValidationState::Warning => colors.status_warning,
-                crate::FieldValidationState::Success => colors.status_success,
-                crate::FieldValidationState::None if focused => colors.accent,
-                crate::FieldValidationState::None => colors.stroke_neutral,
-            })
+            .border_color(self.border_color(&colors, focused))
             .cursor(if self.disabled {
                 CursorStyle::Arrow
             } else {
@@ -752,5 +767,17 @@ mod tests {
     #[gpui::test]
     fn combobox_rows_follow_compact_density(cx: &mut TestAppContext) {
         assert_eq!(combobox_row_height(true, cx), 28.0);
+    }
+
+    #[gpui::test]
+    fn error_flag_switches_border_to_danger(cx: &mut TestAppContext) {
+        init_fluent_test(cx);
+        let colors = cx.update(|cx| cx.theme().colors.clone());
+        let plain = Combobox::new();
+        let invalid = Combobox::new().error(true);
+        assert_eq!(plain.border_color(&colors, false), colors.stroke_neutral);
+        assert_eq!(invalid.border_color(&colors, false), colors.status_error);
+        assert_eq!(invalid.border_color(&colors, true), colors.status_error);
+        assert_ne!(plain.border_color(&colors, true), colors.status_error);
     }
 }

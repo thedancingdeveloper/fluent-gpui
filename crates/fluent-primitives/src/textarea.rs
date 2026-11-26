@@ -12,6 +12,7 @@ pub struct Textarea {
     placeholder: SharedString,
     rows: usize,
     disabled: bool,
+    error: bool,
     field_validation: crate::FieldValidationState,
     focus_handle: Option<FocusHandle>,
     a11y_name: Option<SharedString>,
@@ -27,6 +28,7 @@ impl Default for Textarea {
             placeholder: SharedString::default(),
             rows: 4,
             disabled: false,
+            error: false,
             field_validation: crate::FieldValidationState::None,
             focus_handle: None,
             a11y_name: None,
@@ -89,6 +91,32 @@ impl Textarea {
     pub fn set_value(&mut self, value: impl Into<SharedString>, cx: &mut Context<Self>) {
         self.value = value.into().to_string();
         cx.notify();
+    }
+
+    /// Marks the control as invalid: danger border and indicator, like
+    /// [`crate::TextInput::error`]. A [`crate::Field`] validation state wins.
+    pub fn error(mut self, error: bool) -> Self {
+        self.error = error;
+        self
+    }
+
+    /// Sets the error value.
+    pub fn set_error(&mut self, error: bool, cx: &mut Context<Self>) {
+        self.error = error;
+        cx.notify();
+    }
+
+    /// Border colour for the current state.
+    fn indicator_color(&self, colors: &fluent_core::ColorScheme, focused: bool) -> gpui::Hsla {
+        match self.field_validation {
+            crate::FieldValidationState::Error => colors.status_error,
+            crate::FieldValidationState::Warning => colors.status_warning,
+            crate::FieldValidationState::Success => colors.status_success,
+            crate::FieldValidationState::None if self.error => colors.status_error,
+            crate::FieldValidationState::None if focused => colors.accent,
+            crate::FieldValidationState::None if self.disabled => colors.stroke_neutral_disabled,
+            crate::FieldValidationState::None => colors.stroke_neutral,
+        }
     }
 
     /// Sets the disabled value.
@@ -209,14 +237,7 @@ impl Render for Textarea {
         let radii = &theme.radii;
         let components = &theme.components;
         let focused = focus_handle.is_focused(window);
-        let indicator = match self.field_validation {
-            crate::FieldValidationState::Error => colors.status_error,
-            crate::FieldValidationState::Warning => colors.status_warning,
-            crate::FieldValidationState::Success => colors.status_success,
-            crate::FieldValidationState::None if focused => colors.accent,
-            crate::FieldValidationState::None if self.disabled => colors.stroke_neutral_disabled,
-            crate::FieldValidationState::None => colors.stroke_neutral,
-        };
+        let indicator = self.indicator_color(colors, focused);
         let text = if self.value.is_empty() {
             self.placeholder.to_string()
         } else {
@@ -330,7 +351,7 @@ impl Focusable for Textarea {
 
 #[cfg(test)]
 mod tests {
-    use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
+    use fluent_test_utils::{init_fluent_test, open_fluent_test_window, FluentInteractionExt as _};
     use gpui::TestAppContext;
 
     use super::*;
@@ -354,5 +375,18 @@ mod tests {
             area.read_with(cx, |area, _| area.text().to_owned()),
             "first\nsecond"
         );
+    }
+
+    #[gpui::test]
+    fn error_flag_switches_border_to_danger(cx: &mut TestAppContext) {
+        init_fluent_test(cx);
+        let colors = cx.update(|cx| cx.theme().colors.clone());
+        let plain = Textarea::new();
+        let invalid = Textarea::new().error(true);
+        assert_eq!(plain.indicator_color(&colors, false), colors.stroke_neutral);
+        assert_eq!(invalid.indicator_color(&colors, false), colors.status_error);
+        // The danger border stays while focused.
+        assert_eq!(invalid.indicator_color(&colors, true), colors.status_error);
+        assert_ne!(plain.indicator_color(&colors, true), colors.status_error);
     }
 }

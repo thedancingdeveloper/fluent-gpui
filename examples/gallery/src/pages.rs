@@ -38,11 +38,14 @@ pub struct InputsPage {
     text: Vec<Entity<TextInput>>,
     textarea: Entity<Textarea>,
     textarea_disabled: Entity<Textarea>,
+    textarea_error: Entity<Textarea>,
     searchbox: Entity<Searchbox>,
     dropdown: Entity<Dropdown>,
     dropdown_disabled: Entity<Dropdown>,
+    dropdown_error: Entity<Dropdown>,
     combobox: Entity<Combobox>,
     combobox_disabled: Entity<Combobox>,
+    combobox_error: Entity<Combobox>,
     field_input: Entity<TextInput>,
 }
 
@@ -72,9 +75,12 @@ impl InputsPage {
             ],
             textarea: cx.new(|_| Textarea::new().placeholder("Notes").rows(3)),
             textarea_disabled: cx.new(|_| Textarea::new().value("Disabled").disabled(true)),
+            textarea_error: cx.new(|_| Textarea::new().value("Too short").rows(3).error(true)),
             searchbox: cx.new(|_| Searchbox::new().placeholder("Search")),
             dropdown: cx.new(|_| dropdown("gal-dd", false)),
             dropdown_disabled: cx.new(|_| dropdown("gal-dd-dis", true)),
+            dropdown_error: cx.new(|_| dropdown("gal-dd-err", false).error(true)),
+            combobox_error: cx.new(|_| combobox(false).error(true)),
             combobox: cx.new(|_| combobox(false)),
             combobox_disabled: cx.new(|_| combobox(true)),
             field_input: cx.new(|_| TextInput::new().value("").error(true)),
@@ -97,20 +103,23 @@ impl Render for InputsPage {
                     .collect(),
             ))
             .child(section(
-                "Textarea and searchbox",
+                "Textarea (default, disabled, error) and searchbox",
                 vec![
                     w(self.textarea.clone().into_any_element()),
                     w(self.textarea_disabled.clone().into_any_element()),
+                    w(self.textarea_error.clone().into_any_element()),
                     w(self.searchbox.clone().into_any_element()),
                 ],
             ))
             .child(section(
-                "Dropdown and combobox: enabled, disabled",
+                "Dropdown and combobox: enabled, disabled, error",
                 vec![
                     w(self.dropdown.clone().into_any_element()),
                     w(self.dropdown_disabled.clone().into_any_element()),
                     w(self.combobox.clone().into_any_element()),
                     w(self.combobox_disabled.clone().into_any_element()),
+                    w(self.dropdown_error.clone().into_any_element()),
+                    w(self.combobox_error.clone().into_any_element()),
                 ],
             ))
             .child(section(
@@ -201,6 +210,10 @@ impl Render for StatusPage {
                     Button::new("gal-busy")
                         .label("Saving")
                         .disabled(true)
+                        .into_any_element(),
+                    Button::new("gal-loading")
+                        .label("Saving")
+                        .loading(true)
                         .into_any_element(),
                     spin(2, Spinner::new().size(16.0)),
                     Chip::new("gal-chip", "Filter: open").into_any_element(),
