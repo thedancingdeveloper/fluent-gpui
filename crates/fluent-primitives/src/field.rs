@@ -70,6 +70,9 @@ pub enum FieldValidationState {
     Error,
 }
 
+/// Top offset of the label in a leading label column: (32px control - 20px label line) / 2.
+pub(crate) const LABEL_COLUMN_OFFSET: f32 = 6.0;
+
 /// A Fluent form field wrapper: label, required marker, control, helper text,
 /// and validation message.
 ///
@@ -275,7 +278,7 @@ impl RenderOnce for Field {
                 div()
                     .flex_none()
                     .w(px(label_width))
-                    .pt(px(6.0))
+                    .pt(px(LABEL_COLUMN_OFFSET))
                     .children(label_el),
             );
             body = body.child(self.control);
@@ -362,6 +365,11 @@ fn validation_message(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn label_column_offset_centres_label_on_32px_control() {
+        assert_eq!(super::LABEL_COLUMN_OFFSET, (32.0 - 20.0) / 2.0);
+    }
+
     use std::{cell::RefCell, rc::Rc};
 
     use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};

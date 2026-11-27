@@ -78,6 +78,7 @@ Behaviour changes you will notice (no code change needed unless noted):
 |---|---|---|
 | `Tab` / `Shift-Tab` | Did nothing in a real app, because the key bindings were only installed in tests. | `FluentApp::run` binds them. **Apps that build their own gpui `Application` must call `fluent_primitives::install_focus_keybindings(cx)` once at startup** (safe to call more than once). With nothing focused, `Tab` enters the first tab stop and `Shift-Tab` the last. |
 | Keyboard focus ring | Mixed styles; several controls had none. | Every control draws the same two-tone ring (2 px outer, 1 px inner), only for keyboard focus. Disabled controls are not tab stops. |
+| `Chip` height | About 22 px, from padding around the caption text. | 32 px, fixed. The 20 px dismiss button sits inside it. |
 | Chrome rows (dock header, toolbar bar, ribbon tab strip, menu bar, command palette footer) | 28 px | 32 px |
 | List, menu, dropdown option, tree, table and settings-nav section header rows | 28 px | 32 px. `RowDensity::Compact` keeps 28 px. |
 | Settings-nav item rows | 32 px | 32 px (unchanged). |
@@ -158,7 +159,7 @@ Behaviour changes you will notice (no code change needed unless noted):
 
 ### Changed
 - Toasts now slide and fade in, tree chevrons rotate when a node expands or collapses, and the normal motion duration is 167 ms (was 200 ms).
-- Whole-pixel spacing and 12px dismiss and chevron glyphs across fields, badges, chips, the search box, message bars, dropdowns, the settings navigation, the command palette and the date picker; the textarea minimum height now matches its padding.
+- Whole-pixel spacing and 12px dismiss and chevron glyphs across fields, badges, chips, the search box, message bars, dropdowns, the settings navigation, the command palette and the date picker; the textarea minimum height now matches its padding. `Chip` is now a fixed 32 px tall (Fluent medium tag), and `AppDot` uses whole-pixel text and a token corner radius.
 
 **Accessibility and keyboard**
 - `Button`, `IconButton`, `ToggleButton`, `Checkbox`, `Switch`, `RadioGroup`, `Dropdown`,

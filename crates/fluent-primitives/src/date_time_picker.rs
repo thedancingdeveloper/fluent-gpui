@@ -974,7 +974,7 @@ impl Render for DateTimePicker {
             .child(
                 svg()
                     .path("icons/chevron_down.svg")
-                    .size(px(12.0))
+                    .size(px(CHEVRON_GLYPH))
                     .text_color(fg),
             )
             .child(measure_trigger);
@@ -1124,7 +1124,7 @@ fn segment_control(
                 .items_center()
                 .justify_center()
                 .w_full()
-                .h(px(32.0))
+                .h(px(SEGMENT_HEIGHT))
                 .rounded(px(radii.sm))
                 .bg(if selected {
                     colors.neutral_selected
@@ -1179,7 +1179,7 @@ fn segment_step_button(
         .items_center()
         .justify_center()
         .w_full()
-        .h(px(24.0))
+        .h(px(ACTION_HEIGHT))
         .rounded(px(radii.sm))
         .bg(colors.subtle)
         .text_ramp(&typography.body)
@@ -1220,7 +1220,7 @@ fn action_button(
         .flex()
         .items_center()
         .justify_center()
-        .h(px(24.0))
+        .h(px(ACTION_HEIGHT))
         .px(px(8.0))
         .rounded(px(radius))
         .text_ramp(ramp)
@@ -1233,8 +1233,22 @@ fn action_button(
         .child(label)
 }
 
+/// Segment row height.
+pub(crate) const SEGMENT_HEIGHT: f32 = 32.0;
+/// Action button height.
+pub(crate) const ACTION_HEIGHT: f32 = 24.0;
+/// Dropdown chevron glyph size.
+pub(crate) const CHEVRON_GLYPH: f32 = 12.0;
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn heights_and_glyph_are_pinned() {
+        assert_eq!(super::SEGMENT_HEIGHT, 32.0);
+        assert_eq!(super::ACTION_HEIGHT, 24.0);
+        assert_eq!(super::CHEVRON_GLYPH, 12.0);
+    }
+
     use super::*;
 
     #[test]

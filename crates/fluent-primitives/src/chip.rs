@@ -5,6 +5,13 @@ use gpui::{
     div, prelude::*, px, App, ClickEvent, ElementId, IntoElement, RenderOnce, SharedString, Window,
 };
 
+/// Fluent tag height (medium).
+pub(crate) const CHIP_HEIGHT: f32 = 32.0;
+/// Hit box of the dismiss button inside a chip.
+pub(crate) const CHIP_DISMISS_BOX: f32 = 20.0;
+/// Glyph size of the dismiss icon.
+pub(crate) const CHIP_DISMISS_GLYPH: f32 = 12.0;
+
 /// A dismissable tag / token chip.
 #[allow(clippy::type_complexity)]
 #[derive(IntoElement)]
@@ -56,7 +63,7 @@ impl RenderOnce for Chip {
             .items_center()
             .gap(px(spacing.xs))
             .px(px(spacing.sm))
-            .py(px(spacing.xs))
+            .h(px(CHIP_HEIGHT))
             .rounded(px(radii.pill))
             .bg(colors.neutral)
             .border_1()
@@ -73,7 +80,7 @@ impl RenderOnce for Chip {
                 .track_focus(&focus)
                 .key_context("Chip")
                 .fluent_tab_stop(0)
-                .size(px(20.0))
+                .size(px(CHIP_DISMISS_BOX))
                 .rounded(px(radii.pill))
                 .flex()
                 .items_center()
@@ -89,12 +96,30 @@ impl RenderOnce for Chip {
                 .child(
                     gpui::svg()
                         .path("icons/dismiss.svg")
-                        .size(px(12.0))
+                        .size(px(CHIP_DISMISS_GLYPH))
                         .text_color(colors.on_neutral),
                 );
             el = el.child(focus_ring(dismiss, ring, colors, px(radii.pill)));
         }
 
         el
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn chip_is_fluent_medium_height() {
+        assert_eq!(CHIP_HEIGHT, 32.0);
+    }
+
+    #[test]
+    fn dismiss_box_fits_inside_chip_without_growing_it() {
+        // 1px border top and bottom plus the dismiss box must fit the fixed height.
+        const { assert!(CHIP_DISMISS_BOX + 2.0 <= CHIP_HEIGHT) };
+        assert_eq!(CHIP_DISMISS_BOX, 20.0);
+        assert_eq!(CHIP_DISMISS_GLYPH, 12.0);
     }
 }
