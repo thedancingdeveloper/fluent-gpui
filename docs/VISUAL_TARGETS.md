@@ -187,6 +187,16 @@ Current implementation:
 | Loading skeletons | `Skeleton`, `SkeletonRow`, `Skeleton::wrap` | Implemented |
 | Tabular numbers | `FluentTextExt::tabular_nums()` | Implemented |
 | Backdrop blur | `gpui::backdrop_blur` | Re-applied; visual and Windows runtime checks pending |
+| Collapsible sections | `Expander` | Implemented; gallery page |
+| Scrolling affordance | `Scrollbar` | Implemented; gallery page |
+| Toolbar overflow | `Toolbar` "More" menu | Implemented |
+| Loading buttons | `Button::loading` | Implemented |
+| Error state on inputs | `.error(bool)` on text-like inputs | Implemented |
+| List and row density | `RowDensity` | Implemented (32 px default, 28 px compact) |
+| Window position restore | `FluentApp::window_position` | Implemented |
+| Raw input capture | `InputCapture` | Implemented; gallery page |
+| Terminal surface | `TerminalGrid`, `TerminalView` | Implemented; gallery page; not runtime-validated |
+| Video widget | `VideoSurface` | Implemented; gallery page; not runtime-validated |
 | Video-frame surfaces | `VideoTextureId` APIs | Applied on wgpu and DirectX; not runtime-validated |
 | Web visual parity | Web backend | Future |
 

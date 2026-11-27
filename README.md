@@ -430,8 +430,8 @@ Each image is the component after a real Tab key press, showing its focus ring (
 | Crate | What it provides |
 |---|---|
 | [`fluent-core`](crates/fluent-core) | Theme, design tokens, colours, typography, motion, and the `fluent_core::gpui` re-export |
-| [`fluent-primitives`](crates/fluent-primitives) | Buttons, inputs, dropdowns, checkboxes, switches, badges, cards, tooltips, date and time picker, video surface, terminal view |
-| [`fluent-layout`](crates/fluent-layout) | Menus, context menus, dock panels, panes and splits, tree, data table, dialogs, toasts, command palette |
+| [`fluent-primitives`](crates/fluent-primitives) | Buttons, inputs, dropdowns, checkboxes, switches, badges, cards, tooltips, expander, scrollbar, date and time picker, input capture, video surface, terminal view |
+| [`fluent-layout`](crates/fluent-layout) | Menus, context menus, toolbar with overflow, dock panels, panes and splits, tree, data table, dialogs, toasts, command palette |
 | [`fluent-ribbon`](crates/fluent-ribbon) | The ribbon command bar: tabs, groups, contextual tabs, overflow |
 | [`fluent-app`](crates/fluent-app) | `FluentApp`, the title bar, client-side window chrome, bundled assets, file pickers |
 | [`fluent-test-utils`](crates/fluent-test-utils) | Accessibility tree dumps and UI test helpers (use as a dev-dependency) |
@@ -484,6 +484,14 @@ The full list is in [docs/README.md](docs/README.md). Start with:
 - [Architecture and consumer contract](docs/architecture.md): layering, versions, feature flags.
 - [Native integration contracts](docs/consumer-contracts.md): video, terminal and pickers.
 - [Changelog](CHANGELOG.md): release notes and migration notes.
+
+### Upgrading
+
+The 4.0.0 release changes row and chrome sizes and a few signatures. The
+migration steps are in the [4.0.0 section of the changelog](CHANGELOG.md#unreleased-next-release-400).
+It also adds `Scrollbar`, a `Toolbar` "More" menu, `Button::loading`, an
+`.error(bool)` state on text-like inputs, window position save and restore, and
+`RowDensity`.
 
 ## Contributing, security and licence
 

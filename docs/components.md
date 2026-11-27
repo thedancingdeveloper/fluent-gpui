@@ -10,11 +10,14 @@ consumers can rely on; “gallery” is the route family in `examples/gallery`.
 - Badge — primitives; neutral/accent/danger; no internal keyboard interaction; **Status and feedback**
 - Breadcrumb — layout; current/link/separator; Tab follows links; **Data and lists**
 - Button — primitives; appearances, shapes, sizes, disabled; Enter/Space activates; **Buttons and links**
+- Calendar — primitives; month grid, selected date; arrows move the focused day; **Date and input**
 - Card — primitives; default/interactive; Tab only when an action is supplied; **Status and feedback**
 - Checkbox — primitives; checked/unchecked/indeterminate/disabled; Space toggles; **Selection controls**
 - Chip — primitives; default/selected/dismissible; Enter/Space activates, Delete dismisses; **Buttons and links**
+- ColorPicker — primitives; colour selection; keyboard adjusts the colour; **Date and input**
 - Combobox — primitives; open/closed, selected, disabled; arrows navigate, Enter selects, Escape closes; **Selection controls**
 - CommandPalette — layout; hidden/open, grouped results; arrows navigate, Enter runs, Escape closes; **Buttons and links**
+- CompoundButton — primitives; button with a secondary line, disabled; Enter/Space activates; **Buttons and links**
 - ConnectionBadge — primitives; connected/disconnected/connecting; no internal keyboard interaction; **Status and feedback**
 - ContextMenu — layout; hidden/open, enabled/disabled items; arrows navigate, Enter activates, Escape closes; **Buttons and links**
 - CounterBadge — primitives; count/zero/overflow/dot; no internal keyboard interaction; **Status and feedback**
@@ -49,17 +52,23 @@ consumers can rely on; “gallery” is the route family in `examples/gallery`.
 - PaneGroup — layout; split/resizable, collapsed; keyboard follows the active pane; **Data and lists**
 - Persona — primitives; sizes, image/initials, presence; no internal keyboard interaction; **Text and labels**
 - Popover — layout; open/closed; Tab is trapped while open, Escape closes; **Status and feedback**
+- PresenceBadge — primitives; presence states; no internal keyboard interaction; **Status and feedback**
 - ProgressBar — primitives; determinate/indeterminate; no keyboard interaction; **Status and feedback**
 - RadioGroup — primitives; selected/unselected/disabled; arrows change selection, Space selects; **Selection controls**
 - Rating — primitives; empty/partial/full, readonly; arrows change value when interactive; **Status and feedback**
 - RibbonBar — ribbon; tabs/contextual tabs/collapsed/overflow; arrows move tabs, Enter activates; **Buttons and links**
+- Scrollbar — primitives; vertical/horizontal, overlay or always visible; pointer drag, no keyboard interaction; **Data and lists**
 - Searchbox — primitives; empty/filled/error/disabled; typing edits, Escape clears or dismisses; **Date and input**
+- SectionHeader — primitives; title with optional action; no internal keyboard interaction; **Status and feedback**
 - SelectableList — layout; selected/disabled/loading/empty; arrows/Home/End navigate, Enter selects; **Data and lists**
 - SelectableListItem — layout; selected/disabled; arrows navigate, Enter selects; **Data and lists**
 - SettingsNav — layout; active/disabled sections; arrows move, Enter selects; **Data and lists**
+- Skeleton — primitives; shapes, rows, wrapped content; no keyboard interaction; **Status and feedback**
 - Slider — primitives; horizontal/vertical, disabled; arrows/Home/End adjust value; **Selection controls**
 - SpinButton — primitives; min/max/step/disabled; arrows/Home/End adjust value; **Selection controls**
 - Spinner — primitives; small/medium/large; no keyboard interaction; **Status and feedback**
+- SplitButton — primitives; primary action plus menu, disabled; Enter/Space activates; **Buttons and links**
+- SuggestionPopover — primitives; open/closed, highlighted suggestion; arrows navigate, Enter accepts; **Date and input**
 - Switch — primitives; on/off/disabled; Space toggles; **Selection controls**
 - TabItem — layout; active/closable; Enter activates, Delete closes when enabled; **Buttons and links**
 - TabStrip — layout; active/closable; arrows move, Enter activates, Delete closes when enabled; **Buttons and links**
@@ -69,6 +78,7 @@ consumers can rely on; “gallery” is the route family in `examples/gallery`.
 - TerminalView — primitives; focused/unfocused, selection; arrows/Home/End move the terminal cursor; **Terminal and video**
 - Textarea — primitives; empty/filled/error/disabled; arrows/Home/End edit, Ctrl+A selects; **Date and input**
 - TextInput — primitives; empty/filled/masked/error/disabled; arrows/Home/End edit and move caret, Ctrl+A selects; **Date and input**
+- TitleBar — app; active/inactive, maximized; platform title-bar commands use standard window keys; **Theme and direction**
 - Toast — layout; info/success/warning/error, timeout; Tab reaches actions, Escape dismisses; **Status and feedback**
 - ToggleButton — primitives; on/off/disabled; Enter/Space toggles; **Buttons and links**
 - TokenInput — primitives; empty/tokens/suggestions; arrows navigate, Enter commits, Backspace removes; **Date and input**
