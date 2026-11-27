@@ -352,11 +352,18 @@ mod tests {
         });
         cx.accessibility_snapshot();
         let row_h = cx.update(|_, app| app.theme().components.list_item_height);
+        let nav_bounds = cx
+            .selector_bounds("nav-section-0")
+            .expect("section painted");
         for selector in ["nav-section-label-0", "nav-item-label-0-0"] {
             let label = cx.selector_bounds(selector).expect("label painted");
             assert!(
                 f32::from(label.size.height) < row_h,
                 "{selector} wrapped to several lines: {label:?}"
+            );
+            assert!(
+                label.right() <= nav_bounds.right(),
+                "{selector} overflows the nav: {label:?} vs {nav_bounds:?}"
             );
         }
     }
