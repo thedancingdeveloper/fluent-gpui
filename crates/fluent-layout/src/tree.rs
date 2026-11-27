@@ -1,5 +1,4 @@
 use fluent_core::TextRampExt;
-use gpui::AnimationExt as _;
 use std::sync::Arc;
 
 use crate::data_status::{status_block, DataStatusKind};
@@ -516,21 +515,13 @@ impl Tree {
         let load_handler = state.on_load_children.clone();
         let chevron = if has_children {
             let expanded = item.expanded;
-            let duration = theme.motion().fast_duration();
             svg()
                 .path("icons/chevron_right.svg")
                 .size(px(12.0))
                 .text_color(colors.on_subtle)
-                .with_animation(
-                    ("tree-chevron", index as u64 * 2 + expanded as u64),
-                    gpui::Animation::new(duration).with_easing(gpui::ease_out_quint()),
-                    move |chevron, delta| {
-                        let turn = if expanded { delta } else { 1.0 - delta };
-                        chevron.with_transformation(gpui::Transformation::rotate(gpui::radians(
-                            turn * std::f32::consts::FRAC_PI_2,
-                        )))
-                    },
-                )
+                .with_transformation(gpui::Transformation::rotate(gpui::radians(
+                    chevron_rotation(expanded),
+                )))
                 .into_any_element()
         } else {
             div().size(px(12.0)).into_any_element()
@@ -678,6 +669,17 @@ impl Tree {
                 .child(row.child(content))
                 .into_any_element(),
         )
+    }
+}
+
+/// Rotation of the row chevron in radians. The tree is rendered statelessly, so the
+/// chevron is drawn at its final rotation and never animates; animating needs the
+/// previous expanded state of each item, which a render cannot see.
+fn chevron_rotation(expanded: bool) -> f32 {
+    if expanded {
+        std::f32::consts::FRAC_PI_2
+    } else {
+        0.0
     }
 }
 
@@ -1359,5 +1361,23 @@ mod density_tests {
     #[gpui::test]
     fn tree_icon_to_label_gap_is_compact_in_compact_rows(cx: &mut TestAppContext) {
         assert_eq!(tree_icon_gap(true, cx), 4.0);
+    }
+}
+
+#[cfg(test)]
+mod chevron_tests {
+    use super::chevron_rotation;
+
+    #[test]
+    fn chevron_is_drawn_at_its_final_rotation() {
+        assert_eq!(chevron_rotation(false), 0.0);
+        assert_eq!(chevron_rotation(true), std::f32::consts::FRAC_PI_2);
+    }
+
+    #[test]
+    fn chevron_never_animates_on_render() {
+        let src = include_str!("tree.rs");
+        let render = &src[..src.find("mod chevron_tests").unwrap()];
+        assert!(!render.contains("tree-chevron"));
     }
 }
