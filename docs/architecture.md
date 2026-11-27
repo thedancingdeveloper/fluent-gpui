@@ -44,12 +44,12 @@ Zed commit the vendored closure was cut from. Pin an exact tag on every
 
 ```toml
 [dependencies]
-fluent-core       = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
-fluent-primitives = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
-fluent-app        = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
+fluent-core       = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v4.0.0+zed.ba63a022c9a2" }
+fluent-primitives = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v4.0.0+zed.ba63a022c9a2" }
+fluent-app        = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v4.0.0+zed.ba63a022c9a2" }
 
 [dev-dependencies]
-fluent-test-utils = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
+fluent-test-utils = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v4.0.0+zed.ba63a022c9a2" }
 ```
 
 Take only the crates you use. The crates.io names `fluent-core`, `fluent-app`,
