@@ -30,8 +30,8 @@ The tag version, every published `crates/fluent-*/Cargo.toml` version and the
 `.github/workflows/release.yml` ("Release dry run") runs:
 
 - on pushes of tags matching `v*+zed.*`,
-- on pull requests that touch `release.yml`, `scripts/check-zed-rev.sh` or
-  `scripts/release-notes.sh`,
+- on pull requests that touch `release.yml`, `scripts/check-zed-rev.sh`,
+  `scripts/release-notes.sh` or `scripts/test-release-notes.sh`,
 - nightly at 03:23 UTC, and
 - on manual dispatch (`workflow_dispatch`).
 
@@ -42,8 +42,11 @@ Jobs:
    On a tag run it also checks the tag matches
    `v<major>.<minor>.<patch>+zed.<7-40 hex>`, that the sha is a prefix of the
    vendored commit, and that each published crate version equals the tag
-   version. Then `scripts/release-notes.sh` writes the text under
-   `## Unreleased` into `release-notes.md` and shows it in the job summary.
+   version. Then `scripts/test-release-notes.sh` runs, and
+   `scripts/release-notes.sh` writes the changelog text for the tag's version
+   (the section `## X.Y.Z - date`, with the leading `v` and the `+zed.<sha>`
+   suffix stripped) into `release-notes.md` and shows it in the job summary.
+   A dry run (no tag) uses the `## Unreleased` section instead.
 2. **Build.** `cargo build --workspace --release --locked` on `ubuntu-latest`
    and `windows-latest`.
 3. **Draft GitHub release**, only on a tag run, after the build:
@@ -53,11 +56,10 @@ Run it before tagging: start it by hand with
 `gh workflow run release.yml --ref main`, or open a pull request that
 touches the workflow. A tag must never be the first run of the release build.
 
-Note: `scripts/release-notes.sh` reads the `## Unreleased` section only. For a
-tagged release, the draft is made from the section named `Unreleased` in the
-tagged tree. If you renamed it to the version in step 1, put the finished text
-in the GitHub Release yourself (step 4) and discard the draft body, or tag
-before the rename. Keep the script and this note in step.
+The release body comes from the tag's own section of `CHANGELOG.md`, so
+`## Unreleased` must already be renamed and dated (step 1.3) in the tagged
+tree. If the section for the tag's version is missing or empty, the validate
+job fails.
 
 ## 3. Tag
 
@@ -69,23 +71,20 @@ git tag -a "vX.Y.Z+zed.$sha" -m "vX.Y.Z"
 git push origin "vX.Y.Z+zed.$sha"
 ```
 
-The tag push starts the workflow above and creates a draft release.
+The tag push starts the workflow above and creates a draft release whose body
+is the tag's changelog section.
 
 ## 4. GitHub Release
 
-Copy the finished section from the changelog (without its heading) as the
-release body:
+The workflow drafts the release with the tag's changelog section as its body.
+Read the draft, check the notes render, then publish it:
 
 ```sh
-v=X.Y.Z; tag="v$v+zed.$sha"
-awk -v h="## $v - " 'index($0,h)==1{f=1;next} f&&/^## /{exit} f' CHANGELOG.md > release-notes.md
-gh release edit "$tag" --notes-file release-notes.md --draft=false   # when the workflow drafted it
-# or, if no draft exists:
-gh release create "$tag" --verify-tag --title "$tag" --notes-file release-notes.md
+gh release edit "vX.Y.Z+zed.$sha" --draft=false
 ```
 
-Read `release-notes.md` before publishing. Do not write notes anywhere but the
-changelog; the changelog is the single source.
+Do not write notes anywhere but the changelog; the changelog is the single
+source. To fix the notes, correct `CHANGELOG.md` and re-cut the draft.
 
 ## 5. After the release
 
