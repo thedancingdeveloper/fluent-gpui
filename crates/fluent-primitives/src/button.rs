@@ -235,42 +235,13 @@ impl Button {
     }
 }
 
-/// Control states and border for an appearance.
-fn appearance_states(
-    colors: &ColorScheme,
-    appearance: ButtonAppearance,
-    disabled: bool,
-) -> (ControlStates, Option<Hsla>) {
+/// Spinner colour for a loading button: the on-accent foreground where the fill
+/// is the accent (Primary), whose own colour would vanish into it; the theme
+/// accent everywhere else.
+fn loading_spinner_color(appearance: ButtonAppearance, colors: &ColorScheme) -> Hsla {
     match appearance {
-        ButtonAppearance::Primary => (colors.accent_control(), None),
-        ButtonAppearance::Secondary => (
-            colors.neutral_control(),
-            Some(if disabled {
-                colors.neutral_stroke_1.disabled
-            } else {
-                colors.neutral_stroke_1.default
-            }),
-        ),
-        ButtonAppearance::Outline => (
-            colors.subtle_control(),
-            Some(if disabled {
-                colors.neutral_stroke_1.disabled
-            } else {
-                colors.neutral_stroke_1.default
-            }),
-        ),
-        ButtonAppearance::Subtle => (colors.subtle_control(), None),
-        ButtonAppearance::Transparent => {
-            let mut s = colors.subtle_control();
-            s.foreground = NeutralColorStates {
-                default: colors.on_neutral_accent,
-                hover: colors.on_neutral_accent,
-                pressed: colors.on_neutral_accent,
-                selected: colors.on_neutral_accent,
-                disabled: colors.neutral_foreground_1.disabled,
-            };
-            (s, None)
-        }
+        ButtonAppearance::Primary => colors.accent_control().foreground.default,
+        _ => colors.accent,
     }
 }
 
@@ -282,7 +253,37 @@ impl RenderOnce for Button {
         let colors = &theme.colors;
         let radii = &theme.radii;
 
-        let (states, border) = appearance_states(colors, self.appearance, self.disabled);
+        let (states, border): (ControlStates, Option<Hsla>) = match self.appearance {
+            ButtonAppearance::Primary => (colors.accent_control(), None),
+            ButtonAppearance::Secondary => (
+                colors.neutral_control(),
+                Some(if self.disabled {
+                    colors.neutral_stroke_1.disabled
+                } else {
+                    colors.neutral_stroke_1.default
+                }),
+            ),
+            ButtonAppearance::Outline => (
+                colors.subtle_control(),
+                Some(if self.disabled {
+                    colors.neutral_stroke_1.disabled
+                } else {
+                    colors.neutral_stroke_1.default
+                }),
+            ),
+            ButtonAppearance::Subtle => (colors.subtle_control(), None),
+            ButtonAppearance::Transparent => {
+                let mut s = colors.subtle_control();
+                s.foreground = NeutralColorStates {
+                    default: colors.on_neutral_accent,
+                    hover: colors.on_neutral_accent,
+                    pressed: colors.on_neutral_accent,
+                    selected: colors.on_neutral_accent,
+                    disabled: colors.neutral_foreground_1.disabled,
+                };
+                (s, None)
+            }
+        };
         let (bg, fg) = if self.disabled {
             (states.background.disabled, states.foreground.disabled)
         } else {
@@ -304,6 +305,7 @@ impl RenderOnce for Button {
             icon_size,
         } = ButtonMetrics::new(self.size, theme);
 
+        let appearance = self.appearance;
         let disabled = self.disabled;
         let loading = self.loading;
         let tab_index = self.tab_index;
@@ -358,7 +360,7 @@ impl RenderOnce for Button {
                 Spinner::new()
                     .id(format!("{icon_debug_id}-spinner"))
                     .size(icon_size)
-                    .color(fg),
+                    .color(loading_spinner_color(appearance, colors)),
             );
         } else if let Some(icon_path) = leading_icon {
             el = el.child(
@@ -628,20 +630,21 @@ mod tests {
     ];
 
     #[gpui::test]
-    fn loading_spinner_colour_is_the_foreground_and_contrasts_the_fill(cx: &mut TestAppContext) {
+    fn loading_spinner_contrasts_an_accent_fill_and_keeps_the_accent_elsewhere(
+        cx: &mut TestAppContext,
+    ) {
         init_fluent_test(cx);
         cx.update(|app| {
             let colors = &app.theme().colors;
+            let accent = colors.accent_control();
+            let primary = loading_spinner_color(ButtonAppearance::Primary, colors);
+            assert_eq!(primary, accent.foreground.default);
+            assert_ne!(primary, accent.background.default);
             for appearance in APPEARANCES {
-                let (states, _) = appearance_states(colors, appearance, false);
-                assert_ne!(
-                    states.foreground.default, states.background.default,
-                    "{appearance:?}"
-                );
+                if appearance != ButtonAppearance::Primary {
+                    assert_eq!(loading_spinner_color(appearance, colors), colors.accent);
+                }
             }
-            // The Primary spinner must not use the accent, which is the fill.
-            let (primary, _) = appearance_states(colors, ButtonAppearance::Primary, false);
-            assert_ne!(primary.foreground.default, colors.accent);
         });
     }
 
