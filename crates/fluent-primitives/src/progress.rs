@@ -143,7 +143,7 @@ impl RenderOnce for ProgressBar {
         };
 
         let indicator = if self.indeterminate {
-            let duration = theme.motion().popup_enter_duration() * 8;
+            let duration = theme.motion().progress_loop();
             let animation_id = (self.id.clone(), "animation");
             div()
                 .absolute()

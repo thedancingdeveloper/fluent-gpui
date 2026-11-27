@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, AnimationExt, App, ElementId, IntoElement, RenderOnce, SharedString,
@@ -61,7 +59,7 @@ impl RenderOnce for Skeleton {
 
         block.bg(base).with_animation(
             self.id,
-            Animation::new(Duration::from_millis(1500))
+            Animation::new(cx.theme().motion().skeleton_loop())
                 .repeat()
                 .with_easing(pulsating_between(0.0, 1.0)),
             move |this, delta| {
@@ -169,7 +167,7 @@ impl RenderOnce for SkeletonRow {
                     .bg(base)
                     .with_animation(
                         circle_id,
-                        Animation::new(Duration::from_millis(1500))
+                        Animation::new(cx.theme().motion().skeleton_loop())
                             .repeat()
                             .with_easing(pulsating_between(0.0, 1.0)),
                         move |this, delta| {

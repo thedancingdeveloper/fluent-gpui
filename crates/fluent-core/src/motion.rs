@@ -52,7 +52,17 @@ pub struct MotionTokens {
     /// Public API item.
     pub popup_exit_duration_ms: u64,
     /// Public API item.
+    pub spinner_loop_ms: u64,
+    /// Public API item.
+    pub pulse_loop_ms: u64,
+    /// Public API item.
+    pub skeleton_loop_ms: u64,
+    /// Public API item.
+    pub progress_loop_ms: u64,
+    /// Public API item.
     pub popup_offset: f32,
+    /// Public API item.
+    pub toast_offset: f32,
     /// Public API item.
     pub popup_scale_delta: f32,
 }
@@ -66,6 +76,26 @@ impl MotionTokens {
     /// Public API item.
     pub fn popup_exit_duration(self) -> Duration {
         Duration::from_millis(self.popup_exit_duration_ms)
+    }
+
+    /// Duration of one spinner revolution.
+    pub fn spinner_loop(self) -> Duration {
+        Duration::from_millis(self.spinner_loop_ms)
+    }
+
+    /// Duration of one status-dot pulse.
+    pub fn pulse_loop(self) -> Duration {
+        Duration::from_millis(self.pulse_loop_ms)
+    }
+
+    /// Duration of one skeleton shimmer cycle.
+    pub fn skeleton_loop(self) -> Duration {
+        Duration::from_millis(self.skeleton_loop_ms)
+    }
+
+    /// Duration of one indeterminate progress sweep.
+    pub fn progress_loop(self) -> Duration {
+        Duration::from_millis(self.progress_loop_ms)
     }
 
     /// Public API item.
@@ -102,12 +132,17 @@ impl Default for MotionTokens {
             easy_ease: MotionCurve::new(0.33, 0.0, 0.67, 1.0),
             ultra_fast_duration_ms: 50,
             fast_duration_ms: 100,
-            normal_duration_ms: 200,
+            normal_duration_ms: 167,
             slow_duration_ms: 300,
             ultra_slow_duration_ms: 500,
             popup_enter_duration_ms: 160,
             popup_exit_duration_ms: 160,
+            spinner_loop_ms: 900,
+            pulse_loop_ms: 1600,
+            skeleton_loop_ms: 1500,
+            progress_loop_ms: 1280,
             popup_offset: 2.0,
+            toast_offset: 12.0,
             popup_scale_delta: 0.02,
         }
     }
@@ -143,6 +178,28 @@ pub fn popup_motion_surface(
                 // measures and snaps its child, so a margin would paint outside the
                 // snapped bounds for the length of the animation.
                 surface.opacity(opacity).relative().top(px(y_offset))
+            },
+        )
+        .into_any_element()
+}
+
+/// Slides a toast in from `offset` px below its resting place while fading it in.
+pub fn toast_motion_surface(
+    id: impl Into<ElementId>,
+    motion: MotionTokens,
+    child: impl IntoElement + 'static,
+) -> AnyElement {
+    let offset = motion.toast_offset;
+    div()
+        .child(child)
+        .with_animation(
+            id,
+            Animation::new(motion.normal_duration()).with_easing(ease_out_quint()),
+            move |surface, delta| {
+                surface
+                    .opacity(delta.clamp(0.0, 1.0))
+                    .relative()
+                    .top(px(offset * (1.0 - delta)))
             },
         )
         .into_any_element()

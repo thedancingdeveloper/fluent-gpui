@@ -212,6 +212,7 @@ impl Render for ToastHost {
 
         let theme = cx.theme();
         let spacing = theme.spacing;
+        let motion = theme.motion();
         let toasts = cx
             .try_global::<ToastStack>()
             .map(|stack| stack.entries.clone())
@@ -254,9 +255,14 @@ impl Render for ToastHost {
             if let Some(title) = toast.title {
                 bar = bar.title(title);
             }
-            stack = stack.child(bar.on_dismiss(move |_, _, cx| {
+            let bar = bar.on_dismiss(move |_, _, cx| {
                 ToastStack::dismiss(id.as_ref(), cx);
-            }));
+            });
+            stack = stack.child(fluent_core::toast_motion_surface(
+                (self.id.clone(), toast.id.clone()),
+                motion,
+                bar,
+            ));
         }
 
         div()
