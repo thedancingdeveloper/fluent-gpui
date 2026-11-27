@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, prelude::*, px, svg, Animation, AnimationExt as _, App, ElementId, IntoElement,
+    div, prelude::*, px, svg, Animation, AnimationExt as _, App, ElementId, Hsla, IntoElement,
     RenderOnce, Role, SharedString, Transformation, Window,
 };
 
@@ -12,6 +12,7 @@ pub struct Spinner {
     id: ElementId,
     size: f32,
     label: SharedString,
+    color: Option<Hsla>,
 }
 
 impl Spinner {
@@ -21,6 +22,7 @@ impl Spinner {
             id: "fluent-spinner-root".into(),
             size: 20.0,
             label: "Loading".into(),
+            color: None,
         }
     }
 
@@ -35,6 +37,13 @@ impl Spinner {
     /// Accessible name announced for the indicator (default "Loading").
     pub fn label(mut self, label: impl Into<SharedString>) -> Self {
         self.label = label.into();
+        self
+    }
+
+    /// Overrides the spinner colour (default: the theme accent). Use it on a
+    /// filled surface where the accent would blend into the fill.
+    pub fn color(mut self, color: Hsla) -> Self {
+        self.color = Some(color);
         self
     }
 
@@ -53,7 +62,7 @@ impl Default for Spinner {
 
 impl RenderOnce for Spinner {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let colors = &cx.theme().colors;
+        let color = self.color.unwrap_or(cx.theme().colors.accent);
 
         div()
             .id(self.id.clone())
@@ -64,7 +73,7 @@ impl RenderOnce for Spinner {
                 svg()
                     .path("icons/spinner.svg")
                     .size(px(self.size))
-                    .text_color(colors.accent)
+                    .text_color(color)
                     .with_animation(
                         (self.id, "animation"),
                         Animation::new(Duration::from_millis(900)).repeat(),
