@@ -43,18 +43,18 @@ web.
 ## Install
 
 fluent-gpui is distributed by git tag. The latest release is
-[`v3.2.0+zed.ba63a022c9a2`](https://github.com/thedancingdeveloper/fluent-gpui/releases/latest) (the part after `+zed.` is the
+[`v4.0.0+zed.ba63a022c9a2`](https://github.com/thedancingdeveloper/fluent-gpui/releases/latest) (the part after `+zed.` is the
 Zed commit the vendored GPUI was cut from). Pin one exact tag on every
 `fluent-*` crate you use:
 
 ```toml
 [dependencies]
-fluent-core       = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
-fluent-primitives = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
-fluent-app        = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
+fluent-core       = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v4.0.0+zed.ba63a022c9a2" }
+fluent-primitives = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v4.0.0+zed.ba63a022c9a2" }
+fluent-app        = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v4.0.0+zed.ba63a022c9a2" }
 
 [dev-dependencies]
-fluent-test-utils = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
+fluent-test-utils = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v4.0.0+zed.ba63a022c9a2" }
 ```
 
 > **Not on crates.io (for 3.x).** The names `fluent-core`, `fluent-app`,

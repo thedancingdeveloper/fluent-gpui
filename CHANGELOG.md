@@ -10,10 +10,10 @@ What is versioned: a release is one workspace release of the `fluent-*` crates
 `fluent-app`, `fluent-test-utils`). They share one version number. Releases are
 Git tags of the form `vX.Y.Z+zed.<sha>`, where `<sha>` is the first 12 characters
 of the vendored Zed commit the release is built on (for example
-`v3.2.0+zed.ba63a022c9a2`). Pin the tag, not a branch. How a release is cut is
+`v4.0.0+zed.ba63a022c9a2`). Pin the tag, not a branch. How a release is cut is
 described in [docs/maintainers/RELEASING.md](docs/maintainers/RELEASING.md).
 
-## Unreleased (next release: 4.0.0)
+## Unreleased (next release: 4.0.1)
 
 <!--
 How to add an entry (whoever lands a change writes its entry, in the same change):
@@ -26,6 +26,8 @@ How to add an entry (whoever lands a change writes its entry, in the same change
 - A breaking change also gets a row in "Breaking changes and migration" below.
 - scripts/check-changelog.sh checks the format.
 -->
+
+## 4.0.0 - 2026-11-27
 
 ### Highlights
 

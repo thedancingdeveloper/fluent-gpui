@@ -7,16 +7,16 @@ is compiled as `demo_app` in `examples/demo_app`.
 ## 1. Add the crates
 
 `fluent-gpui` is consumed from an exact git tag. Use one tag for every crate.
-The snippet below uses the latest release, `v3.2.0+zed.ba63a022c9a2`; see the
+The snippet below uses the latest release, `v4.0.0+zed.ba63a022c9a2`; see the
 [releases page](https://github.com/thedancingdeveloper/fluent-gpui/releases) for newer ones.
 
 ```toml
 [dependencies]
-fluent-app = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
-fluent-core = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
-fluent-layout = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
-fluent-primitives = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
-fluent-ribbon = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v3.2.0+zed.ba63a022c9a2" }
+fluent-app = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v4.0.0+zed.ba63a022c9a2" }
+fluent-core = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v4.0.0+zed.ba63a022c9a2" }
+fluent-layout = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v4.0.0+zed.ba63a022c9a2" }
+fluent-primitives = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v4.0.0+zed.ba63a022c9a2" }
+fluent-ribbon = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v4.0.0+zed.ba63a022c9a2" }
 ```
 
 Inside a workspace checkout (as `demo_app` does) the same crates can be path
