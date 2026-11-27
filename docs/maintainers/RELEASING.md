@@ -3,7 +3,7 @@
 A release is a Git tag `vX.Y.Z+zed.<sha>` on `main`, plus a GitHub Release whose
 notes are copied from `CHANGELOG.md`. `<sha>` is the vendored Zed commit
 (`vendor/zed/UPSTREAM.md`), at least 7 and at most 40 hex characters; we use the
-first 12, for example `v3.2.0+zed.ba63a022c9a2`.
+first 12, for example `v4.0.0+zed.ba63a022c9a2`.
 
 Crate versions are bumped once, in the release change, never in feature changes.
 The tag version, every published `crates/fluent-*/Cargo.toml` version and the
@@ -43,7 +43,7 @@ Jobs:
    `v<major>.<minor>.<patch>+zed.<7-40 hex>`, that the sha is a prefix of the
    vendored commit, and that each published crate version equals the tag
    version. Then `scripts/test-release-notes.sh` runs, and
-   `scripts/release-notes.sh` writes the changelog text for the tag's version
+   `scripts/release-notes.sh [OUTPUT] [TAG]` (output path first) writes the changelog text for the tag's version
    (the section `## X.Y.Z - date`, with the leading `v` and the `+zed.<sha>`
    suffix stripped) into `release-notes.md` and shows it in the job summary.
    A dry run (no tag) uses the `## Unreleased` section instead.
