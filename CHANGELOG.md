@@ -226,7 +226,7 @@ Behaviour changes you will notice (no code change needed unless noted):
   title bar, which the harness renders as non-interactive.
 
 ### Fixed
-- The loading spinner on an Accent button is now drawn in the button's foreground colour, so it stays visible against the blue fill.
+- The loading spinner on a Primary (Accent) button is now drawn in the on-accent foreground colour, so it stays visible against the blue fill; other appearances are unchanged.
 
 **Accessibility and keyboard**
 - `Tab` and `Shift-Tab` did nothing in real apps (see the behaviour table). Regression
