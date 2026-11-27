@@ -109,9 +109,9 @@ impl RenderOnce for ConnectionBadge {
             .flex()
             .flex_row()
             .items_center()
-            .gap(px(spacing.sm))
-            .px(px(spacing.md))
-            .py(px(spacing.sm))
+            .gap(px(badge_metrics(spacing).0))
+            .px(px(badge_metrics(spacing).1))
+            .py(px(badge_metrics(spacing).2))
             .rounded(px(radii.pill))
             .bg(bg)
             .text_color(fg)
@@ -121,8 +121,19 @@ impl RenderOnce for ConnectionBadge {
     }
 }
 
+/// (gap, horizontal padding, vertical padding) from the spacing scale.
+pub(crate) fn badge_metrics(s: &fluent_core::SpacingTokens) -> (f32, f32, f32) {
+    (s.sm, s.md, s.sm)
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn badge_gap_and_padding_use_spacing_scale() {
+        let s = fluent_core::SpacingTokens::default();
+        assert_eq!(badge_metrics(&s), (4.0, 8.0, 4.0));
+    }
+
     use super::*;
     use fluent_core::ColorScheme;
 

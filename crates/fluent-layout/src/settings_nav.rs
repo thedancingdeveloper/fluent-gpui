@@ -226,7 +226,7 @@ impl Render for SettingsNav {
                                     } else {
                                         "icons/chevron_right.svg"
                                     })
-                                    .size(px(12.0))
+                                    .size(px(CHEVRON_GLYPH))
                                     .text_color(on_subtle),
                             ),
                     )
@@ -323,8 +323,16 @@ impl Render for SettingsNav {
     }
 }
 
+/// Section chevron glyph size.
+pub(crate) const CHEVRON_GLYPH: f32 = 12.0;
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn section_chevron_is_12px() {
+        assert_eq!(super::CHEVRON_GLYPH, 12.0);
+    }
+
     use std::{cell::RefCell, rc::Rc};
 
     use fluent_test_utils::{open_fluent_test_window, FluentInteractionExt as _};
