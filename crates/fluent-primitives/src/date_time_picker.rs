@@ -974,7 +974,7 @@ impl Render for DateTimePicker {
             .child(
                 svg()
                     .path("icons/chevron_down.svg")
-                    .size(px(components.popup_icon_slot))
+                    .size(px(12.0))
                     .text_color(fg),
             )
             .child(measure_trigger);
@@ -1124,7 +1124,7 @@ fn segment_control(
                 .items_center()
                 .justify_center()
                 .w_full()
-                .h(px(30.0))
+                .h(px(32.0))
                 .rounded(px(radii.sm))
                 .bg(if selected {
                     colors.neutral_selected
@@ -1220,8 +1220,8 @@ fn action_button(
         .flex()
         .items_center()
         .justify_center()
-        .h(px(30.0))
-        .px(px(10.0))
+        .h(px(24.0))
+        .px(px(8.0))
         .rounded(px(radius))
         .text_ramp(ramp)
         .cursor(if disabled {

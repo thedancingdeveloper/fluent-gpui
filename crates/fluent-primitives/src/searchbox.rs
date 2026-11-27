@@ -279,7 +279,7 @@ impl Render for Searchbox {
                     .child(
                         svg()
                             .path("icons/dismiss.svg")
-                            .size(px(10.0))
+                            .size(px(12.0))
                             .text_color(colors.on_subtle),
                     ),
             );

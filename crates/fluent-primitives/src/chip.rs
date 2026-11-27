@@ -73,7 +73,7 @@ impl RenderOnce for Chip {
                 .track_focus(&focus)
                 .key_context("Chip")
                 .fluent_tab_stop(0)
-                .size(px(14.0))
+                .size(px(20.0))
                 .rounded(px(radii.pill))
                 .flex()
                 .items_center()
@@ -89,7 +89,7 @@ impl RenderOnce for Chip {
                 .child(
                     gpui::svg()
                         .path("icons/dismiss.svg")
-                        .size(px(10.0))
+                        .size(px(12.0))
                         .text_color(colors.on_neutral),
                 );
             el = el.child(focus_ring(dismiss, ring, colors, px(radii.pill)));

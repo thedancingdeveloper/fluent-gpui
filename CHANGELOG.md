@@ -156,6 +156,7 @@ Behaviour changes you will notice (no code change needed unless noted):
 - The focus-ring comparison lives in `scripts/focus-ring-lib.sh`, with `scripts/test-focus-ring.sh`.
 
 ### Changed
+- Whole-pixel spacing and 12px dismiss and chevron glyphs across fields, badges, chips, the search box, message bars, dropdowns, the settings navigation, the command palette and the date picker; the textarea minimum height now matches its padding.
 
 **Accessibility and keyboard**
 - `Button`, `IconButton`, `ToggleButton`, `Checkbox`, `Switch`, `RadioGroup`, `Dropdown`,

@@ -275,7 +275,7 @@ impl RenderOnce for Field {
                 div()
                     .flex_none()
                     .w(px(label_width))
-                    .pt(px(5.0))
+                    .pt(px(6.0))
                     .children(label_el),
             );
             body = body.child(self.control);

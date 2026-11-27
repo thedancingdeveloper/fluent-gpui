@@ -250,7 +250,7 @@ impl Render for Textarea {
         } else {
             colors.on_neutral
         };
-        let min_height = typography.body.line_height * self.rows as f32 + spacing.md * 2.0;
+        let min_height = typography.body.line_height * self.rows as f32 + spacing.sm * 2.0;
 
         let mut lines = div()
             .flex()

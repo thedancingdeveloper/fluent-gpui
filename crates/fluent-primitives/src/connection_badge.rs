@@ -73,6 +73,7 @@ impl RenderOnce for ConnectionBadge {
         let colors = &theme.colors;
         let radii = &theme.radii;
         let typography = &theme.typography;
+        let spacing = &theme.spacing;
 
         let (bg, fg, default_label) = tokens(self.state, colors);
         let label = self.label.unwrap_or_else(|| default_label.into());
@@ -109,9 +110,9 @@ impl RenderOnce for ConnectionBadge {
             .flex()
             .flex_row()
             .items_center()
-            .gap(px(6.0))
-            .px(px(10.0))
-            .py(px(3.0))
+            .gap(px(spacing.sm))
+            .px(px(spacing.md))
+            .py(px(spacing.sm))
             .rounded(px(radii.pill))
             .bg(bg)
             .text_color(fg)

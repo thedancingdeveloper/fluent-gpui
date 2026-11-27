@@ -114,7 +114,7 @@ impl RenderOnce for Label {
                 let mut span = div().child(ch.to_string());
                 // Hair-space-equivalent: 0.06em ≈ caption-size × 0.06.
                 if i < last && !ch.is_whitespace() {
-                    span = span.mr(px(ramp.size * 0.08));
+                    span = span.mr(px((ramp.size * 0.08).round().max(1.0)));
                 }
                 row = row.child(span);
             }
