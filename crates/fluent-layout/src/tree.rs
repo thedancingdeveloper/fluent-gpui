@@ -5,8 +5,8 @@ use crate::data_status::{status_block, DataStatusKind};
 use fluent_core::{ThemeProvider as _, TruncateExt as _};
 use fluent_primitives::{focus_ring, is_keyboard_focused, FluentFocus as _};
 use gpui::{
-    div, prelude::*, px, svg, App, ClickEvent, ElementId, IntoElement, KeyDownEvent, MouseButton,
-    MouseDownEvent, RenderOnce, Role, SharedString, Window,
+    div, prelude::*, px, svg, AnimationExt as _, App, ClickEvent, ElementId, IntoElement,
+    KeyDownEvent, MouseButton, MouseDownEvent, RenderOnce, Role, SharedString, Window,
 };
 
 type TreeSelectHandler = Arc<dyn Fn(SharedString, &ClickEvent, &mut Window, &mut App) + 'static>;
@@ -425,6 +425,7 @@ impl Tree {
         depth: usize,
         index: usize,
         state: TreeRenderState,
+        window: &mut Window,
         cx: &mut App,
     ) -> Option<gpui::AnyElement> {
         if let Some(query) = state.filter.as_ref() {
@@ -432,6 +433,21 @@ impl Tree {
                 return None;
             }
         }
+
+        let chevron_change = (!item.children.is_empty() || item.lazy).then(|| {
+            let fast = cx.theme().motion().fast_duration();
+            // Keyed on the item's own id, not its row index, so a row that scrolls
+            // out and back in, or a different item moving into this row, never
+            // replays the turn. Only a real expand or collapse of this item does.
+            fluent_core::track_value_change(
+                (gpui::ElementId::from(item.id.clone()), "tree-chevron"),
+                chevron_rotation(item.expanded),
+                fast,
+                window,
+                cx,
+            )
+        });
+        let fast = cx.theme().motion().fast_duration();
 
         let theme = cx.theme();
         let colors = theme.colors.clone();
@@ -514,15 +530,36 @@ impl Tree {
         let toggle_handler = state.on_toggle.clone();
         let load_handler = state.on_load_children.clone();
         let chevron = if has_children {
-            let expanded = item.expanded;
-            svg()
+            let change = chevron_change.expect("tracked when the item has children");
+            let icon = svg()
                 .path("icons/chevron_right.svg")
                 .size(px(12.0))
-                .text_color(colors.on_subtle)
-                .with_transformation(gpui::Transformation::rotate(gpui::radians(
-                    chevron_rotation(expanded),
-                )))
-                .into_any_element()
+                .text_color(colors.on_subtle);
+            #[cfg(test)]
+            chevron_tests::TRACE.with(|t| {
+                t.borrow_mut()
+                    .push((item.id.to_string(), change.generation))
+            });
+            if change.generation == 0 {
+                icon.with_transformation(gpui::Transformation::rotate(gpui::radians(change.to)))
+                    .into_any_element()
+            } else {
+                let (from, to) = (change.from, change.to);
+                icon.with_transformation(gpui::Transformation::rotate(gpui::radians(to)))
+                    .with_animation(
+                        (
+                            gpui::ElementId::from(item.id.clone()),
+                            format!("tree-chevron-turn-{}", change.generation),
+                        ),
+                        gpui::Animation::new(fast).with_easing(gpui::ease_out_quint()),
+                        move |icon, delta| {
+                            icon.with_transformation(gpui::Transformation::rotate(gpui::radians(
+                                from + (to - from) * delta,
+                            )))
+                        },
+                    )
+                    .into_any_element()
+            }
         } else {
             div().size(px(12.0)).into_any_element()
         };
@@ -672,9 +709,8 @@ impl Tree {
     }
 }
 
-/// Rotation of the row chevron in radians. The tree is rendered statelessly, so the
-/// chevron is drawn at its final rotation and never animates; animating needs the
-/// previous expanded state of each item, which a render cannot see.
+/// Rotation of the row chevron in radians at rest. A real expand or collapse turns
+/// the chevron to it over the fast duration; the first render draws it as is.
 fn chevron_rotation(expanded: bool) -> f32 {
     if expanded {
         std::f32::consts::FRAC_PI_2
@@ -800,9 +836,9 @@ impl RenderOnce for Tree {
         }
         let rows = Self::flatten_visible(&self.items, self.filter.as_deref(), 0);
         let count = rows.len();
-        let build_row = move |index: usize, _window: &mut Window, app: &mut App| {
+        let build_row = move |index: usize, window: &mut Window, app: &mut App| {
             let (item, depth) = rows[index].clone();
-            Self::render_item(item, depth, index, render_state.clone(), app)
+            Self::render_item(item, depth, index, render_state.clone(), window, app)
                 .unwrap_or_else(|| div().into_any_element())
         };
         root.child(
@@ -1366,7 +1402,16 @@ mod density_tests {
 
 #[cfg(test)]
 mod chevron_tests {
-    use super::chevron_rotation;
+    use fluent_test_utils::open_fluent_test_window;
+    use gpui::{Context, IntoElement, Render, TestAppContext, Window};
+
+    use super::{chevron_rotation, Tree, TreeItem};
+
+    thread_local! {
+        /// (item id, tween generation) for every chevron drawn.
+        pub(super) static TRACE: std::cell::RefCell<Vec<(String, u64)>> =
+            const { std::cell::RefCell::new(Vec::new()) };
+    }
 
     #[test]
     fn chevron_is_drawn_at_its_final_rotation() {
@@ -1374,10 +1419,64 @@ mod chevron_tests {
         assert_eq!(chevron_rotation(true), std::f32::consts::FRAC_PI_2);
     }
 
-    #[test]
-    fn chevron_never_animates_on_render() {
-        let src = include_str!("tree.rs");
-        let render = &src[..src.find("mod chevron_tests").unwrap()];
-        assert!(!render.contains("tree-chevron"));
+    struct Host {
+        a_open: bool,
+        reversed: bool,
+    }
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let a = TreeItem::new("a", "A")
+                .expanded(self.a_open)
+                .child(TreeItem::new("a1", "A1"));
+            let b = TreeItem::new("b", "B").child(TreeItem::new("b1", "B1"));
+            Tree::new().items(if self.reversed {
+                vec![b, a]
+            } else {
+                vec![a, b]
+            })
+        }
+    }
+
+    /// A chevron turns only when its own item expands or collapses: not on first
+    /// render, not on a redraw, and not when another item moves into its row.
+    #[gpui::test]
+    fn chevron_turns_only_on_real_expand_collapse(cx: &mut TestAppContext) {
+        TRACE.with(|t| t.borrow_mut().clear());
+        let latest = |id: &str| {
+            TRACE.with(|t| {
+                t.borrow()
+                    .iter()
+                    .rev()
+                    .find(|(i, _)| i == id)
+                    .map(|(_, g)| *g)
+            })
+        };
+        let (host, cx) = open_fluent_test_window(cx, |_, _| Host {
+            a_open: false,
+            reversed: false,
+        });
+        assert_eq!(latest("a"), Some(0), "first render is static");
+        assert_eq!(latest("b"), Some(0), "first render is static");
+
+        host.update(cx, |h, cx| {
+            h.reversed = true;
+            cx.notify();
+        });
+        cx.run_until_parked();
+        assert_eq!(latest("a"), Some(0), "moving rows is not an expand");
+        assert_eq!(latest("b"), Some(0), "moving rows is not an expand");
+
+        host.update(cx, |h, cx| {
+            h.a_open = true;
+            cx.notify();
+        });
+        cx.run_until_parked();
+        assert_eq!(latest("a"), Some(1), "expanding turns that chevron");
+        assert_eq!(latest("b"), Some(0), "the other chevron stays put");
+
+        host.update(cx, |_, cx| cx.notify());
+        cx.run_until_parked();
+        assert_eq!(latest("a"), Some(1), "a redraw does not replay it");
     }
 }

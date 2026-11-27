@@ -204,3 +204,66 @@ pub fn toast_motion_surface(
         )
         .into_any_element()
 }
+
+/// What [`track_value_change`] found for one render.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ValueChange {
+    /// Where the value was when the change began (the on-screen value if a
+    /// previous tween was still running).
+    pub from: f32,
+    /// The value now.
+    pub to: f32,
+    /// Zero until the value has changed after first render; then counts the
+    /// changes. Put it in the animation id so each change starts a fresh tween.
+    pub generation: u64,
+}
+
+struct TrackedValue {
+    from: f32,
+    to: f32,
+    generation: u64,
+    started: std::time::Instant,
+    duration: Duration,
+}
+
+/// Remembers `value` under the stable `id` and reports real changes.
+///
+/// The first render reports `generation == 0` with `from == to`, so callers draw
+/// the value with no animation. A later render with a different value starts a
+/// new generation whose `from` is the value on screen at that moment.
+pub fn track_value_change(
+    id: impl Into<ElementId>,
+    value: f32,
+    duration: Duration,
+    window: &mut gpui::Window,
+    cx: &mut gpui::App,
+) -> ValueChange {
+    let now = cx.background_executor().now();
+    let state = window.use_keyed_state(id, cx, |_, _| TrackedValue {
+        from: value,
+        to: value,
+        generation: 0,
+        started: now,
+        duration,
+    });
+    state.update(cx, |s, _| {
+        if s.to != value {
+            let t = if s.duration.is_zero() {
+                1.0
+            } else {
+                (now.saturating_duration_since(s.started).as_secs_f32() / s.duration.as_secs_f32())
+                    .clamp(0.0, 1.0)
+            };
+            s.from = s.from + (s.to - s.from) * ease_out_quint()(t);
+            s.to = value;
+            s.generation += 1;
+            s.started = now;
+            s.duration = duration;
+        }
+        ValueChange {
+            from: s.from,
+            to: s.to,
+            generation: s.generation,
+        }
+    })
+}

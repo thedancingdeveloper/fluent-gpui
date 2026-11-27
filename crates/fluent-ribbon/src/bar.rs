@@ -4,8 +4,9 @@ use fluent_core::{
     TypographyTokens,
 };
 use gpui::{
-    div, prelude::*, px, svg, App, ClickEvent, Context, FocusHandle, FontWeight, IntoElement,
-    Render, Role, SharedString, Toggled, WeakEntity, Window,
+    div, ease_out_quint, prelude::*, px, svg, Animation, AnimationExt as _, App, ClickEvent,
+    Context, ElementId, FocusHandle, FontWeight, IntoElement, Render, Role, SharedString, Toggled,
+    WeakEntity, Window,
 };
 
 use crate::defs::{
@@ -556,6 +557,47 @@ impl RibbonBar {
     }
 }
 
+/// The 2 px underline at the bottom of a ribbon tab. It fades in when its tab
+/// becomes the active one and out when it stops being active, over the fast
+/// duration. First render, and any render where the tab's state did not change,
+/// draw the end state with no animation.
+fn tab_underline(
+    id: ElementId,
+    active: bool,
+    color: gpui::Hsla,
+    window: &mut Window,
+    cx: &mut App,
+) -> gpui::AnyElement {
+    let fast = cx.theme().motion().fast_duration();
+    let change = fluent_core::track_value_change(
+        (id.clone(), "state"),
+        if active { 1.0 } else { 0.0 },
+        fast,
+        window,
+        cx,
+    );
+    #[cfg(test)]
+    tests::UNDERLINE_TRACE.with(|t| t.borrow_mut().push((id.to_string(), change.generation)));
+    let bar = div()
+        .absolute()
+        .bottom_0()
+        .left_0()
+        .right_0()
+        .h(px(2.0))
+        .bg(color);
+    if change.generation == 0 {
+        return bar.opacity(change.to).into_any_element();
+    }
+    let (from, to) = (change.from, change.to);
+    bar.opacity(to)
+        .with_animation(
+            (id, format!("fade-{}", change.generation)),
+            Animation::new(fast).with_easing(ease_out_quint()),
+            move |bar, delta| bar.opacity(from + (to - from) * delta),
+        )
+        .into_any_element()
+}
+
 impl Render for RibbonBar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
@@ -702,11 +744,6 @@ impl Render for RibbonBar {
 
             // The active-tab underline: a 2px accent-coloured bar at the very bottom
             // implemented as an absolute-positioned child inside a relative wrapper.
-            let underline_color = if is_active {
-                tab_indicator
-            } else {
-                tab_strip_bg
-            };
             let tab_bg = if is_active {
                 tab_active_bg
             } else {
@@ -751,15 +788,13 @@ impl Render for RibbonBar {
                     .on_click(handler)
                     .child(name)
                     // 2px underline at the very bottom
-                    .child(
-                        div()
-                            .absolute()
-                            .bottom_0()
-                            .left_0()
-                            .right_0()
-                            .h(px(2.0))
-                            .bg(underline_color),
-                    ),
+                    .child(tab_underline(
+                        ("rib-tab-underline", i as u64).into(),
+                        is_active,
+                        tab_indicator,
+                        window,
+                        cx,
+                    )),
             );
         }
 
@@ -796,7 +831,6 @@ impl Render for RibbonBar {
                 } else {
                     ctx_accent
                 };
-                let underline_color = if is_active { on_accent } else { ctx_tab_bg };
 
                 ctx_strip = ctx_strip.child(
                     div()
@@ -834,15 +868,13 @@ impl Render for RibbonBar {
                         .text_color(fg)
                         .on_click(handler)
                         .child(name)
-                        .child(
-                            div()
-                                .absolute()
-                                .bottom_0()
-                                .left_0()
-                                .right_0()
-                                .h(px(2.0))
-                                .bg(underline_color),
-                        ),
+                        .child(tab_underline(
+                            ("rib-ctx-tab-underline", global_idx as u64).into(),
+                            is_active,
+                            on_accent,
+                            window,
+                            cx,
+                        )),
                 );
             }
 
@@ -1244,6 +1276,69 @@ mod tests {
             .contextual_tab("Session", false, |t| {
                 t.group("Terminal", |g| g.button("Clear", "", |_, _, _| {}))
             })
+    }
+
+    thread_local! {
+        /// (underline id, tween generation) for every underline drawn.
+        pub(super) static UNDERLINE_TRACE: std::cell::RefCell<Vec<(String, u64)>> =
+            const { std::cell::RefCell::new(Vec::new()) };
+    }
+
+    /// The underline tweens only when its tab's selection really changes: never on
+    /// first render, and not on a redraw with the same selection.
+    #[gpui::test]
+    fn tab_underline_animates_only_on_selection_change(cx: &mut TestAppContext) {
+        UNDERLINE_TRACE.with(|t| t.borrow_mut().clear());
+        let (bar, vcx) = open_fluent_test_window(cx, |_, cx| build(cx, Rc::default()));
+        let latest = |id: &str| {
+            UNDERLINE_TRACE.with(|t| {
+                t.borrow()
+                    .iter()
+                    .rev()
+                    .find(|(i, _)| i.starts_with(id))
+                    .map(|(_, g)| *g)
+            })
+        };
+        assert_eq!(
+            latest("rib-tab-underline-0"),
+            Some(0),
+            "first render is static"
+        );
+        assert_eq!(
+            latest("rib-tab-underline-1"),
+            Some(0),
+            "first render is static"
+        );
+
+        vcx.update(|window, app| window.draw(app).clear(app));
+        vcx.update(|_, app| bar.update(app, |_, cx| cx.notify()));
+        vcx.run_until_parked();
+        assert_eq!(
+            latest("rib-tab-underline-0"),
+            Some(0),
+            "same selection: no tween"
+        );
+
+        vcx.click_selector("ribbon-tab-1");
+        assert_eq!(bar.read_with(vcx, |b, _| b.active_tab), 1);
+        assert_eq!(
+            latest("rib-tab-underline-0"),
+            Some(1),
+            "deselected tab fades out"
+        );
+        assert_eq!(
+            latest("rib-tab-underline-1"),
+            Some(1),
+            "selected tab fades in"
+        );
+
+        vcx.update(|_, app| bar.update(app, |_, cx| cx.notify()));
+        vcx.run_until_parked();
+        assert_eq!(
+            latest("rib-tab-underline-1"),
+            Some(1),
+            "redraw does not replay it"
+        );
     }
 
     #[gpui::test]

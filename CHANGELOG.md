@@ -91,6 +91,7 @@ Behaviour changes you will notice (no code change needed unless noted):
 | Several tab-like controls | Two siblings could share one tab stop and ring. | Give sibling `Tree`s and clickable `Card`s their own `id(..)`. |
 
 ### Added
+- A determinate `ProgressBar` now eases to a new value over the fast motion duration instead of jumping. The first render, and a bar whose value did not change, draw the value with no animation. Ribbon tab underlines fade in and out over the same duration when the selected tab changes, and tree chevrons turn on a real expand or collapse of their own item (never on first render or when rows scroll or move). `fluent_core::track_value_change` is the helper behind these, for your own tweens that must start only on a real change.
 - Motion tokens now include loop timings (`spinner_loop_ms`, `pulse_loop_ms`, `skeleton_loop_ms`, `progress_loop_ms`) and `toast_offset`, plus a `toast_motion_surface` helper that slides and fades a toast in.
 
 **Buttons and inputs**
@@ -158,7 +159,7 @@ Behaviour changes you will notice (no code change needed unless noted):
 - The focus-ring comparison lives in `scripts/focus-ring-lib.sh`, with `scripts/test-focus-ring.sh`.
 
 ### Changed
-- Toasts now slide and fade in, tree chevrons show the expanded or collapsed rotation, and the normal motion duration is 167 ms (was 200 ms).
+- Toasts now slide and fade in, and the normal motion duration is 167 ms (was 200 ms). Tree chevrons turn when an item is expanded or collapsed (see Added).
 - Whole-pixel spacing and 12px dismiss and chevron glyphs across fields, badges, chips, the search box, message bars, dropdowns, the settings navigation, the command palette and the date picker; the textarea minimum height now matches its padding. `Chip` is now a fixed 32 px tall (Fluent medium tag), and `AppDot` uses whole-pixel text and a token corner radius.
 
 **Accessibility and keyboard**

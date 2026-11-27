@@ -23,7 +23,10 @@ pub use colors::{
     gradient_from_hue, hue_for, tint, with_alpha, ColorScheme, ControlStates, NeutralColorStates,
 };
 pub use components::{ComponentTokens, RowDensity};
-pub use motion::{popup_motion_surface, toast_motion_surface, MotionCurve, MotionTokens};
+pub use motion::{
+    popup_motion_surface, toast_motion_surface, track_value_change, MotionCurve, MotionTokens,
+    ValueChange,
+};
 pub use radii::RadiiTokens;
 pub use shadows::ShadowTokens;
 pub use spacing::SpacingTokens;
