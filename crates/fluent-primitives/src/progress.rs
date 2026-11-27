@@ -1,7 +1,7 @@
 use fluent_core::ThemeProvider as _;
 use gpui::{
-    div, prelude::*, px, relative, Animation, AnimationExt as _, App, Div, ElementId, Hsla,
-    IntoElement, RenderOnce, Role, SharedString, Stateful, Window,
+    div, ease_out_quint, prelude::*, px, relative, Animation, AnimationExt as _, App, Div,
+    ElementId, Hsla, IntoElement, RenderOnce, Role, SharedString, Stateful, Window,
 };
 
 const MEDIUM_HEIGHT: f32 = 4.0;
@@ -132,7 +132,19 @@ fn a11y_base(id: ElementId, value: f32, indeterminate: bool) -> Stateful<Div> {
 }
 
 impl RenderOnce for ProgressBar {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        // Value changes tween over the fast duration; the first render, and a
+        // value that has not changed, draw the bar at its value.
+        let change = (!self.indeterminate).then(|| {
+            let fast = cx.theme().motion().fast_duration();
+            fluent_core::track_value_change(
+                (self.id.clone(), "value"),
+                self.value,
+                fast,
+                window,
+                cx,
+            )
+        });
         let theme = cx.theme();
         let colors = &theme.colors;
         let indicator_color: Hsla = match self.status {
@@ -162,12 +174,28 @@ impl RenderOnce for ProgressBar {
                 )
                 .into_any_element()
         } else {
-            div()
+            let motion = theme.motion();
+            let change = change.expect("tracked for determinate bars");
+            let fill = div()
+                .debug_selector(|| "progress-fill".into())
                 .h_full()
-                .w(relative(self.value))
                 .rounded(px(theme.radii.pill))
-                .bg(indicator_color)
-                .into_any_element()
+                .bg(indicator_color);
+            if change.generation == 0 {
+                fill.w(relative(change.to)).into_any_element()
+            } else {
+                let (from, to) = (change.from, change.to);
+                fill.w(relative(to))
+                    .with_animation(
+                        (
+                            self.id.clone(),
+                            format!("value-tween-{}", change.generation),
+                        ),
+                        Animation::new(motion.fast_duration()).with_easing(ease_out_quint()),
+                        move |fill, delta| fill.w(relative(from + (to - from) * delta)),
+                    )
+                    .into_any_element()
+            }
         };
 
         let mut base = a11y_base(self.id, self.value, self.indeterminate);
@@ -210,6 +238,51 @@ mod tests {
         let (_, cx) = open_fluent_test_window(cx, |_, _| TwoHost);
         let snapshot = cx.accessibility_snapshot();
         assert!(!snapshot.is_empty());
+    }
+
+    struct ValueHost(f32);
+
+    impl Render for ValueHost {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div()
+                .w(px(200.0))
+                .child(ProgressBar::new(self.0).id("value-bar"))
+        }
+    }
+
+    fn fill_width(cx: &mut gpui::VisualTestContext) -> f32 {
+        cx.update(|window, app| window.draw(app).clear(app));
+        f32::from(
+            cx.selector_bounds("progress-fill")
+                .expect("fill painted")
+                .size
+                .width,
+        )
+    }
+
+    /// First render shows the value at once; a real change tweens and ends at the new value.
+    #[gpui::test]
+    fn determinate_value_tweens_only_on_change(cx: &mut TestAppContext) {
+        let (host, cx) = open_fluent_test_window(cx, |_, _| ValueHost(0.25));
+        assert_eq!(fill_width(cx), 50.0, "first render has no animation");
+
+        host.update(cx, |h, cx| {
+            h.0 = 0.75;
+            cx.notify();
+        });
+        cx.run_until_parked();
+        let early = fill_width(cx);
+        assert!(early < 150.0, "change starts a tween, got {early}");
+
+        cx.executor()
+            .advance_clock(std::time::Duration::from_millis(60));
+        let mid = fill_width(cx);
+        assert!(mid > early && mid < 150.0, "mid-tween width {mid}");
+
+        cx.executor()
+            .advance_clock(std::time::Duration::from_millis(200));
+        cx.run_until_parked();
+        assert_eq!(fill_width(cx), 150.0, "ends at the new value");
     }
 
     use super::*;
