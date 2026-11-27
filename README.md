@@ -57,7 +57,7 @@ fluent-app        = { git = "https://github.com/thedancingdeveloper/fluent-gpui"
 fluent-test-utils = { git = "https://github.com/thedancingdeveloper/fluent-gpui", tag = "v4.0.0+zed.ba63a022c9a2" }
 ```
 
-> **Not on crates.io (for 3.x).** The names `fluent-core`, `fluent-app`,
+> **Not on crates.io (for 4.x).** The names `fluent-core`, `fluent-app`,
 > `fluent-primitives`, `fluent-layout` and `fluent-ribbon` exist on crates.io,
 > but they are an older 2.x line that does not match this repository. Use the
 > git tags.
@@ -444,7 +444,7 @@ Each image is the component after a real Tab key press, showing its focus ring (
 | Linux x64, X11 and Wayland | wgpu (Vulkan, GL fallback) | AT-SPI | Supported |
 | macOS, web / wasm | | | Not a target |
 
-fluent-gpui is at version 3.x. Parts of it have had limited runtime validation.
+fluent-gpui is at version 4.x. Parts of it have had limited runtime validation.
 Plainly:
 
 - Everything is built and tested on Windows and Linux in CI, including
