@@ -252,6 +252,8 @@ Behaviour changes you will notice (no code change needed unless noted):
   duplicate accessibility node id (see `id(..)` under Added).
 
 **Buttons and inputs**
+- Long section titles and page names in `SettingsNav` are cut off with an ellipsis instead
+  of wrapping onto a second line.
 - Ribbon command buttons always centre their content, so an icon-and-label button stretched
   wider than its content is no longer left-aligned.
 

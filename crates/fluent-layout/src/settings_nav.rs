@@ -1,4 +1,4 @@
-use fluent_core::TextRampExt;
+use fluent_core::{TextRampExt, TruncateExt as _};
 use std::{collections::HashMap, sync::Arc};
 
 use fluent_core::{Theme, ThemeProvider as _};
@@ -226,6 +226,8 @@ impl Render for SettingsNav {
                     .child(
                         div()
                             .flex_1()
+                            .debug_selector(move || format!("nav-section-label-{si}"))
+                            .truncate_label()
                             .text_ramp(&typography.body)
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(on_neutral)
@@ -293,6 +295,8 @@ impl Render for SettingsNav {
                     .child(
                         div()
                             .flex_1()
+                            .debug_selector(move || format!("nav-item-label-{si}-{ii}"))
+                            .truncate_label()
                             .pl(px(components.settings_nav_item_indent))
                             .text_ramp(&typography.body)
                             .font_weight(if is_active {
@@ -330,6 +334,24 @@ mod tests {
                     .item(SettingsNavItem::new("b", "B")),
             )
             .on_select(move |id, _| log.borrow_mut().push(id.to_string()))
+    }
+
+    #[gpui::test]
+    fn long_titles_are_truncated_to_one_line(cx: &mut TestAppContext) {
+        let long = "A very long settings page title that would otherwise wrap onto several lines";
+        let (_nav, cx) = open_fluent_test_window(cx, |_, cx| {
+            SettingsNav::new(cx)
+                .section(SettingsNavSection::new(long).item(SettingsNavItem::new("a", long)))
+        });
+        cx.accessibility_snapshot();
+        let row_h = cx.update(|_, app| app.theme().components.list_item_height);
+        for selector in ["nav-section-label-0", "nav-item-label-0-0"] {
+            let label = cx.selector_bounds(selector).expect("label painted");
+            assert!(
+                f32::from(label.size.height) < row_h,
+                "{selector} wrapped to several lines: {label:?}"
+            );
+        }
     }
 
     #[gpui::test]
