@@ -4,8 +4,8 @@ use std::{collections::HashMap, sync::Arc};
 use fluent_core::{Theme, ThemeProvider as _};
 use fluent_primitives::{focus_ring, is_keyboard_focused, FluentFocus as _};
 use gpui::{
-    div, prelude::*, px, App, ClickEvent, Context, FocusHandle, FontWeight, IntoElement, Render,
-    SharedString, Window,
+    div, prelude::*, px, svg, App, ClickEvent, Context, FocusHandle, FontWeight, IntoElement,
+    Render, SharedString, Window,
 };
 
 // ---------------------------------------------------------------------------
@@ -219,9 +219,16 @@ impl Render for SettingsNav {
                             .justify_center()
                             .size(px(components.popup_icon_slot))
                             .flex_none()
-                            .text_size(px(9.0))
-                            .text_color(on_subtle)
-                            .child(if expanded { "▼" } else { "▶" }),
+                            .child(
+                                svg()
+                                    .path(if expanded {
+                                        "icons/chevron_down.svg"
+                                    } else {
+                                        "icons/chevron_right.svg"
+                                    })
+                                    .size(px(12.0))
+                                    .text_color(on_subtle),
+                            ),
                     )
                     .child(
                         div()

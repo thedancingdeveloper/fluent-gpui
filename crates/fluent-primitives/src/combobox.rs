@@ -445,7 +445,7 @@ impl Render for Combobox {
             .child(
                 svg()
                     .path("icons/chevron_down.svg")
-                    .size(px(components.popup_icon_slot))
+                    .size(px(12.0))
                     .text_color(fg),
             )
             .child(measure_trigger);

@@ -610,8 +610,8 @@ impl Render for CommandPalette {
                 row_el = row_el.child(
                     div()
                         .flex_none()
-                        .px(px(6.0))
-                        .py(px(2.0))
+                        .px(px(spacing.sm))
+                        .py(px(spacing.xs))
                         .rounded(px(radii.sm))
                         .border_1()
                         .border_color(colors.stroke_neutral_subtle)

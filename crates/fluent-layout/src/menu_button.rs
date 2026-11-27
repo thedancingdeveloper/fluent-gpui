@@ -723,7 +723,7 @@ impl Render for MenuButton {
             .child(
                 svg()
                     .path("icons/chevron_down.svg")
-                    .size(px(components.popup_icon_slot))
+                    .size(px(12.0))
                     .text_color(fg),
             );
 

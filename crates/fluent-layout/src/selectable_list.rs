@@ -625,8 +625,8 @@ fn render_row(
         row = row.child(
             div()
                 .flex_none()
-                .px(px(5.0))
-                .py(px(1.0))
+                .px(px(spacing.sm))
+                .py(px(spacing.xs))
                 .rounded(px(theme.radii.sm))
                 .bg(colors.neutral)
                 .text_ramp(&typography.caption)
