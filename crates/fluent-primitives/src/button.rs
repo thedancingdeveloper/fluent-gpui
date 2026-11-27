@@ -1,7 +1,8 @@
 use crate::focus::{control_focus_handle, focus_ring, is_keyboard_focused, FluentFocus as _};
 use crate::Spinner;
 use fluent_core::{
-    ControlStates, NeutralColorStates, TextRampExt as _, ThemeProvider as _, TruncateExt as _,
+    ColorScheme, ControlStates, NeutralColorStates, TextRampExt as _, ThemeProvider as _,
+    TruncateExt as _,
 };
 use gpui::{
     div, prelude::*, px, transparent_black, App, ClickEvent, ElementId, Hsla, IntoElement,
@@ -234,6 +235,45 @@ impl Button {
     }
 }
 
+/// Control states and border for an appearance.
+fn appearance_states(
+    colors: &ColorScheme,
+    appearance: ButtonAppearance,
+    disabled: bool,
+) -> (ControlStates, Option<Hsla>) {
+    match appearance {
+        ButtonAppearance::Primary => (colors.accent_control(), None),
+        ButtonAppearance::Secondary => (
+            colors.neutral_control(),
+            Some(if disabled {
+                colors.neutral_stroke_1.disabled
+            } else {
+                colors.neutral_stroke_1.default
+            }),
+        ),
+        ButtonAppearance::Outline => (
+            colors.subtle_control(),
+            Some(if disabled {
+                colors.neutral_stroke_1.disabled
+            } else {
+                colors.neutral_stroke_1.default
+            }),
+        ),
+        ButtonAppearance::Subtle => (colors.subtle_control(), None),
+        ButtonAppearance::Transparent => {
+            let mut s = colors.subtle_control();
+            s.foreground = NeutralColorStates {
+                default: colors.on_neutral_accent,
+                hover: colors.on_neutral_accent,
+                pressed: colors.on_neutral_accent,
+                selected: colors.on_neutral_accent,
+                disabled: colors.neutral_foreground_1.disabled,
+            };
+            (s, None)
+        }
+    }
+}
+
 impl RenderOnce for Button {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let focus =
@@ -242,37 +282,7 @@ impl RenderOnce for Button {
         let colors = &theme.colors;
         let radii = &theme.radii;
 
-        let (states, border): (ControlStates, Option<Hsla>) = match self.appearance {
-            ButtonAppearance::Primary => (colors.accent_control(), None),
-            ButtonAppearance::Secondary => (
-                colors.neutral_control(),
-                Some(if self.disabled {
-                    colors.neutral_stroke_1.disabled
-                } else {
-                    colors.neutral_stroke_1.default
-                }),
-            ),
-            ButtonAppearance::Outline => (
-                colors.subtle_control(),
-                Some(if self.disabled {
-                    colors.neutral_stroke_1.disabled
-                } else {
-                    colors.neutral_stroke_1.default
-                }),
-            ),
-            ButtonAppearance::Subtle => (colors.subtle_control(), None),
-            ButtonAppearance::Transparent => {
-                let mut s = colors.subtle_control();
-                s.foreground = NeutralColorStates {
-                    default: colors.on_neutral_accent,
-                    hover: colors.on_neutral_accent,
-                    pressed: colors.on_neutral_accent,
-                    selected: colors.on_neutral_accent,
-                    disabled: colors.neutral_foreground_1.disabled,
-                };
-                (s, None)
-            }
-        };
+        let (states, border) = appearance_states(colors, self.appearance, self.disabled);
         let (bg, fg) = if self.disabled {
             (states.background.disabled, states.foreground.disabled)
         } else {
@@ -347,7 +357,8 @@ impl RenderOnce for Button {
             el = el.child(
                 Spinner::new()
                     .id(format!("{icon_debug_id}-spinner"))
-                    .size(icon_size),
+                    .size(icon_size)
+                    .color(fg),
             );
         } else if let Some(icon_path) = leading_icon {
             el = el.child(
@@ -615,6 +626,24 @@ mod tests {
         ButtonAppearance::Subtle,
         ButtonAppearance::Transparent,
     ];
+
+    #[gpui::test]
+    fn loading_spinner_colour_is_the_foreground_and_contrasts_the_fill(cx: &mut TestAppContext) {
+        init_fluent_test(cx);
+        cx.update(|app| {
+            let colors = &app.theme().colors;
+            for appearance in APPEARANCES {
+                let (states, _) = appearance_states(colors, appearance, false);
+                assert_ne!(
+                    states.foreground.default, states.background.default,
+                    "{appearance:?}"
+                );
+            }
+            // The Primary spinner must not use the accent, which is the fill.
+            let (primary, _) = appearance_states(colors, ButtonAppearance::Primary, false);
+            assert_ne!(primary.foreground.default, colors.accent);
+        });
+    }
 
     #[gpui::test]
     fn every_appearance_and_size_has_the_same_height(cx: &mut TestAppContext) {
