@@ -11,7 +11,7 @@
 - [Visual targets](VISUAL_TARGETS.md): the visual references that shape the components.
 - [Performance budgets](performance.md): render-cost budgets and how to run the benchmarks.
 - [Vendored upstream](vendoring.md): the vendored GPUI snapshot and its patches.
-- [Changelog](../CHANGELOG.md): release notes and migration notes.
+- [Changelog](../CHANGELOG.md): release notes and the 4.0.0 migration notes.
 
 ## Maintaining it
 
