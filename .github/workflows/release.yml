@@ -9,6 +9,7 @@ on:
       - '.github/workflows/release.yml'
       - 'scripts/check-zed-rev.sh'
       - 'scripts/release-notes.sh'
+      - 'scripts/test-release-notes.sh'
   schedule:
     - cron: '23 3 * * *'
   workflow_dispatch:
@@ -26,9 +27,13 @@ jobs:
         env:
           RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
         run: scripts/check-zed-rev.sh "$RELEASE_TAG"
+      - name: Test release-notes script
+        run: scripts/test-release-notes.sh
       - name: Draft release notes from CHANGELOG
+        env:
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
         run: |
-          scripts/release-notes.sh release-notes.md
+          scripts/release-notes.sh release-notes.md "$RELEASE_TAG"
           cat release-notes.md >> "$GITHUB_STEP_SUMMARY"
 
   build:
@@ -67,6 +72,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          scripts/release-notes.sh release-notes.md
+          scripts/release-notes.sh release-notes.md "$RELEASE_TAG"
           gh release create "$RELEASE_TAG" --draft --verify-tag \
             --title "$RELEASE_TAG" --notes-file release-notes.md
