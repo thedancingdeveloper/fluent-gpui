@@ -23,7 +23,7 @@ pub use colors::{
     gradient_from_hue, hue_for, tint, with_alpha, ColorScheme, ControlStates, NeutralColorStates,
 };
 pub use components::{ComponentTokens, RowDensity};
-pub use motion::{popup_motion_surface, MotionCurve, MotionTokens};
+pub use motion::{popup_motion_surface, toast_motion_surface, MotionCurve, MotionTokens};
 pub use radii::RadiiTokens;
 pub use shadows::ShadowTokens;
 pub use spacing::SpacingTokens;
@@ -145,6 +145,20 @@ mod tests {
     #[test]
     fn motion_tokens_are_subtle() {
         let m = MotionTokens::default();
+        assert_eq!(
+            (m.fast_duration_ms, m.normal_duration_ms, m.slow_duration_ms),
+            (100, 167, 300)
+        );
+        assert_eq!(
+            (
+                m.spinner_loop_ms,
+                m.pulse_loop_ms,
+                m.skeleton_loop_ms,
+                m.progress_loop_ms
+            ),
+            (900, 1600, 1500, 1280)
+        );
+        assert_eq!(m.toast_offset, 12.0);
         assert_eq!(m.popup_enter_duration_ms, 160);
         assert_eq!(m.popup_exit_duration_ms, 160);
         assert_eq!(m.popup_offset, 2.0);

@@ -1,5 +1,4 @@
 use fluent_core::TextRampExt;
-use std::time::Duration;
 
 use fluent_core::ThemeProvider as _;
 use gpui::{
@@ -89,7 +88,7 @@ impl RenderOnce for ConnectionBadge {
         let dot_el: gpui::AnyElement = if pulses {
             dot.with_animation(
                 self.id.clone(),
-                Animation::new(Duration::from_millis(1600))
+                Animation::new(theme.motion().pulse_loop())
                     .repeat()
                     .with_easing(pulsating_between(0.35, 1.0)),
                 move |this, delta| {

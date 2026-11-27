@@ -1,4 +1,5 @@
 use fluent_core::TextRampExt;
+use gpui::AnimationExt as _;
 use std::sync::Arc;
 
 use crate::data_status::{status_block, DataStatusKind};
@@ -514,15 +515,22 @@ impl Tree {
         let toggle_handler = state.on_toggle.clone();
         let load_handler = state.on_load_children.clone();
         let chevron = if has_children {
-            let path = if item.expanded {
-                "icons/chevron_down.svg"
-            } else {
-                "icons/chevron_right.svg"
-            };
+            let expanded = item.expanded;
+            let duration = theme.motion().fast_duration();
             svg()
-                .path(path)
+                .path("icons/chevron_right.svg")
                 .size(px(12.0))
                 .text_color(colors.on_subtle)
+                .with_animation(
+                    ("tree-chevron", index as u64 * 2 + expanded as u64),
+                    gpui::Animation::new(duration).with_easing(gpui::ease_out_quint()),
+                    move |chevron, delta| {
+                        let turn = if expanded { delta } else { 1.0 - delta };
+                        chevron.with_transformation(gpui::Transformation::rotate(gpui::radians(
+                            turn * std::f32::consts::FRAC_PI_2,
+                        )))
+                    },
+                )
                 .into_any_element()
         } else {
             div().size(px(12.0)).into_any_element()

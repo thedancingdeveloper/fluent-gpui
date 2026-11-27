@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use fluent_core::ThemeProvider as _;
 use gpui::{
     div, prelude::*, px, svg, Animation, AnimationExt as _, App, ElementId, Hsla, IntoElement,
@@ -76,7 +74,7 @@ impl RenderOnce for Spinner {
                     .text_color(color)
                     .with_animation(
                         (self.id, "animation"),
-                        Animation::new(Duration::from_millis(900)).repeat(),
+                        Animation::new(cx.theme().motion().spinner_loop()).repeat(),
                         |svg, delta| {
                             svg.with_transformation(Transformation::rotate(gpui::percentage(delta)))
                         },
